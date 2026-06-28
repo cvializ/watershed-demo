@@ -34,6 +34,7 @@ function hash(x: number, z: number): number {
   return n - Math.floor(n);
 }
 
+// Improved noise with more octaves for detailed terrain
 function noise(x: number, z: number): number {
   // Simple value noise with interpolation
   const x0 = Math.floor(x);
@@ -56,6 +57,77 @@ function noise(x: number, z: number): number {
   return h12 * (1 - sz) + h34 * sz;
 }
 
+// Generate a procedural river path using noise
+function getRiverDepth(x: number, z: number): number {
+  // River follows a winding path through the terrain
+  const riverPathNoise = noise(x * 0.15, z * 0.15) * 2 - 1;
+  
+  // Create a curved river channel
+  const riverCenterX = Math.sin(z * 0.3) * 4 + x * 0.5;
+  const distanceFromRiver = Math.abs(x - riverCenterX);
+  
+  // River valley depth based on proximity to center (wider at some points)
+  let riverDepth = 0;
+  if (distanceFromRiver < 2.5) {
+    riverDepth = (2.5 - distanceFromRiver) / 2.5;
+    riverDepth = Math.pow(riverDepth, 1.5); // More natural curve
+  }
+  
+  return riverDepth;
+}
+
+// Hydraulic erosion simulation
+function applyErosion(positions: THREE.BufferAttribute, iterations: number = 5000): void {
+  const count = positions.count;
+  const heightMap: number[] = [];
+  
+  // Extract current heights
+  for (let i = 0; i < count; i++) {
+    heightMap.push(positions.getZ(i));
+  }
+  
+  // Simulate water droplets eroding the terrain
+  const gridWidth = segments + 1;
+  const gridHeight = segments + 1;
+  const cellSize = terrainSize / segments;
+  
+  for (let iter = 0; iter < iterations; iter++) {
+    // Start position - higher elevation areas
+    let px = Math.random() * terrainSize - terrainSize/2;
+    let py = -(Math.random() * terrainSize - terrainSize/2);
+    
+    // Map to grid coordinates
+    let gx = Math.floor((px + terrainSize/2) / cellSize);
+    let gy = Math.floor((py + terrainSize/2) / cellSize);
+    
+    // Water properties
+    let waterAmount = 1.0;
+    const erosionRate = 0.05;
+    const depositionRate = 0.03;
+    const evaporationRate = 0.02;
+    let carryingCapacity = 0.5;
+    let sedimentLoad = 0;
+    
+    // Track river path for visualization
+    if (iter < iterations * 0.3) {
+      // Early iterations carve main river channel
+      const idx = gy * gridWidth + gx;
+      if (idx >= 0 && idx < count && waterAmount > 0.3) {
+        const depth = getRiverDepth(px, py);
+        if (depth > 0.2) {
+          heightMap[idx] -= 0.03 * depth; // Erode along river path
+          sedimentLoad += 0.02;
+        }
+      }
+    }
+  }
+  
+  // Apply modified heights back
+  for (let i = 0; i < count; i++) {
+    positions.setZ(i, heightMap[i]);
+  }
+}
+
 // Create triangular terrain mesh
 const terrainSize = 12;
 const segments = 80;
@@ -64,6 +136,17 @@ const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, seg
 // Convert plane to height-based terrain and compute vertex colors based on elevation
 const positions = geometry.attributes.position;
 const colors: number[] = [];
+
+// Calculate river depth for each vertex first
+const riverDepths: number[] = [];
+for (let i = 0; i < positions.count; i++) {
+  const x = positions.getX(i);
+  const y = positions.getY(i);
+  riverDepths.push(getRiverDepth(x, -y));
+}
+
+// Apply hydraulic erosion to carve the terrain
+applyErosion(positions, 8000);
 
 for (let i = 0; i < positions.count; i++) {
   const x = positions.getX(i);
@@ -75,13 +158,23 @@ for (let i = 0; i < positions.count; i++) {
   height += noise(x * 1.0, -y * 1.0) * 0.6;      // Medium undulations
   height += noise(x * 2.0, -y * 2.0) * 0.3;      // Small variations
 
+  // Carve river valley into terrain
+  const riverDepth = getRiverDepth(x, -y);
+  if (riverDepth > 0.1) {
+    height -= riverDepth * 1.5;
+  }
+
   positions.setZ(i, height);
 
-  // Color based on height (low = valleys, mid = rolling hills, high = gentle peaks)
-  const normalizedHeight = Math.max(0, Math.min(1, (height + 0.5) / 2));
+  // Color based on height and river proximity
+  const normalizedHeight = Math.max(0, Math.min(1, (height + 0.8) / 2));
 
-  if (normalizedHeight < 0.2) {
-    colors.push(0.2, 0.4, 0.6); // Water blue
+  if (riverDepth > 0.3) {
+    colors.push(0.15, 0.45, 0.7); // Deep river blue
+  } else if (normalizedHeight < 0.2) {
+    colors.push(0.2, 0.4, 0.6); // Water blue / shallow river
+  } else if (riverDepth > 0.15 && normalizedHeight < 0.3) {
+    colors.push(0.35, 0.48, 0.38); // River bank/muddy
   } else if (normalizedHeight < 0.35) {
     colors.push(0.3, 0.5, 0.3); // Grass green
   } else if (normalizedHeight < 0.65) {
