@@ -25,8 +25,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.autoRotate = true;
-controls.autoRotateSpeed = 0.5;
+controls.autoRotate = false;
 
 // Simple pseudo-random noise function
 function hash(x: number, z: number): number {
@@ -203,11 +202,12 @@ scene.add(terrain);
 // Add wireframe overlay to emphasize triangular mesh structure
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);
 const wireframeMaterial = new THREE.LineBasicMaterial({
-  color: 0xffffff,
-  opacity: 0.03,
+  color: 0xffaa00,
+  opacity: 0.6,
   transparent: true,
 });
 const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+wireframe.rotation.x = terrain.rotation.x;
 scene.add(wireframe);
 
 // Add lighting
