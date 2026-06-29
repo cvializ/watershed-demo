@@ -238,17 +238,27 @@ toggleButton.addEventListener('click', () => {
   }
 });
 
+const minHeightLabel = document.createElement('label');
+minHeightLabel.textContent = 'Compute Shader Min Height:';
+minHeightLabel.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
+
 const minHeightInput = document.createElement('input');
 minHeightInput.type = 'number';
 minHeightInput.value = '-1.5';
 minHeightInput.placeholder = 'Min Height';
-minHeightInput.style.cssText = 'display: block; margin-top: 8px; padding: 4px; width: 100%;';
+minHeightInput.title = 'Minimum height value for color mapping in compute shader';
+minHeightInput.style.cssText = 'display: block; margin-bottom: 8px; padding: 4px; width: 100%;';
+
+const maxHeightLabel = document.createElement('label');
+maxHeightLabel.textContent = 'Compute Shader Max Height:';
+maxHeightLabel.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
 
 const maxHeightInput = document.createElement('input');
 maxHeightInput.type = 'number';
 maxHeightInput.value = '2.0';
 maxHeightInput.placeholder = 'Max Height';
-maxHeightInput.style.cssText = 'display: block; margin-top: 4px; padding: 4px; width: 100%;';
+maxHeightInput.title = 'Maximum height value for color mapping in compute shader';
+maxHeightInput.style.cssText = 'display: block; margin-bottom: 4px; padding: 4px; width: 100%;';
 
 // Update shader uniforms when height range changes
 function updateHeightRange() {
@@ -268,7 +278,9 @@ maxHeightInput.addEventListener('change', updateHeightRange);
 
 uiContainer.appendChild(toggleButton);
 uiContainer.appendChild(document.createElement('br'));
+uiContainer.appendChild(minHeightLabel);
 uiContainer.appendChild(minHeightInput);
+uiContainer.appendChild(maxHeightLabel);
 uiContainer.appendChild(maxHeightInput);
 document.body.appendChild(uiContainer);
 
