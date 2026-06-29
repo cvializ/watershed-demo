@@ -61,14 +61,14 @@ export function generateHeightTexture(
             const worldX = (x / width) * terrainSize - terrainSize / 2;
             const worldZ = -(y / height) * terrainSize + terrainSize / 2;
 
-            // Calculate height
+            // Calculate height (negate worldZ to match main.ts coordinate system)
             let heightVal = 0;
-            heightVal += noise(worldX * 0.5, worldZ * 0.5) * 1.2;
-            heightVal += noise(worldX * 1.0, worldZ * 1.0) * 0.6;
-            heightVal += noise(worldX * 2.0, worldZ * 2.0) * 0.3;
+            heightVal += noise(worldX * 0.5, -worldZ * 0.5) * 1.2;
+            heightVal += noise(worldX * 1.0, -worldZ * 1.0) * 0.6;
+            heightVal += noise(worldX * 2.0, -worldZ * 2.0) * 0.3;
 
-            // Add river carving
-            const riverDepth = getRiverDepth(worldX, worldZ);
+            // Add river carving (negate worldZ to match main.ts)
+            const riverDepth = getRiverDepth(worldX, -worldZ);
             if (riverDepth > 0.1) {
                 heightVal -= riverDepth * 1.5;
             }
@@ -159,14 +159,14 @@ export function createHeightVisualizationMaterial(
                 // Sample position from uv (terrain space)
                 vec2 pos = vUv * 12.0 - 6.0;
                 
-                // Calculate height using same noise function
+                // Calculate height using same noise function (negate y to match main.ts)
                 float h = 0.0;
-                h += noise(pos * 0.5) * 1.2;
-                h += noise(pos * 1.0) * 0.6;
-                h += noise(pos * 2.0) * 0.3;
+                h += noise(vec2(pos.x, -pos.y) * 0.5) * 1.2;
+                h += noise(vec2(pos.x, -pos.y) * 1.0) * 0.6;
+                h += noise(vec2(pos.x, -pos.y) * 2.0) * 0.3;
                 
-                // Carve river
-                float riverDepth = getRiverDepth(pos);
+                // Carve river (negate y to match main.ts)
+                float riverDepth = getRiverDepth(vec2(pos.x, -pos.y));
                 if (riverDepth > 0.1) {
                     h -= riverDepth * 1.5;
                 }
