@@ -59,7 +59,6 @@ function noise(x: number, z: number): number {
 // Generate a procedural river path using noise
 function getRiverDepth(x: number, z: number): number {
   // River follows a winding path through the terrain
-  const riverPathNoise = noise(x * 0.15, z * 0.15) * 2 - 1;
   
   // Create a curved river channel
   const riverCenterX = Math.sin(z * 0.3) * 4 + x * 0.5;
@@ -87,7 +86,6 @@ function applyErosion(positions: THREE.BufferAttribute, iterations: number = 500
   
   // Simulate water droplets eroding the terrain
   const gridWidth = segments + 1;
-  const gridHeight = segments + 1;
   const cellSize = terrainSize / segments;
   
   for (let iter = 0; iter < iterations; iter++) {
@@ -101,10 +99,6 @@ function applyErosion(positions: THREE.BufferAttribute, iterations: number = 500
     
     // Water properties
     let waterAmount = 1.0;
-    const erosionRate = 0.05;
-    const depositionRate = 0.03;
-    const evaporationRate = 0.02;
-    let carryingCapacity = 0.5;
     let sedimentLoad = 0;
     
     // Track river path for visualization
@@ -145,7 +139,7 @@ for (let i = 0; i < positions.count; i++) {
 }
 
 // Apply hydraulic erosion to carve the terrain
-applyErosion(positions, 8000);
+applyErosion(positions as THREE.BufferAttribute, 8000);
 
 for (let i = 0; i < positions.count; i++) {
   const x = positions.getX(i);
@@ -186,7 +180,7 @@ for (let i = 0; i < positions.count; i++) {
 }
 
 geometry.attributes.position.needsUpdate = true;
-geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
 geometry.computeVertexNormals();
 
 // Create material with vertex colors and double-sided rendering for triangles
