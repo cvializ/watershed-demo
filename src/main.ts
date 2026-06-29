@@ -1,6 +1,9 @@
 import './style.css';
 import * as THREE from 'three';
 
+// Import terrain compute helper for height-based visualization
+import { createHeightVisualizationMaterial } from './terrainCompute.js';
+
 // Setup scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1a1a2e);
@@ -189,9 +192,15 @@ const material = new THREE.MeshLambertMaterial({
   side: THREE.DoubleSide,
 });
 
+// Create compute shader material for height visualization (GPU-based)
+const computeMaterial = createHeightVisualizationMaterial(-1.5, 2.0);
+
 const terrain = new THREE.Mesh(geometry, material);
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);
+
+// Store original material for toggling
+const originalMaterial = material;
 
 // Add wireframe overlay to emphasize triangular mesh structure
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);
@@ -203,6 +212,87 @@ const wireframeMaterial = new THREE.LineBasicMaterial({
 const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
 wireframe.rotation.x = terrain.rotation.x;
 scene.add(wireframe);
+
+// Toggle UI for height visualization
+const uiContainer = document.createElement('div');
+uiContainer.style.cssText =
+  'position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #fff;' +
+  'padding: 15px; font-family: monospace; border-radius: 4px; z-index: 1000;';
+
+const toggleButton = document.createElement('button');
+toggleButton.textContent = 'Toggle Height Visualization';
+toggleButton.style.cssText =
+  'padding: 8px 16px; background: #4CAF50; color: white; border: none;' +
+  'border-radius: 4px; cursor: pointer; font-size: 12px;';
+
+let useComputeShader = false;
+toggleButton.addEventListener('click', () => {
+  useComputeShader = !useComputeShader;
+  
+  if (useComputeShader) {
+    // Apply compute shader material for height visualization
+    terrain.material = computeMaterial as any;
+  } else {
+    // Restore original vertex-colored material
+    terrain.material = originalMaterial as any;
+  }
+});
+
+const minHeightInput = document.createElement('input');
+minHeightInput.type = 'number';
+minHeightInput.value = '-1.5';
+minHeightInput.placeholder = 'Min Height';
+minHeightInput.style.cssText = 'display: block; margin-top: 8px; padding: 4px; width: 100%;';
+
+const maxHeightInput = document.createElement('input');
+maxHeightInput.type = 'number';
+maxHeightInput.value = '2.0';
+maxHeightInput.placeholder = 'Max Height';
+maxHeightInput.style.cssText = 'display: block; margin-top: 4px; padding: 4px; width: 100%;';
+
+// Update shader uniforms when height range changes
+function updateHeightRange() {
+  if (useComputeShader && terrain.material) {
+    const shaderMat = terrain.material as any;
+    if (shaderMat.uniforms?.uMinHeight) {
+      shaderMat.uniforms.uMinHeight.value = parseFloat(minHeightInput.value);
+    }
+    if (shaderMat.uniforms?.uMaxHeight) {
+      shaderMat.uniforms.uMaxHeight.value = parseFloat(maxHeightInput.value);
+    }
+  }
+}
+
+minHeightInput.addEventListener('change', updateHeightRange);
+maxHeightInput.addEventListener('change', updateHeightRange);
+
+uiContainer.appendChild(toggleButton);
+uiContainer.appendChild(document.createElement('br'));
+uiContainer.appendChild(minHeightInput);
+uiContainer.appendChild(maxHeightInput);
+document.body.appendChild(uiContainer);
+
+// Add color legend
+const legend = document.createElement('div');
+legend.style.cssText =
+  'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);' +
+  'width: 400px; height: 20px; background: linear-gradient(to right,' +
+  'rgb(0,128,255) 0%,' +
+  'rgb(51,179,255) 30%,' +
+  'rgb(77,192,77) 50%,' +
+  'rgb(153,204,51) 70%,' +
+  'rgb(166,149,127) 85%,' +
+  'rgb(255,255,255) 100%);' +
+  'border-radius: 4px; border: 2px solid rgba(0,0,0,0.5); z-index: 1000;';
+
+const legendText = document.createElement('div');
+legendText.style.cssText =
+  'position: absolute; bottom: -30px; width: 100%; text-align: center;' +
+  'color: white; font-family: monospace; font-size: 12px; text-shadow: 1px 1px 2px black;';
+legendText.innerHTML = 'Low (Water) <span>&larr;</span> Height <span>&rarr;</span> High (Snow)';
+
+legend.appendChild(legendText);
+document.body.appendChild(legend);
 
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
