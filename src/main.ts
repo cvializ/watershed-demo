@@ -277,19 +277,15 @@ const legend = document.createElement('div');
 legend.style.cssText =
   'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);' +
   'width: 400px; height: 20px; background: linear-gradient(to right,' +
-  'rgb(0,128,255) 0%,' +
-  'rgb(51,179,255) 30%,' +
-  'rgb(77,192,77) 50%,' +
-  'rgb(153,204,51) 70%,' +
-  'rgb(166,149,127) 85%,' +
-  'rgb(255,255,255) 100%);' +
+  'rgb(26,102,204) 0%,' +
+  'rgb(153,153,153) 100%);' +
   'border-radius: 4px; border: 2px solid rgba(0,0,0,0.5); z-index: 1000;';
 
 const legendText = document.createElement('div');
 legendText.style.cssText =
   'position: absolute; bottom: -30px; width: 100%; text-align: center;' +
   'color: white; font-family: monospace; font-size: 12px; text-shadow: 1px 1px 2px black;';
-legendText.innerHTML = 'Low (Water) <span>&larr;</span> Height <span>&rarr;</span> High (Snow)';
+legendText.innerHTML = 'Low <span>&larr;</span> Height <span>&rarr;</span> High';
 
 legend.appendChild(legendText);
 document.body.appendChild(legend);

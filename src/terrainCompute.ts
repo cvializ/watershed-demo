@@ -140,19 +140,11 @@ export function createHeightVisualizationMaterial(
             vec3 getColorPalette(float normalizedHeight) {
                 float h = clamp(normalizedHeight, 0.0, 1.0);
                 
-                float lowEnd = 0.3;
-                vec3 colorLow = mix(vec3(0.0, 0.5, 1.0), vec3(0.2, 0.8, 0.3), h / lowEnd);
+                // Two-color scheme: low elevations in blue, high elevations in gray
+                vec3 colorLow = vec3(0.1, 0.4, 0.8);   // Blue for low elevations
+                vec3 colorHigh = vec3(0.6, 0.6, 0.6);  // Gray for high elevations
                 
-                float highStart = 0.7;
-                vec3 colorHigh = mix(vec3(0.2, 0.8, 0.3), vec3(1.0), (h - highStart) / (1.0 - highStart));
-                
-                vec3 color = mix(colorLow, colorHigh, smoothstep(lowEnd, highStart, h));
-                
-                // Add subtle terrain detail
-                float detail = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-                color += (detail - 0.5) * 0.1;
-                
-                return clamp(color, 0.0, 1.0);
+                return mix(colorLow, colorHigh, h);
             }
             
             void main() {
@@ -216,18 +208,11 @@ export function createHeightToColorMaterial(
             vec3 getColorPalette(float normalizedHeight) {
                 float h = clamp(normalizedHeight, 0.0, 1.0);
                 
-                float lowEnd = 0.3;
-                vec3 colorLow = mix(vec3(0.0, 0.5, 1.0), vec3(0.2, 0.8, 0.3), h / lowEnd);
+                // Two-color scheme: low elevations in blue, high elevations in gray
+                vec3 colorLow = vec3(0.1, 0.4, 0.8);   // Blue for low elevations
+                vec3 colorHigh = vec3(0.6, 0.6, 0.6);  // Gray for high elevations
                 
-                float highStart = 0.7;
-                vec3 colorHigh = mix(vec3(0.2, 0.8, 0.3), vec3(1.0), (h - highStart) / (1.0 - highStart));
-                
-                vec3 color = mix(colorLow, colorHigh, smoothstep(lowEnd, highStart, h));
-                
-                float detail = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-                color += (detail - 0.5) * 0.1;
-                
-                return clamp(color, 0.0, 1.0);
+                return mix(colorLow, colorHigh, h);
             }
             
             void main() {
