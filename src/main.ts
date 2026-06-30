@@ -129,21 +129,13 @@ const terrainSize = 12;
 const segments = 80;
 const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
 
-// Convert plane to height-based terrain and compute vertex colors based on elevation
+// Convert plane to height-based terrain
 const positions = geometry.attributes.position;
-const colors: number[] = [];
-
-// Calculate river depth for each vertex first
-const riverDepths: number[] = [];
-for (let i = 0; i < positions.count; i++) {
-  const x = positions.getX(i);
-  const y = positions.getY(i);
-  riverDepths.push(getRiverDepth(x, -y));
-}
 
 // Apply hydraulic erosion to carve the terrain
 applyErosion(positions as THREE.BufferAttribute, 8000);
 
+// Calculate height for each vertex (same calculation as before)
 for (let i = 0; i < positions.count; i++) {
   const x = positions.getX(i);
   const y = positions.getY(i);
@@ -161,34 +153,14 @@ for (let i = 0; i < positions.count; i++) {
   }
 
   positions.setZ(i, height);
-
-  // Color based on height and river proximity
-  const normalizedHeight = Math.max(0, Math.min(1, (height + 0.8) / 2));
-
-  if (riverDepth > 0.3) {
-    colors.push(0.15, 0.45, 0.7); // Deep river blue
-  } else if (normalizedHeight < 0.2) {
-    colors.push(0.2, 0.4, 0.6); // Water blue / shallow river
-  } else if (riverDepth > 0.15 && normalizedHeight < 0.3) {
-    colors.push(0.35, 0.48, 0.38); // River bank/muddy
-  } else if (normalizedHeight < 0.35) {
-    colors.push(0.3, 0.5, 0.3); // Grass green
-  } else if (normalizedHeight < 0.65) {
-    colors.push(0.4, 0.55, 0.25); // Forest green
-  } else if (normalizedHeight < 0.85) {
-    colors.push(0.65, 0.6, 0.55); // Sandy/rock tan
-  } else {
-    colors.push(1.0, 1.0, 1.0); // Snow white
-  }
 }
 
 geometry.attributes.position.needsUpdate = true;
-geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
 geometry.computeVertexNormals();
 
-// Create material with vertex colors and double-sided rendering for triangles
+// Create material with flat color and double-sided rendering for triangles
 const material = new THREE.MeshLambertMaterial({
-  vertexColors: true,
+  color: 0x668c42, // Forest green
   side: THREE.DoubleSide,
 });
 
