@@ -1,11 +1,17 @@
 import './style.css';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Expose Three.js to window for external access (e.g., shader tests)
 (window as any).THREE = THREE;
 
+// Import terrain generation functions
+import { calculateHeight } from './terrain.js';
+
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
-import { createHeightVisualizationMaterial, createSlopeVisualizationMaterial, createDownslopeArrowGeometry, createDownslopeArrowMaterial } from './terrainCompute.js';
+import { createDownslopeArrowGeometry, createDownslopeArrowMaterial } from './terrainCompute.js';
+import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
+import { createSlopeVisualizationMaterial } from './nodes/material/createSlopeVisualizationMaterial.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -27,105 +33,10 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Camera controls
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.autoRotate = false;
-
-// Simple pseudo-random noise function
-function hash(x: number, z: number): number {
-  const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
-  return n - Math.floor(n);
-}
-
-// Improved noise with more octaves for detailed terrain
-function noise(x: number, z: number): number {
-  // Simple value noise with interpolation
-  const x0 = Math.floor(x);
-  const z0 = Math.floor(z);
-  const fx = x - x0;
-  const fz = z - z0;
-
-  const h1 = hash(x0, z0);
-  const h2 = hash(x0 + 1, z0);
-  const h3 = hash(x0, z0 + 1);
-  const h4 = hash(x0 + 1, z0 + 1);
-
-  // Smoothstep interpolation
-  const sx = fx * fx * (3 - 2 * fx);
-  const sz = fz * fz * (3 - 2 * fz);
-
-  const h12 = h1 * (1 - sx) + h2 * sx;
-  const h34 = h3 * (1 - sx) + h4 * sx;
-
-  return h12 * (1 - sz) + h34 * sz;
-}
-
-// Generate a procedural river path using noise
-function getRiverDepth(x: number, z: number): number {
-  // River follows a winding path through the terrain
-  
-  // Create a curved river channel
-  const riverCenterX = Math.sin(z * 0.3) * 4 + x * 0.5;
-  const distanceFromRiver = Math.abs(x - riverCenterX);
-  
-  // River valley depth based on proximity to center (wider at some points)
-  let riverDepth = 0;
-  if (distanceFromRiver < 2.5) {
-    riverDepth = (2.5 - distanceFromRiver) / 2.5;
-    riverDepth = Math.pow(riverDepth, 1.5); // More natural curve
-  }
-  
-  return riverDepth;
-}
-
-// Hydraulic erosion simulation
-function applyErosion(positions: THREE.BufferAttribute, iterations: number = 5000): void {
-  const count = positions.count;
-  const heightMap: number[] = [];
-  
-  // Extract current heights
-  for (let i = 0; i < count; i++) {
-    heightMap.push(positions.getZ(i));
-  }
-  
-  // Simulate water droplets eroding the terrain
-  const gridWidth = segments + 1;
-  const cellSize = terrainSize / segments;
-  
-  for (let iter = 0; iter < iterations; iter++) {
-    // Start position - higher elevation areas
-    let px = Math.random() * terrainSize - terrainSize/2;
-    let py = -(Math.random() * terrainSize - terrainSize/2);
-    
-    // Map to grid coordinates
-    let gx = Math.floor((px + terrainSize/2) / cellSize);
-    let gy = Math.floor((py + terrainSize/2) / cellSize);
-    
-    // Water properties
-    let waterAmount = 1.0;
-    let sedimentLoad = 0;
-    
-    // Track river path for visualization
-    if (iter < iterations * 0.3) {
-      // Early iterations carve main river channel
-      const idx = gy * gridWidth + gx;
-      if (idx >= 0 && idx < count && waterAmount > 0.3) {
-        const depth = getRiverDepth(px, py);
-        if (depth > 0.2) {
-          heightMap[idx] -= 0.03 * depth; // Erode along river path
-          sedimentLoad += 0.02;
-        }
-      }
-    }
-  }
-  
-  // Apply modified heights back
-  for (let i = 0; i < count; i++) {
-    positions.setZ(i, heightMap[i]);
-  }
-}
 
 // Create triangular terrain mesh
 const terrainSize = 12;
@@ -136,24 +47,15 @@ const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, seg
 const positions = geometry.attributes.position;
 
 // Apply hydraulic erosion to carve the terrain
-applyErosion(positions as THREE.BufferAttribute, 8000);
+// applyErosion(positions as THREE.BufferAttribute, 8000);
 
-// Calculate height for each vertex (same calculation as before)
+// Calculate height for each vertex using the terrain module
 for (let i = 0; i < positions.count; i++) {
   const x = positions.getX(i);
   const y = positions.getY(i);
 
   // Calculate height using lower frequency noise for rolling hills
-  let height = 0;
-  height += noise(x * 0.5, -y * 0.5) * 1.2;      // Large gentle waves
-  height += noise(x * 1.0, -y * 1.0) * 0.6;      // Medium undulations
-  height += noise(x * 2.0, -y * 2.0) * 0.3;      // Small variations
-
-  // Carve river valley into terrain
-  const riverDepth = getRiverDepth(x, -y);
-  if (riverDepth > 0.1) {
-    height -= riverDepth * 1.5;
-  }
+  let height = calculateHeight(x, y);
 
   positions.setZ(i, height);
 }

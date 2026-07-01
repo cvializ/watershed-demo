@@ -5,6 +5,60 @@
 - Each chunk should produce observable progress - a passing test, working feature, or verifiable output
 - Implement in a TDD style: define the expected behavior first, then implement to pass tests
 
+## TypeScript Import Conventions
+- **Use absolute imports from `src/`**: Import modules using absolute paths starting with `src/`, e.g., `import { function } from 'src/utils/helpers'` instead of relative paths like `../../../utils/helpers`
+- This improves code readability and makes refactoring easier
+- Configure your editor/IDE to resolve absolute imports correctly
+
+### Build System Configuration for Absolute Imports
+Ensure your build system supports absolute imports from the `src/` directory:
+
+**TypeScript (`tsconfig.json`)**:
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["./src/*"]
+    }
+  }
+}
+```
+
+**Vite (`vite.config.ts`)**:
+```ts
+import { defineConfig } from 'vite'
+import path from 'path'
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      'src': path.resolve(__dirname, './src'),
+    },
+  },
+})
+```
+
+**Webpack**:
+```js
+module.exports = {
+  resolve: {
+    alias: {
+      'src': path.resolve(__dirname, './src'),
+    },
+  },
+}
+```
+
+**Jest (`jest.config.js`)**:
+```js
+module.exports = {
+  moduleNameMapper: {
+    '^src/(.*)$': '<rootDir>/src/$1',
+  },
+}
+```
+
 ### Functional Programming First
 Prefer a functional programming approach over class-based mutable state for the following reasons:
 - **Predictability**: Pure functions always produce the same output for the same input, eliminating unpredictable state transitions
@@ -35,6 +89,8 @@ npm install      # Install dependencies
 npm test         # Run tests and linting
 npm run build    # Build for production
 ```
+
+**Note**: When running tests, ensure your test runner is configured to resolve absolute imports from `src/`. See the Build System Configuration section above for details.
 
 ## Safety Rules
 - Always run tests before committing
