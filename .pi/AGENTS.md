@@ -138,3 +138,28 @@ npm run build    # Build for production
 - Prefer composition over inheritance
 - Write clear commit messages with conventional commits
 - Prefer small, focused change sets that implement one verifiable chunk
+
+## Three.js Geometry and Shader Integration Warnings
+
+### Rotated PlaneGeometry and Normal Calculation
+When working with PlaneGeometry in this project, be aware of the following:
+
+**Issue**: The terrain is created as a PlaneGeometry rotated by -π/2 around the X-axis. Three.js computes normals based on the final transformed geometry (after rotation).
+
+**Implications**:
+1. A PlaneGeometry's default normal (0, 0, 1) becomes approximately (0, -1, 0) after rotation
+2. For a heightfield z = f(x,y), the pre-rotation normal is (fx, fy, -1) normalized
+3. After X-rotation of -π/2, this becomes approximately (fx, 1, fy) normalized
+
+**Correct downslope calculation for shaders**:
+For a heightfield z = f(x,y), the downslope direction (direction of steepest descent) is given by the gradient (fx, fy). When normals are computed on rotated geometry:
+```glsl
+float eps = 0.001;
+vec2 downDirection = vec2(0.0);
+if (abs(normal.z) > eps) {
+    downDirection = vec2(normal.x / normal.z, normal.y / normal.z);
+}
+downDirection = normalize(downDirection);
+```
+
+The formula `nx/nz, ny/nz` extracts the gradient from the rotated normal to get the correct downslope direction.
