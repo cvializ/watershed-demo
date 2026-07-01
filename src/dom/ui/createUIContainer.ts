@@ -10,10 +10,6 @@ export interface UIContainerConfig {
   minSlopeInput?: HTMLInputElement;
   maxSlopeLabel?: HTMLLabelElement;
   maxSlopeInput?: HTMLInputElement;
-  minDisplacementLabel?: HTMLLabelElement;
-  minDisplacementInput?: HTMLInputElement;
-  maxDisplacementLabel?: HTMLLabelElement;
-  maxDisplacementInput?: HTMLInputElement;
 }
 
 export const createUIContainer = (config: UIContainerConfig): HTMLDivElement => {
@@ -24,19 +20,6 @@ export const createUIContainer = (config: UIContainerConfig): HTMLDivElement => 
 
   uiContainer.appendChild(config.tabContainer);
   uiContainer.appendChild(document.createElement('br'));
-
-  if (config.minDisplacementLabel) {
-    uiContainer.appendChild(config.minDisplacementLabel);
-  }
-  if (config.minDisplacementInput) {
-    uiContainer.appendChild(config.minDisplacementInput);
-  }
-  if (config.maxDisplacementLabel) {
-    uiContainer.appendChild(config.maxDisplacementLabel);
-  }
-  if (config.maxDisplacementInput) {
-    uiContainer.appendChild(config.maxDisplacementInput);
-  }
 
   if (config.minSlopeLabel) {
     uiContainer.appendChild(config.minSlopeLabel);
@@ -78,10 +61,10 @@ export const updateVisibility = (
   if (config.maxSlopeLabel) config.maxSlopeLabel.style.display = isSlopeMode ? 'block' : 'none';
   if (config.maxSlopeInput) config.maxSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
 
-  // Only show displacement controls in original/displacement mode
-  const isDisplacementMode = visualizationMode === 0;
-  if (config.minDisplacementLabel) config.minDisplacementLabel.style.display = isDisplacementMode ? 'block' : 'none';
-  if (config.minDisplacementInput) config.minDisplacementInput.style.display = isDisplacementMode ? 'block' : 'none';
-  if (config.maxDisplacementLabel) config.maxDisplacementLabel.style.display = isDisplacementMode ? 'block' : 'none';
-  if (config.maxDisplacementInput) config.maxDisplacementInput.style.display = isDisplacementMode ? 'block' : 'none';
+  // Only show height controls in height mode
+  const isHeightMode = visualizationMode === 1;
+  if (config.minHeightLabel) config.minHeightLabel.style.display = isHeightMode ? 'block' : 'none';
+  if (config.minHeightInput) config.minHeightInput.style.display = isHeightMode ? 'block' : 'none';
+  if (config.maxHeightLabel) config.maxHeightLabel.style.display = isHeightMode ? 'block' : 'none';
+  if (config.maxHeightInput) config.maxHeightInput.style.display = isHeightMode ? 'block' : 'none';
 };

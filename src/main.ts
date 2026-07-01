@@ -7,16 +7,15 @@ import { createDownslopeArrowGeometry } from './nodes/geometry/createDownslopeAr
 import { createSlopeVisualizationMaterial } from './nodes/material/createSlopeVisualizationMaterial.js';
 import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeArrowMaterial.js';
 import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
-import { createDisplacementMaterial } from './nodes/material/createDisplacementMaterial.js';
 import { createWaterFlowMaterial } from './nodes/material/createWaterFlowMaterial.js';
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
+import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
 
 // Import DOM manipulation utilities
 import { createTabBar, updateTabActiveState } from './dom/ui/createTabBar.js';
 import {
   createHeightControls,
   createSlopeControls,
-  createDisplacementControls,
 } from './dom/ui/createControls.js';
 import { createUIContainer, updateVisibility } from './dom/ui/createUIContainer.js';
 import {
@@ -56,15 +55,7 @@ controls.autoRotate = false;
 const terrainSize = 12;
 const geometry = createTerrainGeometry();
 
-// Create displacement map texture (512x512 for good detail/performance)
-const displacementTexture = createDisplacementTexture(512, terrainSize);
-
-import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
-
-// Create custom shader material with vertex displacement using the height texture
-const displacementMaterial = createDisplacementMaterial(displacementTexture, 2.5, -1.5);
-
-// Create height map for GPU-based height visualization
+// Create height map for GPU-based height visualization and water simulation
 const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const computeMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
@@ -81,7 +72,7 @@ scene.add(arrows);
 // Create animated water flow material
 // We use a simple approach: create the water layer once and let the shader compute
 // water distribution based on terrain height, with time-based accumulation in basins
-const waterResult = createWaterFlowMaterial(displacementTexture, 0.5);
+const waterResult = createWaterFlowMaterial(heightMapTexture, 0.5);
 const waterLayer = new THREE.Mesh(geometry, waterResult.material);
 waterLayer.rotation.x = -Math.PI / 2;
 scene.add(waterLayer);
@@ -92,12 +83,12 @@ for (let i = 0; i < waterTextureData.length; i++) {
     waterTextureData[i] = 1.0; // Start with uniform water coverage
 }
 
-const terrain = new THREE.Mesh(geometry, displacementMaterial);
+const terrain = new THREE.Mesh(geometry, computeMaterial);
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);
 
 // Store original material for toggling
-const originalMaterial = displacementMaterial;
+const originalMaterial = computeMaterial;
 
 // Create a normal material for comparison verification
 const normalMaterial = new THREE.MeshNormalMaterial({
@@ -116,7 +107,7 @@ wireframe.rotation.x = terrain.rotation.x;
 scene.add(wireframe);
 
 // Visualization mode state
-let visualizationMode = 0;
+let visualizationMode = 4; // Start on Water Flow tab (mode 0=Height, 1=Slope, 2=Verify, 3=Downslope Arrows, 4=Water Flow)
 
 // Create legends
 const legend = createVisualizationLegend();
@@ -140,10 +131,6 @@ const slopeControls = createSlopeControls((minSlope, maxSlope) => {
   updateShaderSlopeRange(minSlope, maxSlope);
 });
 
-const displacementControls = createDisplacementControls((minDisp, maxDisp) => {
-  updateShaderDisplacementRange(minDisp, maxDisp);
-});
-
 // UI Container
 const uiContainer = createUIContainer({
   tabContainer: tabContainer.container,
@@ -155,16 +142,12 @@ const uiContainer = createUIContainer({
   minSlopeInput: slopeControls.minInput,
   maxSlopeLabel: slopeControls.maxLabel,
   maxSlopeInput: slopeControls.maxInput,
-  minDisplacementLabel: displacementControls.minLabel,
-  minDisplacementInput: displacementControls.minInput,
-  maxDisplacementLabel: displacementControls.maxLabel,
-  maxDisplacementInput: displacementControls.maxInput,
 });
 document.body.appendChild(uiContainer);
 
 // Shader uniform update functions
 function updateShaderHeightRange(minHeight: number, maxHeight: number) {
-  if (visualizationMode === 1 && terrain.material) {
+  if (visualizationMode === 0 && terrain.material) {
     const shaderMat = terrain.material as any;
     if (shaderMat.uniforms?.uMinHeight) {
       shaderMat.uniforms.uMinHeight.value = minHeight;
@@ -176,7 +159,7 @@ function updateShaderHeightRange(minHeight: number, maxHeight: number) {
 }
 
 function updateShaderSlopeRange(minSlope: number, maxSlope: number) {
-  if (visualizationMode === 2 && terrain.material) {
+  if (visualizationMode === 1 && terrain.material) {
     const shaderMat = terrain.material as any;
     if (shaderMat.uniforms?.uMinSlope) {
       shaderMat.uniforms.uMinSlope.value = minSlope;
@@ -187,51 +170,32 @@ function updateShaderSlopeRange(minSlope: number, maxSlope: number) {
   }
 }
 
-function updateShaderDisplacementRange(minDisp: number, maxDisp: number) {
-  if (visualizationMode === 0 && terrain.material) {
-    const shaderMat = terrain.material as any;
-    if (shaderMat.uniforms?.uDisplacementBias) {
-      shaderMat.uniforms.uDisplacementBias.value = minDisp;
-    }
-    if (shaderMat.uniforms?.uDisplacementScale) {
-      shaderMat.uniforms.uDisplacementScale.value = maxDisp;
-    }
-  }
-}
-
 function setVisualizationMode(mode: number) {
   visualizationMode = mode;
   updateTabActiveState(activeTabButtons, visualizationMode);
 
   if (visualizationMode === 0) {
-    // Displacement map material for actual 3D terrain geometry
-    terrain.material = originalMaterial as any;
-    showLegend(legend);
-    hideLegend(slopeLegend);
-    arrows.visible = false;
-    waterLayer.visible = false;
-  } else if (visualizationMode === 1) {
     // Height-based visualization
     terrain.material = computeMaterial as any;
     showLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
     waterLayer.visible = false;
-  } else if (visualizationMode === 2) {
+  } else if (visualizationMode === 1) {
     // Slope-based visualization (normal map)
     terrain.material = slopeMaterial as any;
     hideLegend(legend);
     showLegend(slopeLegend);
     arrows.visible = false;
     waterLayer.visible = false;
-  } else if (visualizationMode === 3) {
+  } else if (visualizationMode === 2) {
     // Normal material for verification
     terrain.material = normalMaterial as any;
     hideLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
     waterLayer.visible = false;
-  } else if (visualizationMode === 4) {
+  } else if (visualizationMode === 3) {
     // Downslope arrows visualization
     terrain.material = originalMaterial as any;
     hideLegend(legend);
@@ -239,7 +203,7 @@ function setVisualizationMode(mode: number) {
     arrows.visible = true;
     waterLayer.visible = false;
   } else {
-    // Water flow visualization
+    // Water flow visualization (mode 4)
     terrain.material = originalMaterial as any;
     hideLegend(legend);
     hideLegend(slopeLegend);
@@ -258,10 +222,6 @@ function setVisualizationMode(mode: number) {
     minSlopeInput: slopeControls.minInput,
     maxSlopeLabel: slopeControls.maxLabel,
     maxSlopeInput: slopeControls.maxInput,
-    minDisplacementLabel: displacementControls.minLabel,
-    minDisplacementInput: displacementControls.minInput,
-    maxDisplacementLabel: displacementControls.maxLabel,
-    maxDisplacementInput: displacementControls.maxInput,
   });
 }
 
@@ -276,10 +236,6 @@ updateVisibility(visualizationMode, {
   minSlopeInput: slopeControls.minInput,
   maxSlopeLabel: slopeControls.maxLabel,
   maxSlopeInput: slopeControls.maxInput,
-  minDisplacementLabel: displacementControls.minLabel,
-  minDisplacementInput: displacementControls.minInput,
-  maxDisplacementLabel: displacementControls.maxLabel,
-  maxDisplacementInput: displacementControls.maxInput,
 });
 
 // Add lighting
@@ -309,15 +265,15 @@ function updateWaterSimulation() {
             
             // Get terrain height at this position
             const sampleUV = new THREE.Vector2(xIndex, zIndex);
-            const terrainHeight = textureSample(displacementTexture, sampleUV);
+            const terrainHeight = textureSample(heightMapTexture, sampleUV);
             
             // Get current water level
             const idx = z * w + x;
             let waterLevel = waterTextureData[idx];
             
             // Calculate gradient (slope) at this point
-            let hRight = textureSample(displacementTexture, new THREE.Vector2(Math.min(xIndex + 0.01, 1), zIndex));
-            let hDown = textureSample(displacementTexture, new THREE.Vector2(xIndex, Math.min(zIndex + 0.01, 1)));
+            let hRight = textureSample(heightMapTexture, new THREE.Vector2(Math.min(xIndex + 0.01, 1), zIndex));
+            let hDown = textureSample(heightMapTexture, new THREE.Vector2(xIndex, Math.min(zIndex + 0.01, 1)));
             
             // Drain water from high slopes
             const slope = Math.abs(hRight - terrainHeight) + Math.abs(hDown - terrainHeight);

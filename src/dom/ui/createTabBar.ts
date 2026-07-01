@@ -1,12 +1,15 @@
 // Creates the tab bar for visualization mode switching
 
+// The buttons array indices double as mode IDs:
+// 0=Height, 1=Slope, 2=Verify (Normal), 3=Downslope Arrows, 4=Water Flow
+// Note: Mode 0 (3D Displacement) was removed
+
 const modes = [
-  { id: 0, name: '3D Displacement', hasLegend: true },
-  { id: 1, name: 'Height', hasLegend: true },
-  { id: 2, name: 'Slope', hasLegend: false },
-  { id: 3, name: 'Verify (Normal)', hasLegend: false },
-  { id: 4, name: 'Downslope Arrows', hasLegend: false },
-  { id: 5, name: 'Water Flow', hasLegend: false },
+  { id: 0, name: 'Height', hasLegend: true },
+  { id: 1, name: 'Slope', hasLegend: false },
+  { id: 2, name: 'Verify (Normal)', hasLegend: false },
+  { id: 3, name: 'Downslope Arrows', hasLegend: false },
+  { id: 4, name: 'Water Flow', hasLegend: false },
 ];
 
 export const createTabBar = (
@@ -37,6 +40,7 @@ export const updateTabActiveState = (
   buttons: HTMLButtonElement[],
   activeIndex: number
 ): void => {
+  // Button indices double as mode IDs (0-4)
   buttons.forEach((tab, index) => {
     if (index === activeIndex) {
       tab.style.background = '#4CAF50';
