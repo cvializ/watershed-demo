@@ -25,9 +25,7 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
-import {
-  updateWaterSimulation,
-} from './simulation/waterSimulation.js';
+import { WaterSimulation } from './simulation/waterSimulation.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -81,10 +79,8 @@ waterLayer.rotation.x = -Math.PI / 2;
 scene.add(waterLayer);
 
 // Store water simulation data for frame-by-frame updates
-const waterTextureData = new Float32Array(waterResult.width * waterResult.height);
-for (let i = 0; i < waterTextureData.length; i++) {
-    waterTextureData[i] = 1.0; // Start with uniform water coverage
-}
+const waterSimulation = new WaterSimulation(512, 512);
+waterSimulation.setupMaterial(heightMapTexture);
 
 const terrain = new THREE.Mesh(geometry, computeMaterial);
 terrain.rotation.x = -Math.PI / 2;
@@ -280,13 +276,9 @@ function animate() {
     waterResult.material.uniforms.uTime.value = currentTime;
   }
   
-  // Update water texture with simulation data each frame
-  if (waterResult.waterTexture && waterTextureData) {
-    // Run water simulation each frame
-    updateWaterSimulation(waterTextureData, heightMapTexture, waterResult.width, waterResult.height);
-    
-    waterResult.waterTexture.image.data = waterTextureData;
-    waterResult.waterTexture.needsUpdate = true;
+  // Update water simulation using render target approach
+  if (waterSimulation) {
+    waterSimulation.update(renderer);
   }
   
   updateOverlay();

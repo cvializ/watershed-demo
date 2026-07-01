@@ -1,25 +1,24 @@
 precision highp float;
 
+uniform sampler2D uHeightMap;     // Terrain height map
 uniform sampler2D uWaterMap;      // Previous water distribution
-uniform sampler2D uDisplacementMap;  // Terrain height map
 uniform float uTime;
 uniform vec2 uResolution;
-uniform float uFlowSpeed;
 
 varying vec2 vUv;
 
 void main() {
-    float eps = 0.01;
+    float eps = 1.0 / 512.0; // Texture texel size
     
     // Read current water level and terrain height
     float prevWaterLevel = texture2D(uWaterMap, vUv).r;
-    float terrainHeight = texture2D(uDisplacementMap, vUv).r;
+    float terrainHeight = texture2D(uHeightMap, vUv).r;
     
     // Sample neighboring heights for gradient computation
-    float hLeft = texture2D(uDisplacementMap, vUv - vec2(eps, 0.0)).r;
-    float hRight = texture2D(uDisplacementMap, vUv + vec2(eps, 0.0)).r;
-    float hDown = texture2D(uDisplacementMap, vUv - vec2(0.0, eps)).r;
-    float hUp = texture2D(uDisplacementMap, vUv + vec2(0.0, eps)).r;
+    float hLeft = texture2D(uHeightMap, vUv - vec2(eps, 0.0)).r;
+    float hRight = texture2D(uHeightMap, vUv + vec2(eps, 0.0)).r;
+    float hDown = texture2D(uHeightMap, vUv - vec2(0.0, eps)).r;
+    float hUp = texture2D(uHeightMap, vUv + vec2(0.0, eps)).r;
     
     // Compute flow direction (downhill)
     vec2 gradient = vec2(hRight - hLeft, hUp - hDown);
@@ -56,12 +55,6 @@ void main() {
     // Clamp water level
     newWater = clamp(newWater, 0.0, 2.0);
     
-    // Water color based on level (deeper = darker blue, shallower = lighter)
-    vec3 deepColor = vec3(0.0, 0.25, 0.6);
-    vec3 shallowColor = vec3(0.0, 0.0, 1.0);
-    vec3 waterColor = mix(deepColor, shallowColor, clamp(newWater * 0.5, 0.0, 1.0));
-    
-    float opacity = clamp(newWater * 0.8, 0.05, 0.7);
-    
-    gl_FragColor = vec4(waterColor, opacity);
+    // Output the new water level
+    gl_FragColor = vec4(newWater, 0.0, 0.0, 1.0);
 }

@@ -6,7 +6,6 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
 
-    /* Bundler mode */
     "moduleResolution": "bundler",
 
     "allowImportingTsExtensions": true,
@@ -14,7 +13,6 @@
     "moduleDetection": "force",
     "noEmit": true,
 
-    /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
