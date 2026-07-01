@@ -6,13 +6,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 (window as any).THREE = THREE;
 
 // Import terrain generation functions
-import { calculateHeight } from './terrain.js';
 
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
 import { createDownslopeArrowGeometry } from './nodes/geometry/createDownslopeArrowGeometry.js';
 import { createSlopeVisualizationMaterial } from './nodes/material/createSlopeVisualizationMaterial.js';
 import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeArrowMaterial.js';
 import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
+import { createDisplacementMaterial } from './nodes/material/createDisplacementMaterial.js';
+import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -41,44 +42,15 @@ controls.autoRotate = false;
 
 // Create triangular terrain mesh
 const terrainSize = 12;
-const segments = 80;
 const geometry = createTerrainGeometry();
 
-// Create displacement map texture from calculateHeight function
-const createDisplacementTexture = (size: number): THREE.DataTexture => {
-  const data = new Float32Array(size * size);
-  const terrainScale = terrainSize / 2;
-
-  for (let i = 0; i < size * size; i++) {
-    const x = (i % size) / size * terrainSize - terrainScale;
-    const z = Math.floor(i / size) / size * terrainSize - terrainScale;
-    data[i] = calculateHeight(x, z);
-  }
-
-  const texture = new THREE.DataTexture(data, size, size, THREE.RedFormat, THREE.FloatType);
-  texture.needsUpdate = true;
-  return texture;
-};
-
 // Create displacement map texture (512x512 for good detail/performance)
-const displacementTexture = createDisplacementTexture(512);
+const displacementTexture = createDisplacementTexture(512, terrainSize);
 
-// Import displacement map shader
-import displacementMapVert from './shaders/displacement-map.vert?raw';
-import displacementMapFrag from './shaders/displacement-map.frag?raw';
 import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
 
 // Create custom shader material with vertex displacement using the height texture
-const displacementMaterial = new THREE.ShaderMaterial({
-  uniforms: {
-    uDisplacementMap: { value: displacementTexture },
-    uDisplacementScale: { value: 2.5 },
-    uDisplacementBias: { value: -1.5 }
-  },
-  vertexShader: displacementMapVert,
-  fragmentShader: displacementMapFrag,
-  side: THREE.DoubleSide
-});
+const displacementMaterial = createDisplacementMaterial(displacementTexture, 2.5, -1.5);
 
 // Create compute shader material for height visualization (GPU-based)
 const computeMaterial = createHeightVisualizationMaterial(-1.5, 2.0);
