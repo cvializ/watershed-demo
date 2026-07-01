@@ -103,43 +103,151 @@ export class WaterSimulation {
                     float prevWaterLevel = texture2D(uWaterMap, vUv).r;
                     float terrainHeight = texture2D(uHeightMap, vUv).r;
                     
-                    // Sample neighboring heights for gradient computation
+                    // Sample neighboring heights for gradient computation (larger radius)
                     float hLeft = texture2D(uHeightMap, vUv - vec2(eps, 0.0)).r;
                     float hRight = texture2D(uHeightMap, vUv + vec2(eps, 0.0)).r;
                     float hDown = texture2D(uHeightMap, vUv - vec2(0.0, eps)).r;
                     float hUp = texture2D(uHeightMap, vUv + vec2(0.0, eps)).r;
                     
-                    // Compute flow direction (downhill)
+                    // Sample larger neighborhood for plateau handling
+                    float hLeft2 = texture2D(uHeightMap, vUv - vec2(eps * 2.0, 0.0)).r;
+                    float hRight2 = texture2D(uHeightMap, vUv + vec2(eps * 2.0, 0.0)).r;
+                    float hDown2 = texture2D(uHeightMap, vUv - vec2(0.0, eps * 2.0)).r;
+                    float hUp2 = texture2D(uHeightMap, vUv + vec2(0.0, eps * 2.0)).r;
+                    
+                    // Sample diagonals
+                    float hTopLeft = texture2D(uHeightMap, vUv + vec2(-eps, eps)).r;
+                    float hTopRight = texture2D(uHeightMap, vUv + vec2(eps, eps)).r;
+                    float hBotLeft = texture2D(uHeightMap, vUv + vec2(-eps, -eps)).r;
+                    float hBotRight = texture2D(uHeightMap, vUv + vec2(eps, -eps)).r;
+                    
+                    // Read water from all neighbors
+                    float waterLeft = texture2D(uWaterMap, vUv - vec2(eps, 0.0)).r;
+                    float waterRight = texture2D(uWaterMap, vUv + vec2(eps, 0.0)).r;
+                    float waterDown = texture2D(uWaterMap, vUv - vec2(0.0, eps)).r;
+                    float waterUp = texture2D(uWaterMap, vUv + vec2(0.0, eps)).r;
+                    
+                    // Compute terrain gradient (downhill direction)
                     vec2 gradient = vec2(hRight - hLeft, hUp - hDown);
                     float gradientLen = length(gradient) + 0.001;
-                    vec2 flowDir = -normalize(gradient);
                     
-                    // Read water from upstream position (water flowing from here)
-                    vec2 upStreamUV = vUv - flowDir * eps * 1.5;
-                    float upstreamWater = texture2D(uWaterMap, clamp(upStreamUV, 0.0, 1.0)).r;
+                    // Smooth gradient from larger neighborhood
+                    vec2 smoothGradient = vec2(
+                        (hRight - hLeft) * 0.5 + (hRight2 - hLeft2) * 0.25,
+                        (hUp - hDown) * 0.5 + (hUp2 - hDown2) * 0.25
+                    );
+                    float smoothLen = length(smoothGradient) + 0.001;
+                    
+                    // Downhill direction - use smooth gradient for consistency
+                    vec2 downhillDir = normalize(-smoothGradient);
+                    
+                    // Find the lowest neighbor in the 8-directional neighborhood
+                    float minNeighborHeight = hLeft;
+                    if (hRight < minNeighborHeight) minNeighborHeight = hRight;
+                    if (hDown < minNeighborHeight) minNeighborHeight = hDown;
+                    if (hUp < minNeighborHeight) minNeighborHeight = hUp;
+                    if (hTopLeft < minNeighborHeight) minNeighborHeight = hTopLeft;
+                    if (hTopRight < minNeighborHeight) minNeighborHeight = hTopRight;
+                    if (hBotLeft < minNeighborHeight) minNeighborHeight = hBotLeft;
+                    if (hBotRight < minNeighborHeight) minNeighborHeight = hBotRight;
+                    
+                    float heightDiff = terrainHeight - minNeighborHeight;
+                    
+                    // Calculate flow weights for each direction
+                    float totalWeight = 0.0;
+                    vec4 flowWeights = vec4(0.0);
+                    
+                    // Left neighbor
+                    if (hLeft <= terrainHeight) {
+                        float diff = terrainHeight - hLeft;
+                        flowWeights.r = diff + 0.05; // Minimum weight
+                        totalWeight += flowWeights.r;
+                    }
+                    
+                    // Right neighbor  
+                    if (hRight <= terrainHeight) {
+                        float diff = terrainHeight - hRight;
+                        flowWeights.g = diff + 0.05;
+                        totalWeight += flowWeights.g;
+                    }
+                    
+                    // Down neighbor
+                    if (hDown <= terrainHeight) {
+                        float diff = terrainHeight - hDown;
+                        flowWeights.b = diff + 0.05;
+                        totalWeight += flowWeights.b;
+                    }
+                    
+                    // Up neighbor
+                    if (hUp <= terrainHeight) {
+                        float diff = terrainHeight - hUp;
+                        flowWeights.a = diff + 0.05;
+                        totalWeight += flowWeights.a;
+                    }
+                    
+                    // Normalize weights
+                    if (totalWeight > 0.0) {
+                        flowWeights /= totalWeight;
+                    }
+                    
+                    // Calculate outgoing water - weighted accumulation from downhill neighbors
+                    float outgoingWater = 0.0;
+                    if (totalWeight > 0.0) {
+                        // Weighted combination: own water + neighbors' water
+                        outgoingWater = prevWaterLevel * 0.3;
+                        if (hLeft <= terrainHeight) outgoingWater += waterLeft * flowWeights.r * 0.7;
+                        if (hRight <= terrainHeight) outgoingWater += waterRight * flowWeights.g * 0.7;
+                        if (hDown <= terrainHeight) outgoingWater += waterDown * flowWeights.b * 0.7;
+                        if (hUp <= terrainHeight) outgoingWater += waterUp * flowWeights.a * 0.7;
+                    } else {
+                        // All neighbors are uphill - water stays or accumulates
+                        outgoingWater = prevWaterLevel;
+                    }
+                    
+                    // Accumulate water from uphill neighbors
+                    float incomingWater = 0.0;
+                    if (hLeft > terrainHeight) incomingWater += waterLeft * 0.25;
+                    if (hRight > terrainHeight) incomingWater += waterRight * 0.25;
+                    if (hDown > terrainHeight) incomingWater += waterDown * 0.25;
+                    if (hUp > terrainHeight) incomingWater += waterUp * 0.25;
                     
                     // Calculate terrain properties
                     float avgSurrounding = (hLeft + hRight + hDown + hUp) * 0.25;
                     float isBasin = max(0.0, avgSurrounding - terrainHeight);
                     
-                    // Slope-based drainage (higher and steeper = more drain)
-                    float slope = gradientLen;
+                    // Slope-based drainage factor
+                    float slope = length(vec2(hRight - hLeft, hUp - hDown));
                     float elevationFactor = smoothstep(-1.5, 1.0, terrainHeight);
                     
-                    // Water flows downhill carrying water with it
-                    float advectedWater = upstreamWater * 0.85;
-                    
                     // Drain water from high slopes (water runs off)
-                    float drain = elevationFactor * slope * 0.15;
+                    float drain = 0.0;
+                    if (heightDiff > 0.01 && terrainHeight > minNeighborHeight + 0.01) {
+                        drain = outgoingWater * slope * 0.25;
+                    }
                     
                     // Accumulate water in basins (low points)
-                    float accumulation = isBasin * 0.1;
+                    float accumulation = 0.0;
+                    if (isBasin > 0.01 && heightDiff <= 0.0) {
+                        accumulation = incomingWater * 0.5;
+                    }
                     
-                    // Combine all effects
-                    float newWater = prevWaterLevel + accumulation * 0.01 - drain * 0.01;
+                    // Plateau drainage - flow in the direction of smoothed gradient
+                    float plateauDrain = 0.0;
+                    if (heightDiff <= 0.01 && gradientLen < 0.05) {
+                        // On a true plateau with very flat terrain
+                        // Use the smoothed downhill direction to guide flow
+                        vec2 offsetUV = vUv + downhillDir * eps;
+                        float plateauWater = texture2D(uWaterMap, clamp(offsetUV, 0.0, 1.0)).r;
+                        float plateauHeight = texture2D(uHeightMap, clamp(offsetUV, 0.0, 1.0)).r;
+                        
+                        // Only flow if the smooth gradient direction leads downhill
+                        if (plateauHeight <= terrainHeight + 0.01) {
+                            plateauDrain = (prevWaterLevel * 0.1 + plateauWater * 0.2);
+                        }
+                    }
                     
-                    // Mix with advected water (flow effect)
-                    newWater = mix(newWater, advectedWater * 0.1 + prevWaterLevel * 0.8, 0.1);
+                    // Conservation of water: new = old + incoming - outgoing
+                    float newWater = prevWaterLevel + accumulation - drain - plateauDrain;
                     
                     // Clamp water level
                     newWater = clamp(newWater, 0.0, 2.0);
