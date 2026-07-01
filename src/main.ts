@@ -2,11 +2,6 @@ import './style.css';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Expose Three.js to window for external access (e.g., shader tests)
-(window as any).THREE = THREE;
-
-// Import terrain generation functions
-
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
 import { createDownslopeArrowGeometry } from './nodes/geometry/createDownslopeArrowGeometry.js';
 import { createSlopeVisualizationMaterial } from './nodes/material/createSlopeVisualizationMaterial.js';
@@ -88,53 +83,87 @@ const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
 wireframe.rotation.x = terrain.rotation.x;
 scene.add(wireframe);
 
-// Toggle UI for height visualization
+// Create tab bar for visualization modes
 const uiContainer = document.createElement('div');
 uiContainer.style.cssText =
   'position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #fff;' +
   'padding: 15px; font-family: monospace; border-radius: 4px; z-index: 1000;';
 
-const toggleButton = document.createElement('button');
-toggleButton.textContent = 'Toggle Height Visualization';
-toggleButton.style.cssText =
-  'padding: 8px 16px; background: #4CAF50; color: white; border: none;' +
-  'border-radius: 4px; cursor: pointer; font-size: 12px;';
+// Tab bar container
+const tabContainer = document.createElement('div');
+tabContainer.style.cssText =
+  'display: flex; gap: 5px; margin-bottom: 10px; background: rgba(255,255,255,0.1); padding: 4px; border-radius: 6px;';
 
-// Track visualization mode: 0 = displacement (3D terrain), 1 = height, 2 = slope, 3 = normal (verify), 4 = arrows
+const modes = [
+  { id: 0, name: '3D Displacement', hasLegend: true },
+  { id: 1, name: 'Height', hasLegend: true },
+  { id: 2, name: 'Slope', hasLegend: false },
+  { id: 3, name: 'Verify (Normal)', hasLegend: false },
+  { id: 4, name: 'Downslope Arrows', hasLegend: false },
+];
+
 let visualizationMode = 0;
-toggleButton.textContent = 'Mode: 3D Displacement';
-toggleButton.addEventListener('click', () => {
-  visualizationMode = (visualizationMode + 1) % 5;
+
+// Create tab buttons
+const tabButtons: HTMLButtonElement[] = [];
+modes.forEach((mode) => {
+  const tab = document.createElement('button');
+  tab.textContent = mode.name;
+  tab.style.cssText =
+    'padding: 6px 12px; background: transparent; color: #aaa;' +
+    'border: none; border-radius: 4px; cursor: pointer; font-size: 11px;' +
+    'transition: all 0.2s; flex: 1;';
+  tab.addEventListener('click', () => setVisualizationMode(mode.id));
+  tabContainer.appendChild(tab);
+  tabButtons.push(tab);
+});
+
+function updateTabActiveState() {
+  tabButtons.forEach((tab, index) => {
+    if (index === visualizationMode) {
+      tab.style.background = '#4CAF50';
+      tab.style.color = 'white';
+    } else {
+      tab.style.background = 'transparent';
+      tab.style.color = '#aaa';
+    }
+  });
+}
+
+// Set initial active tab
+updateTabActiveState();
+
+function setVisualizationMode(mode: number) {
+  visualizationMode = mode;
+  updateTabActiveState();
   
   if (visualizationMode === 0) {
     // Displacement map material for actual 3D terrain geometry
     terrain.material = originalMaterial as any;
-    toggleButton.textContent = 'Mode: 3D Displacement';
     legend.style.display = 'block';
     slopeLegend.style.display = 'none';
+    arrows.visible = false;
   } else if (visualizationMode === 1) {
     // Height-based visualization
     terrain.material = computeMaterial as any;
-    toggleButton.textContent = 'Mode: Height';
     legend.style.display = 'block';
     slopeLegend.style.display = 'none';
+    arrows.visible = false;
   } else if (visualizationMode === 2) {
     // Slope-based visualization (normal map)
     terrain.material = slopeMaterial as any;
-    toggleButton.textContent = 'Mode: Slope (Normal Map)';
     legend.style.display = 'none';
     slopeLegend.style.display = 'block';
+    arrows.visible = false;
   } else if (visualizationMode === 3) {
     // Normal material for verification
     terrain.material = normalMaterial as any;
-    toggleButton.textContent = 'Mode: Verify (Normal)';
     legend.style.display = 'none';
     slopeLegend.style.display = 'none';
     arrows.visible = false;
   } else {
     // Downslope arrows visualization
     terrain.material = originalMaterial as any;
-    toggleButton.textContent = 'Mode: Downslope Arrows';
     legend.style.display = 'none';
     slopeLegend.style.display = 'none';
     arrows.visible = true;
@@ -142,7 +171,10 @@ toggleButton.addEventListener('click', () => {
   
   // Update visibility based on current mode
   updateVisibility();
-});
+}
+
+uiContainer.appendChild(tabContainer);
+uiContainer.appendChild(document.createElement('br'));
 
 const minHeightLabel = document.createElement('label');
 minHeightLabel.textContent = 'Compute Shader Min Height:';
@@ -181,9 +213,6 @@ function updateHeightRange() {
 
 minHeightInput.addEventListener('change', updateHeightRange);
 maxHeightInput.addEventListener('change', updateHeightRange);
-
-uiContainer.appendChild(toggleButton);
-uiContainer.appendChild(document.createElement('br'));
 
 // Slope visualization controls
 const minSlopeLabel = document.createElement('label');
@@ -277,14 +306,6 @@ function updateVisibility() {
   maxDisplacementInput.style.display = isDisplacementMode ? 'block' : 'none';
 }
 
-uiContainer.appendChild(toggleButton);
-uiContainer.appendChild(document.createElement('br'));
-uiContainer.appendChild(minSlopeLabel);
-uiContainer.appendChild(minSlopeInput);
-uiContainer.appendChild(maxSlopeLabel);
-uiContainer.appendChild(maxSlopeInput);
-
-// Displacement controls (only in mode 0)
 uiContainer.appendChild(minDisplacementLabel);
 uiContainer.appendChild(minDisplacementInput);
 uiContainer.appendChild(maxDisplacementLabel);
