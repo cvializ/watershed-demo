@@ -1,6 +1,6 @@
 precision highp float;
 
-uniform sampler2D uWaterMap;      // Previous water distribution
+uniform sampler2D uWaterMap;      // Previous water distribution (from simulation)
 uniform sampler2D uDisplacementMap;  // Terrain height map
 uniform float uTime;
 uniform vec2 uResolution;

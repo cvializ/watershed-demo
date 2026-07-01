@@ -183,14 +183,24 @@ export class WaterSimulation {
         // Restore original render target
         renderer.setRenderTarget(oldRenderTarget as any);
         
-        // Copy from render target texture to output data texture
-        renderer.copyTextureToTexture(
-            this.outputTexture,
-            this.renderTarget.texture
+        // Read pixels from render target texture to CPU
+        const pixels = new Uint8Array(this.width * this.height);
+        renderer.readRenderTargetPixels(
+            this.renderTarget as any,
+            0, 0, this.width, this.height,
+            pixels
         );
         
-        // Update the water texture with results from render target
-        this.waterTexture.image.data = this.outputTexture.image.data as Float32Array;
+        // Copy CPU data to output texture
+        const newOutputData = new Float32Array(this.width * this.height);
+        for (let i = 0; i < this.width * this.height; i++) {
+            newOutputData[i] = pixels[i] / 255.0;
+        }
+        this.outputTexture.image.data = newOutputData;
+        this.outputTexture.needsUpdate = true;
+        
+        // Also update the current water texture for immediate use
+        this.waterTexture.image.data = newOutputData;
         this.waterTexture.needsUpdate = true;
     }
     

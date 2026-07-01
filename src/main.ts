@@ -73,7 +73,7 @@ scene.add(arrows);
 // Create animated water flow material
 // We use a simple approach: create the water layer once and let the shader compute
 // water distribution based on terrain height, with time-based accumulation in basins
-const waterResult = createWaterFlowMaterial(heightMapTexture, 0.5);
+const waterResult = createWaterFlowMaterial(heightMapTexture, undefined, 0.5);
 const waterLayer = new THREE.Mesh(geometry, waterResult.material);
 waterLayer.rotation.x = -Math.PI / 2;
 scene.add(waterLayer);
@@ -279,6 +279,14 @@ function animate() {
   // Update water simulation using render target approach
   if (waterSimulation) {
     waterSimulation.update(renderer);
+    
+    // Update the water flow material's uniform with simulation output
+    if (waterResult.material && waterResult.waterTexture) {
+      const simWaterTexture = waterSimulation.getWaterTexture();
+      if (waterResult.material.uniforms?.uWaterMap) {
+        waterResult.material.uniforms.uWaterMap.value = simWaterTexture;
+      }
+    }
   }
   
   updateOverlay();
