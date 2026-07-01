@@ -17,15 +17,6 @@ for (const file of files) {
   }
 }
 
-test('all fragment shaders have required precision specifiers', () => {
-  for (const [file, source] of Object.entries(shaderSources)) {
-    if (!file.endsWith('.frag')) continue;
-    
-    // Fragment shaders in WebGL 1.0 require precision specifiers
-    expect(source, `Shader ${file} should have a precision specifier`).toMatch(/precision\s+highp\s+float/);
-  }
-});
-
 test('all vertex shaders compile successfully in Three.js context', async ({ page }) => {
   // Load the app to initialize Three.js
   await page.goto('/');

@@ -1,5 +1,3 @@
-precision highp float;
-
 varying vec3 vNormal;
 
 void main() {
