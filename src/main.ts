@@ -1,6 +1,9 @@
 import './style.css';
 import * as THREE from 'three';
 
+// Expose Three.js to window for external access (e.g., shader tests)
+(window as any).THREE = THREE;
+
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
 import { createHeightVisualizationMaterial, createSlopeVisualizationMaterial, createDownslopeArrowGeometry, createDownslopeArrowMaterial } from './terrainCompute.js';
 
