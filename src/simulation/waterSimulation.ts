@@ -10,7 +10,7 @@ import * as THREE from 'three';
 export class WaterSimulation {
     private waterTexture: THREE.DataTexture;
     private outputTexture: THREE.DataTexture;
-    private renderTarget: THREE.RenderTarget;
+    private renderTarget: THREE.WebGLRenderTarget;
     private material: THREE.ShaderMaterial | null = null;
     
     public width: number;
@@ -53,7 +53,7 @@ export class WaterSimulation {
         this.outputTexture.needsUpdate = true;
         
         // Create render target for GPU-based water level calculation
-        this.renderTarget = new THREE.RenderTarget(width, height, {
+        this.renderTarget = new THREE.WebGLRenderTarget(width, height, {
             format: THREE.RedFormat,
             type: THREE.FloatType,
             minFilter: THREE.NearestFilter,
@@ -136,10 +136,10 @@ export class WaterSimulation {
                     float accumulation = isBasin * 0.1;
                     
                     // Combine all effects
-                    float newWater = prevWaterLevel + accumulation - drain * 0.1;
+                    float newWater = prevWaterLevel + accumulation * 0.01 - drain * 0.01;
                     
                     // Mix with advected water (flow effect)
-                    newWater = mix(newWater, advectedWater * 0.5 + prevWaterLevel * 0.3, 0.6);
+                    newWater = mix(newWater, advectedWater * 0.1 + prevWaterLevel * 0.8, 0.1);
                     
                     // Clamp water level
                     newWater = clamp(newWater, 0.0, 2.0);
@@ -175,32 +175,37 @@ export class WaterSimulation {
         
         // Store original render target and set to ours
         const oldRenderTarget = renderer.getRenderTarget();
-        renderer.setRenderTarget(this.renderTarget as any);
+        renderer.setRenderTarget(this.renderTarget);
         
         // Render the mesh to our render target
         renderer.render(mesh, tempCamera);
         
         // Restore original render target
-        renderer.setRenderTarget(oldRenderTarget as any);
+        renderer.setRenderTarget(oldRenderTarget);
         
         // Read pixels from render target texture to CPU
-        const pixels = new Uint8Array(this.width * this.height);
+        const pixels = new Float32Array(this.width * this.height);
         renderer.readRenderTargetPixels(
-            this.renderTarget as any,
+            this.renderTarget,
             0, 0, this.width, this.height,
             pixels
         );
         
-        // Copy CPU data to output texture
-        const newOutputData = new Float32Array(this.width * this.height);
-        for (let i = 0; i < this.width * this.height; i++) {
-            newOutputData[i] = pixels[i] / 255.0;
+        // Log some sample pixel values (first 10 and last 10)
+        const totalFrames = Math.floor(this.timeUniform.value * 60);
+        if (totalFrames < 60) {
+            console.log('WaterSimulation - renderTarget pixels (frame', totalFrames, '):');
+            console.log('  Min:', Math.min(...pixels).toFixed(4), ', Max:', Math.max(...pixels).toFixed(4));
+            console.log('  First 10 values:', Array.from(pixels).slice(0, 10).map(v => v.toFixed(4)));
+            console.log('  Last 10 values:', Array.from(pixels).slice(-10).map(v => v.toFixed(4)));
         }
-        this.outputTexture.image.data = newOutputData;
+        
+        // Copy CPU data to output texture (already Float32Array)
+        this.outputTexture.image.data.set(pixels);
         this.outputTexture.needsUpdate = true;
         
         // Also update the current water texture for immediate use
-        this.waterTexture.image.data = newOutputData;
+        this.waterTexture.image.data.set(pixels);
         this.waterTexture.needsUpdate = true;
     }
     

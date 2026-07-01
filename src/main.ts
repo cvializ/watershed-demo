@@ -82,17 +82,18 @@ scene.add(waterLayer);
 const waterSimulation = new WaterSimulation(512, 512);
 waterSimulation.setupMaterial(heightMapTexture);
 
-const terrain = new THREE.Mesh(geometry, computeMaterial);
+const material = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  wireframe: false
+});   
+
+const terrain = new THREE.Mesh(geometry, material);
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);
 
 // Store original material for toggling
-const originalMaterial = computeMaterial;
+const originalMaterial = material;
 
-// Create a normal material for comparison verification
-const normalMaterial = new THREE.MeshNormalMaterial({
-  side: THREE.DoubleSide,
-});
 
 // Add wireframe overlay to emphasize triangular mesh structure
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);

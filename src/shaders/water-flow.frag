@@ -39,19 +39,19 @@ void main() {
     float elevationFactor = smoothstep(-1.5, 1.0, terrainHeight);
     
     // Water flows downhill carrying water with it
-    float advectedWater = upstreamWater * 0.85;
+    float advectedWater = upstreamWater * 0.95;
     
-    // Drain water from high slopes (water runs off)
-    float drain = elevationFactor * slope * 0.15;
+    // Drain water from high slopes (water runs off) - reduced drain rate
+    float drain = elevationFactor * slope * 0.02;
     
     // Accumulate water in basins (low points)
-    float accumulation = isBasin * 0.1;
+    float accumulation = isBasin * 0.05;
     
-    // Combine all effects
-    float newWater = prevWaterLevel + accumulation - drain * 0.1;
+    // Combine all effects - more conservative drain
+    float newWater = prevWaterLevel + accumulation - drain * 0.01;
     
     // Mix with advected water (flow effect)
-    newWater = mix(newWater, advectedWater * 0.5 + prevWaterLevel * 0.3, 0.6);
+    newWater = mix(newWater, advectedWater * 0.8 + prevWaterLevel * 0.2, 0.5);
     
     // Clamp water level
     newWater = clamp(newWater, 0.0, 2.0);
