@@ -25,6 +25,13 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
+import {
+  updateWaterSimulation,
+  textureSample,
+  smoothstep,
+  WATER_DRAIN_RATE,
+  WATER_ACCUMULATION_RATE,
+} from './simulation/waterSimulation.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -78,7 +85,7 @@ waterLayer.rotation.x = -Math.PI / 2;
 scene.add(waterLayer);
 
 // Store water simulation data for frame-by-frame updates
-let waterTextureData = new Float32Array(waterResult.width * waterResult.height);
+const waterTextureData = new Float32Array(waterResult.width * waterResult.height);
 for (let i = 0; i < waterTextureData.length; i++) {
     waterTextureData[i] = 1.0; // Start with uniform water coverage
 }
@@ -246,74 +253,7 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
-// Water simulation data
-const WATER_DRAIN_RATE = 0.02;
-const WATER_ACCUMULATION_RATE = 0.03;
 
-// Water simulation function: calculate water distribution based on terrain
-function updateWaterSimulation() {
-    const w = waterResult.width;
-    const h = waterResult.height;
-    
-    // Sample terrain heights at each pixel location
-    const tempData = new Float32Array(w * h);
-    
-    for (let z = 0; z < h; z++) {
-        const zIndex = z / (h - 1);
-        for (let x = 0; x < w; x++) {
-            const xIndex = x / (w - 1);
-            
-            // Get terrain height at this position
-            const sampleUV = new THREE.Vector2(xIndex, zIndex);
-            const terrainHeight = textureSample(heightMapTexture, sampleUV);
-            
-            // Get current water level
-            const idx = z * w + x;
-            let waterLevel = waterTextureData[idx];
-            
-            // Calculate gradient (slope) at this point
-            let hRight = textureSample(heightMapTexture, new THREE.Vector2(Math.min(xIndex + 0.01, 1), zIndex));
-            let hDown = textureSample(heightMapTexture, new THREE.Vector2(xIndex, Math.min(zIndex + 0.01, 1)));
-            
-            // Drain water from high slopes
-            const slope = Math.abs(hRight - terrainHeight) + Math.abs(hDown - terrainHeight);
-            const elevation = smoothstep(-1.5, 1.0, terrainHeight);
-            waterLevel -= elevation * slope * WATER_DRAIN_RATE;
-            
-            // Accumulate in basins (low areas)
-            if (terrainHeight < -0.5) {
-                waterLevel += WATER_ACCUMULATION_RATE;
-            }
-            
-            // Cap and clamp
-            waterLevel = Math.max(0, Math.min(waterLevel, 2.0));
-            tempData[idx] = waterLevel;
-        }
-    }
-    
-    // Update the actual water data
-    for (let i = 0; i < w * h; i++) {
-        waterTextureData[i] = tempData[i];
-    }
-}
-
-// Simple texture sample helper (approximate)
-function textureSample(texture: THREE.DataTexture, uv: THREE.Vector2): number {
-    const w = texture.image.width;
-    const h = texture.image.height;
-    const data = texture.image.data as Float32Array;
-    
-    const x = Math.floor(uv.x * (w - 1));
-    const z = Math.floor(uv.y * (h - 1));
-    
-    const idx = z * w + x;
-    return data[idx];
-}
-
-function smoothstep(min: number, max: number, value: number): number {
-    const t = Math.max(0, Math.min((value - min) / (max - min), 1));
-    return t * t * (3 - 2 * t);
-}
 
 // Diagnostic overlay
 const overlay = createOverlay();
@@ -347,7 +287,7 @@ function animate() {
   // Update water texture with simulation data each frame
   if (waterResult.waterTexture && waterTextureData) {
     // Run water simulation each frame
-    updateWaterSimulation();
+    updateWaterSimulation(waterTextureData, heightMapTexture, waterResult.width, waterResult.height);
     
     waterResult.waterTexture.image.data = waterTextureData;
     waterResult.waterTexture.needsUpdate = true;
