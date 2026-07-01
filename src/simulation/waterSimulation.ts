@@ -15,7 +15,6 @@ export function updateWaterSimulation(
 ): void {
     // Constants for water simulation
     const WATER_DRAIN_RATE = 0.02;
-    const WATER_ACCUMULATION_RATE = 0.03;
     
     // Helper functions
     function textureSample(texture: THREE.DataTexture, uv: THREE.Vector2): number {
@@ -59,11 +58,6 @@ export function updateWaterSimulation(
             const slope = Math.abs(hRight - terrainHeight) + Math.abs(hDown - terrainHeight);
             const elevation = smoothstep(-1.5, 1.0, terrainHeight);
             waterLevel -= elevation * slope * WATER_DRAIN_RATE;
-            
-            // Accumulate in basins (low areas)
-            if (terrainHeight < -0.5) {
-                waterLevel += WATER_ACCUMULATION_RATE;
-            }
             
             // Cap and clamp
             waterLevel = Math.max(0, Math.min(waterLevel, 2.0));
