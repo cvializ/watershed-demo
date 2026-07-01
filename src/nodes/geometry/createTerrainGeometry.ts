@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { calculateHeight } from '../terrain/sharedNoise.js';
+import { calculateHeight } from '../../terrainUtils.js';
 
 export const createTerrainGeometry = () => {
     // Create triangular terrain mesh
