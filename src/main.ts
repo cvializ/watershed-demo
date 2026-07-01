@@ -47,8 +47,9 @@ import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js
 // Create custom shader material with vertex displacement using the height texture
 const displacementMaterial = createDisplacementMaterial(displacementTexture, 2.5, -1.5);
 
-// Create compute shader material for height visualization (GPU-based)
-const computeMaterial = createHeightVisualizationMaterial(-1.5, 2.0);
+// Create height map for GPU-based height visualization
+const heightMapTexture = createDisplacementTexture(512, terrainSize);
+const computeMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create shader material for slope visualization
 const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);

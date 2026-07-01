@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('test-shaders page should load without errors', async ({ page }, testInfo) => {
+test('test-shaders page should load without errors', async ({ page }) => {
   // Capture console messages
   const consoleMessages: { type: string; text: string }[] = [];
   

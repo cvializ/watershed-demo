@@ -1,3 +1,4 @@
+// Simplified displacement map vertex shader - samples height from texture
 uniform sampler2D uDisplacementMap;
 uniform float uDisplacementScale;
 uniform float uDisplacementBias;

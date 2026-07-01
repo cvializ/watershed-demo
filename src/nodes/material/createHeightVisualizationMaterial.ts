@@ -5,14 +5,16 @@ import heightVisualizationFrag from '../../shaders/height-visualization.frag?raw
 
 /**
  * Create a shader material that visualizes terrain height using a color palette
- * This replaces vertex colors with GPU-based height-to-color mapping
+ * This uses a pre-computed height texture instead of duplicating noise calculations
  */
 export function createHeightVisualizationMaterial(
     minHeight: number = -1.5,
-    maxHeight: number = 2.0
+    maxHeight: number = 2.0,
+    heightMap?: THREE.Texture
 ): THREE.ShaderMaterial {
     return new THREE.ShaderMaterial({
         uniforms: {
+            uHeightMap: { value: heightMap || new THREE.Texture() },
             uMinHeight: { value: minHeight },
             uMaxHeight: { value: maxHeight }
         },

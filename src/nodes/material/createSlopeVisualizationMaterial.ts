@@ -1,6 +1,4 @@
-
 import * as THREE from 'three';
-
 
 import slopeVisualizationVert from '../../shaders/slope-visualization.vert?raw';
 import slopeVisualizationFrag from '../../shaders/slope-visualization.frag?raw';

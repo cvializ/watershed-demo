@@ -1,52 +1,62 @@
 import * as THREE from 'three';
 
-// Import terrain generation functions
-import { calculateHeight } from '../../terrain.js';
-
 /**
  * Generate line segments for downslope arrows at each vertex
  * Returns a BufferGeometry with LineSegments containing arrow lines
+ * 
+ * This version uses the terrain geometry's vertex normals to determine downslope direction,
+ * avoiding redundant height calculations that were already performed during terrain generation.
  */
 export function createDownslopeArrowGeometry(
     terrainGeometry: THREE.BufferGeometry,
     arrowLength: number = 0.5
 ): THREE.BufferGeometry {
+    // Ensure normals are computed
+    if (!terrainGeometry.attributes.normal) {
+        terrainGeometry.computeVertexNormals();
+    }
+
     const positions = terrainGeometry.attributes.position;
+    const normals = terrainGeometry.attributes.normal;
     const count = positions.count;
 
     // Generate arrow lines: each vertex gets an arrow pointing downslope
     const arrowPositions: number[] = [];
 
-    // Calculate downslope direction at each vertex
+    // Use vertex normals to determine downslope direction
+    // For a heightfield z = f(x,y), the normal is (fx, fy, -1) normalized
+    // The downslope direction in XY plane is (-fx, -fy)
     for (let i = 0; i < count; i++) {
         const x = positions.getX(i);
         const y = positions.getY(i);
         const z = positions.getZ(i);
 
-        // Calculate gradient (direction of steepest ascent)
-        const epsilon = 0.1;
-        const hRight = calculateHeight(x + epsilon, y);
-        const hLeft = calculateHeight(x - epsilon, y);
-        const hUp = calculateHeight(x, y + epsilon);
-        const hDown = calculateHeight(x, y - epsilon);
+        // Get normal components
+        const nx = normals.getX(i);
+        const ny = normals.getY(i);
+        const nz = normals.getZ(i);
 
-        const dx = (hRight - hLeft) / (2 * epsilon);
-        const dy = (hUp - hDown) / (2 * epsilon);
+        // For a heightfield z = f(x,y), the normal is (fx, fy, -1) normalized
+        // The downslope direction (direction of steepest descent in XY plane) is the gradient (fx, fy)
+        // We extract this from the normal: downslope = -nx/nz, -ny/nz (assuming nz < 0)
+        // This gives us the direction a ball would roll downhill
+        const eps = 0.001;
+        if (Math.abs(nz) > eps) {
+            // downslope direction is the projection of the gradient onto XY plane
+            const downslopeX = nx / nz;
+            const downslopeY = ny / nz;
 
-        // downslope is negative gradient
-        const downslopeX = -dx;
-        const downslopeY = -dy;
+            // Scale to arrow length
+            const magnitude = Math.sqrt(downslopeX * downslopeX + downslopeY * downslopeY);
+            if (magnitude > 0.001) {
+                const scale = arrowLength / magnitude;
+                const dxScaled = downslopeX * scale;
+                const dyScaled = downslopeY * scale;
 
-        // Normalize and scale
-        const magnitude = Math.sqrt(downslopeX * downslopeX + downslopeY * downslopeY);
-        if (magnitude > 0.001) {
-            const scale = arrowLength / magnitude;
-            const dxScaled = downslopeX * scale;
-            const dyScaled = downslopeY * scale;
-
-            // Arrow: line from current position to point downslope
-            arrowPositions.push(x, y, z);           // Start (vertex position)
-            arrowPositions.push(x + dxScaled, y + dyScaled, z - arrowLength * 0.3); // End (slightly down for visual effect)
+                // Arrow: line from current position to point downslope
+                arrowPositions.push(x, y, z);           // Start (vertex position)
+                arrowPositions.push(x + dxScaled, y + dyScaled, z - arrowLength * 0.3); // End (slightly down for visual effect)
+            }
         }
     }
 
