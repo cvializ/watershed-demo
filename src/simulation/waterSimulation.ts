@@ -1,35 +1,6 @@
 import * as THREE from 'three';
 
 /**
- * Water simulation constants
- */
-export const WATER_DRAIN_RATE = 0.02;
-export const WATER_ACCUMULATION_RATE = 0.03;
-
-/**
- * Simple texture sample helper (approximate)
- */
-export function textureSample(texture: THREE.DataTexture, uv: THREE.Vector2): number {
-    const w = texture.image.width;
-    const h = texture.image.height;
-    const data = texture.image.data as Float32Array;
-    
-    const x = Math.floor(uv.x * (w - 1));
-    const z = Math.floor(uv.y * (h - 1));
-    
-    const idx = z * w + x;
-    return data[idx];
-}
-
-/**
- * Smoothstep interpolation function
- */
-export function smoothstep(min: number, max: number, value: number): number {
-    const t = Math.max(0, Math.min((value - min) / (max - min), 1));
-    return t * t * (3 - 2 * t);
-}
-
-/**
  * Update water simulation based on terrain height data
  * @param waterTextureData - Float32Array containing current water levels
  * @param heightMapTexture - Texture containing terrain height data
@@ -42,6 +13,28 @@ export function updateWaterSimulation(
     width: number,
     height: number
 ): void {
+    // Constants for water simulation
+    const WATER_DRAIN_RATE = 0.02;
+    const WATER_ACCUMULATION_RATE = 0.03;
+    
+    // Helper functions
+    function textureSample(texture: THREE.DataTexture, uv: THREE.Vector2): number {
+        const w = texture.image.width;
+        const h = texture.image.height;
+        const data = texture.image.data as Float32Array;
+        
+        const x = Math.floor(uv.x * (w - 1));
+        const z = Math.floor(uv.y * (h - 1));
+        
+        const idx = z * w + x;
+        return data[idx];
+    }
+    
+    function smoothstep(min: number, max: number, value: number): number {
+        const t = Math.max(0, Math.min((value - min) / (max - min), 1));
+        return t * t * (3 - 2 * t);
+    }
+    
     // Sample terrain heights at each pixel location
     const tempData = new Float32Array(width * height);
     
