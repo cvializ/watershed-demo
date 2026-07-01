@@ -1,3 +1,5 @@
+precision highp float;
+
 uniform float uMinHeight;
 uniform float uMaxHeight;
 
