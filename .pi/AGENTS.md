@@ -6,17 +6,20 @@
 - Implement in a TDD style: define the expected behavior first, then implement to pass tests
 
 ## TypeScript Import Conventions
+- **Use ES Module syntax**: When writing TypeScript code in a `src/` directory, use ES Module syntax (`import`/`export`) by default. Only use CommonJS (`require`/`module.exports`) when absolutely necessary (e.g., for runtime dynamic imports or Node.js APIs that require it). Node.js has solid ES Module support, and modern tooling handles ESM well.
 - **Use absolute imports from `src/`**: Import modules using absolute paths starting with `src/`, e.g., `import { function } from 'src/utils/helpers'` instead of relative paths like `../../../utils/helpers`
 - This improves code readability and makes refactoring easier
 - Configure your editor/IDE to resolve absolute imports correctly
 
 ### Build System Configuration for Absolute Imports
-Ensure your build system supports absolute imports from the `src/` directory:
+Ensure your build system supports ES Module imports and absolute imports from the `src/` directory:
 
 **TypeScript (`tsconfig.json`)**:
 ```json
 {
   "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
       "src/*": ["./src/*"]
@@ -37,26 +40,6 @@ export default defineConfig({
     },
   },
 })
-```
-
-**Webpack**:
-```js
-module.exports = {
-  resolve: {
-    alias: {
-      'src': path.resolve(__dirname, './src'),
-    },
-  },
-}
-```
-
-**Jest (`jest.config.js`)**:
-```js
-module.exports = {
-  moduleNameMapper: {
-    '^src/(.*)$': '<rootDir>/src/$1',
-  },
-}
 ```
 
 ### Functional Programming First
