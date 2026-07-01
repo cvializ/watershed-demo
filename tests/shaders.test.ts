@@ -42,7 +42,7 @@ test('all vertex shaders compile successfully in Three.js context', async ({ pag
         try {
           const material = new THREE.ShaderMaterial(shader);
           material.dispose();
-          resolve({ success: true, log: '' });
+          resolve({ success: true, log: shader });
         } catch (e: any) {
           resolve({ success: false, log: e.message });
         }
@@ -50,5 +50,6 @@ test('all vertex shaders compile successfully in Three.js context', async ({ pag
     }, { source });
     
     expect(result.success, `Vertex shader ${file} failed to compile: ${result.log}`).toBe(true);
+    console.log(result.log);
   }
 });
