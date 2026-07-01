@@ -11,9 +11,14 @@ void main() {
     // Get the displacement value from the texture
     float displacement = texture2D(uDisplacementMap, uv).r;
     
-    // Calculate the displaced position
+    // For a PlaneGeometry rotated -90° on X, the local coordinates are:
+    // - local X maps to world X
+    // - local Y maps to world Z (depth)
+    // - local Z maps to world Y (height/vertical)
+    // 
+    // So we displace the local Z coordinate (which becomes vertical in world space)
     vec3 newPos = position;
-    newPos.y += displacement * uDisplacementScale + uDisplacementBias;
+    newPos.z += displacement * uDisplacementScale + uDisplacementBias;
     
     vNormal = normalize(normalMatrix * normal);
     
