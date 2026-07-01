@@ -4,7 +4,7 @@
 /**
  * Simple pseudo-random noise function
  */
-export function hash(x: number, z: number): number {
+function hash(x: number, z: number): number {
     const n = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
     return n - Math.floor(n);
 }
@@ -12,7 +12,7 @@ export function hash(x: number, z: number): number {
 /**
  * Improved noise with more octaves for detailed terrain
  */
-export function noise(x: number, z: number): number {
+function noise(x: number, z: number): number {
     // Simple value noise with interpolation
     const x0 = Math.floor(x);
     const z0 = Math.floor(z);
@@ -37,7 +37,7 @@ export function noise(x: number, z: number): number {
 /**
  * Generate a procedural river path using noise
  */
-export function getRiverDepth(x: number, z: number): number {
+function getRiverDepth(x: number, z: number): number {
     // River follows a winding path through the terrain
 
     // Create a curved river channel

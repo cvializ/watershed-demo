@@ -1,39 +1,5 @@
 // Creates input controls for visualization parameters
 
-export interface ControlParams {
-  label: string;
-  value: string | number;
-  placeholder?: string;
-  title?: string;
-  onChange?: () => void;
-}
-
-export const createNumberControl = (
-  label: string,
-  params: ControlParams
-): { labelElement: HTMLLabelElement; inputElement: HTMLInputElement } => {
-  const labelElement = document.createElement('label');
-  labelElement.textContent = label;
-  labelElement.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
-
-  const inputElement = document.createElement('input');
-  inputElement.type = 'number';
-  inputElement.value = String(params.value);
-  if (params.placeholder) {
-    inputElement.placeholder = params.placeholder;
-  }
-  if (params.title) {
-    inputElement.title = params.title;
-  }
-  inputElement.style.cssText = 'display: block; margin-bottom: 8px; padding: 4px; width: 100%;';
-
-  if (params.onChange) {
-    inputElement.addEventListener('change', params.onChange);
-  }
-
-  return { labelElement, inputElement };
-};
-
 export interface HeightControls {
   minLabel: HTMLLabelElement;
   minInput: HTMLInputElement;
