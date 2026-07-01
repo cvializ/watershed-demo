@@ -27,10 +27,6 @@ import {
 import { createOverlay } from './dom/createOverlay.js';
 import {
   updateWaterSimulation,
-  textureSample,
-  smoothstep,
-  WATER_DRAIN_RATE,
-  WATER_ACCUMULATION_RATE,
 } from './simulation/waterSimulation.js';
 
 // Setup scene
