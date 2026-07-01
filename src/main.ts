@@ -9,9 +9,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { calculateHeight } from './terrain.js';
 
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
-import { createDownslopeArrowGeometry, createDownslopeArrowMaterial } from './terrainCompute.js';
-import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
+import { createDownslopeArrowGeometry } from './nodes/geometry/createDownslopeArrowGeometry.js';
 import { createSlopeVisualizationMaterial } from './nodes/material/createSlopeVisualizationMaterial.js';
+import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeArrowMaterial.js';
+import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
 
 // Setup scene
 const scene = new THREE.Scene();
