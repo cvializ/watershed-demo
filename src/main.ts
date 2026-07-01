@@ -26,6 +26,7 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { WaterSimulation } from './simulation/waterSimulation.js';
+import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -81,6 +82,10 @@ scene.add(waterLayer);
 // Store water simulation data for frame-by-frame updates
 const waterSimulation = new WaterSimulation(512, 512);
 waterSimulation.setupMaterial(heightMapTexture);
+
+// Advanced GPU water simulation with realistic physics
+const gpuWaterSimulation = new GPUWaterSimulation(512, 512);
+gpuWaterSimulation.setupTerrain(heightMapTexture);
 
 const terrain = new THREE.Mesh(geometry, computeMaterial);
 terrain.rotation.x = -Math.PI / 2;
@@ -272,7 +277,7 @@ function animate() {
     waterResult.material.uniforms.uTime.value = currentTime;
   }
   
-  // Update water simulation using render target approach
+  // Update water simulation using render target approach (legacy)
   if (waterSimulation) {
     waterSimulation.update(renderer);
     
@@ -281,6 +286,19 @@ function animate() {
       const simWaterTexture = waterSimulation.getWaterTexture();
       if (waterResult.material.uniforms?.uWaterMap) {
         waterResult.material.uniforms.uWaterMap.value = simWaterTexture;
+      }
+    }
+  }
+  
+  // Update advanced GPU water simulation (realistic physics)
+  if (gpuWaterSimulation) {
+    gpuWaterSimulation.update(renderer);
+    
+    // Update the water flow material's uniform with simulation output
+    if (waterResult.material && waterResult.waterTexture) {
+      const simWaterHeight = gpuWaterSimulation.getWaterHeightTexture();
+      if (waterResult.material.uniforms?.uWaterMap) {
+        waterResult.material.uniforms.uWaterMap.value = simWaterHeight;
       }
     }
   }
