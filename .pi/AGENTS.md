@@ -69,6 +69,37 @@ Prefer a functional programming approach over class-based mutable state for the 
 
 **When to use classes**: Only use class-based design when there's a clear need for polymorphism, complex inheritance hierarchies, or when integrating with class-based APIs. Even then, prefer immutability for data within the class.
 
+### Function Syntax Preferences
+**Prefer arrow functions over function declarations and function expressions**: Arrow functions provide several advantages for functional programming:
+- **Lexical `this` binding**: No need to worry about `this` context changing, avoiding common bugs
+- **Concise syntax**: Shorter, more readable code especially for callbacks and short functions
+- **No own `this`/`arguments`**: Prevents accidental shadowing of outer scope values
+- **Better for functional patterns**: Aligns naturally with map/filter/reduce and other FP techniques
+
+**Examples**:
+```ts
+// Prefer (arrow function)
+const processItems = (items: Item[]): Item[] => {
+  return items.map(item => item.toUpperCase());
+};
+
+const handleClick = (event: MouseEvent): void => {
+  console.log('Clicked:', event.target);
+};
+
+// Instead of (function expression)
+const processItems = function(items: Item[]): Item[] {
+  return items.map(function(item) { return item.toUpperCase(); });
+};
+
+// Instead of (function declaration)
+function processItems(items: Item[]): Item[] {
+  return items.map(function(item) { return item.toUpperCase(); });
+}
+```
+
+**Note**: The only exception is when you need a function with its own `this` binding (e.g., certain class methods or constructor patterns).
+
 - Use TypeScript with strict mode enabled for all new code
 
 ## Code Style & Testing
@@ -100,6 +131,7 @@ npm run build    # Build for production
 
 ## Preferences
 - **Prefer functional programming**: Favor pure functions, immutability, and composition over class-based mutable state
+- **Prefer arrow functions**: Use arrow functions (`=>`) instead of function declarations or function expressions for concise syntax and lexical `this` binding
 - Use functional programming patterns (e.g., map/filter/reduce, monads) where appropriate - avoid side effects and unnecessary mutation
 - Avoid mutable state unless absolutely necessary (e.g., performance-critical inner loops)
 - When mutation is needed, encapsulate it clearly and document why immutability wouldn't work

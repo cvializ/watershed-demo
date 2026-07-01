@@ -3,31 +3,31 @@ import * as THREE from 'three';
 const vertexShaderModules = import.meta.glob('../src/shaders/*.vert', { as: 'raw' });
 const fragmentShaderModules = import.meta.glob('../src/shaders/*.frag', { as: 'raw' });
 
-const getBasename = (path) => {
+const getBasename = (path: string): string => {
     const pathWithoutExtensionMatches = /(?<basename>.+)\..+$/.exec(path);
     if (!pathWithoutExtensionMatches) {
         throw new Error(`could not find basename for ${path}`);
     }
-    const { basename } = pathWithoutExtensionMatches.groups;
+    const { basename } = pathWithoutExtensionMatches.groups!;
     
     return basename;
 }
 
-async function promisesObjectToArray<T>(
-    obj: Record<string, Promise<T>>
-): Promise<Array<[string, T]>> {
+const promisesObjectToArray = async <T>(
+    obj: Record<string, () => Promise<T>>
+): Promise<Array<[string, T]>> => {
     const entries = Object.entries(obj);
-    const resolvedValues = await Promise.all(Object.values(obj).map(value => value()));
-    return entries.map(([key], index) => [key, resolvedValues[index]]);
+    const resolvedValues = await Promise.all(Object.values(obj).map(fn => fn()));
+    return entries.map(([modulePath], index) => [modulePath, resolvedValues[index]]);
 }                   
 
-const vertexShaders = await promisesObjectToArray(vertexShaderModules);
-const fragmentShaders = await promisesObjectToArray(fragmentShaderModules);
+const vertexShaders = await promisesObjectToArray<string>(vertexShaderModules);
+const fragmentShaders = await promisesObjectToArray<string>(fragmentShaderModules);
 
-function createVertexShaderTestGeometry() {
+const createVertexShaderTestGeometry = () => {
     const group = new THREE.Group();
 
-    vertexShaders.forEach(([path, shader]) => {
+    vertexShaders.forEach(([_path, shader]) => {
         const material = new THREE.ShaderMaterial({
             vertexShader: shader,
         });
@@ -40,13 +40,17 @@ function createVertexShaderTestGeometry() {
     return group;
 }
 
+const scene = new THREE.Scene();
 
-function createFragmentShaderTestGeometry() {
+
+const createFragmentShaderTestGeometry = () => {
     const group = new THREE.Group();
 
-    fragmentShaders.forEach(([key, shader]) => {
-        const vertexShaderEntry = vertexShaders.find(p => p[0].startsWith(getBasename(key)));
-        console.log(vertexShaderEntry);
+    fragmentShaders.forEach(([modulePath, shader]) => {
+        const vertexShaderEntry = vertexShaders.find(p => p[0].startsWith(getBasename(modulePath)));
+        if (!vertexShaderEntry) {
+            throw new Error(`Could not find vertex shader for ${modulePath}`);
+        }
         const material = new THREE.ShaderMaterial({
             vertexShader: vertexShaderEntry[1],
             fragmentShader: shader,
@@ -59,11 +63,6 @@ function createFragmentShaderTestGeometry() {
 
     return group;
 }
-
-// Expose Three.js to window for external access (e.g., shader tests)
-(window as any).THREE = THREE;
-
-const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
