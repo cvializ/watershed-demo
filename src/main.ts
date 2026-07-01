@@ -1,8 +1,8 @@
 import './style.css';
 import * as THREE from 'three';
 
-// Import terrain compute helper for height-based visualization
-import { createHeightVisualizationMaterial } from './terrainCompute.js';
+// Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
+import { createHeightVisualizationMaterial, createSlopeVisualizationMaterial, createDownslopeArrowGeometry, createDownslopeArrowMaterial } from './terrainCompute.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -167,12 +167,27 @@ const material = new THREE.MeshLambertMaterial({
 // Create compute shader material for height visualization (GPU-based)
 const computeMaterial = createHeightVisualizationMaterial(-1.5, 2.0);
 
+// Create shader material for slope visualization
+const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);
+
+// Create downslope arrow geometry and material
+const arrowGeometry = createDownslopeArrowGeometry(geometry, 0.3);
+const arrowMaterial = createDownslopeArrowMaterial();
+const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
+arrows.rotation.x = -Math.PI / 2;
+scene.add(arrows);
+
 const terrain = new THREE.Mesh(geometry, material);
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);
 
 // Store original material for toggling
 const originalMaterial = material;
+
+// Create a normal material for comparison verification
+const normalMaterial = new THREE.MeshNormalMaterial({
+  side: THREE.DoubleSide,
+});
 
 // Add wireframe overlay to emphasize triangular mesh structure
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);
@@ -197,17 +212,48 @@ toggleButton.style.cssText =
   'padding: 8px 16px; background: #4CAF50; color: white; border: none;' +
   'border-radius: 4px; cursor: pointer; font-size: 12px;';
 
-let useComputeShader = false;
+// Track visualization mode: 0 = original, 1 = height, 2 = slope, 3 = normal (verify), 4 = arrows
+let visualizationMode = 0;
+toggleButton.textContent = 'Mode: Original';
 toggleButton.addEventListener('click', () => {
-  useComputeShader = !useComputeShader;
+  visualizationMode = (visualizationMode + 1) % 5;
   
-  if (useComputeShader) {
-    // Apply compute shader material for height visualization
-    terrain.material = computeMaterial as any;
-  } else {
-    // Restore original vertex-colored material
+  if (visualizationMode === 0) {
+    // Original solid color material
     terrain.material = originalMaterial as any;
+    toggleButton.textContent = 'Mode: Original';
+    legend.style.display = 'block';
+    slopeLegend.style.display = 'none';
+  } else if (visualizationMode === 1) {
+    // Height-based visualization
+    terrain.material = computeMaterial as any;
+    toggleButton.textContent = 'Mode: Height';
+    legend.style.display = 'block';
+    slopeLegend.style.display = 'none';
+  } else if (visualizationMode === 2) {
+    // Slope-based visualization (normal map)
+    terrain.material = slopeMaterial as any;
+    toggleButton.textContent = 'Mode: Slope (Normal Map)';
+    legend.style.display = 'none';
+    slopeLegend.style.display = 'block';
+  } else if (visualizationMode === 3) {
+    // Normal material for verification
+    terrain.material = normalMaterial as any;
+    toggleButton.textContent = 'Mode: Verify (Normal)';
+    legend.style.display = 'none';
+    slopeLegend.style.display = 'none';
+    arrows.visible = false;
+  } else {
+    // Downslope arrows visualization
+    terrain.material = originalMaterial as any;
+    toggleButton.textContent = 'Mode: Downslope Arrows';
+    legend.style.display = 'none';
+    slopeLegend.style.display = 'none';
+    arrows.visible = true;
   }
+  
+  // Update visibility based on current mode
+  updateVisibility();
 });
 
 const minHeightLabel = document.createElement('label');
@@ -234,7 +280,7 @@ maxHeightInput.style.cssText = 'display: block; margin-bottom: 4px; padding: 4px
 
 // Update shader uniforms when height range changes
 function updateHeightRange() {
-  if (useComputeShader && terrain.material) {
+  if (visualizationMode === 1 && terrain.material) {
     const shaderMat = terrain.material as any;
     if (shaderMat.uniforms?.uMinHeight) {
       shaderMat.uniforms.uMinHeight.value = parseFloat(minHeightInput.value);
@@ -250,14 +296,69 @@ maxHeightInput.addEventListener('change', updateHeightRange);
 
 uiContainer.appendChild(toggleButton);
 uiContainer.appendChild(document.createElement('br'));
-uiContainer.appendChild(minHeightLabel);
-uiContainer.appendChild(minHeightInput);
-uiContainer.appendChild(maxHeightLabel);
-uiContainer.appendChild(maxHeightInput);
+
+// Slope visualization controls
+const minSlopeLabel = document.createElement('label');
+minSlopeLabel.textContent = 'Min Slope:';
+minSlopeLabel.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
+
+const minSlopeInput = document.createElement('input');
+minSlopeInput.type = 'number';
+minSlopeInput.value = '0.0';
+minSlopeInput.placeholder = 'Min Slope';
+minSlopeInput.title = 'Minimum slope value for color mapping in slope visualization';
+minSlopeInput.style.cssText = 'display: block; margin-bottom: 8px; padding: 4px; width: 100%;';
+
+const maxSlopeLabel = document.createElement('label');
+maxSlopeLabel.textContent = 'Max Slope:';
+maxSlopeLabel.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
+
+const maxSlopeInput = document.createElement('input');
+maxSlopeInput.type = 'number';
+maxSlopeInput.value = '2.0';
+maxSlopeInput.placeholder = 'Max Slope';
+maxSlopeInput.title = 'Maximum slope value for color mapping in slope visualization';
+maxSlopeInput.style.cssText = 'display: block; margin-bottom: 4px; padding: 4px; width: 100%;';
+
+// Update shader uniforms when slope range changes
+function updateSlopeRange() {
+  if (visualizationMode === 2 && terrain.material) {
+    const shaderMat = terrain.material as any;
+    if (shaderMat.uniforms?.uMinSlope) {
+      shaderMat.uniforms.uMinSlope.value = parseFloat(minSlopeInput.value);
+    }
+    if (shaderMat.uniforms?.uMaxSlope) {
+      shaderMat.uniforms.uMaxSlope.value = parseFloat(maxSlopeInput.value);
+    }
+  }
+}
+
+minSlopeInput.addEventListener('change', updateSlopeRange);
+maxSlopeInput.addEventListener('change', updateSlopeRange);
+
+// Only show slope controls when in slope mode
+function updateVisibility() {
+  const isSlopeMode = visualizationMode === 2;
+  minSlopeLabel.style.display = isSlopeMode ? 'block' : 'none';
+  minSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
+  maxSlopeLabel.style.display = isSlopeMode ? 'block' : 'none';
+  maxSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
+}
+
+uiContainer.appendChild(toggleButton);
+uiContainer.appendChild(document.createElement('br'));
+uiContainer.appendChild(minSlopeLabel);
+uiContainer.appendChild(minSlopeInput);
+uiContainer.appendChild(maxSlopeLabel);
+uiContainer.appendChild(maxSlopeInput);
+
+// Call updateVisibility initially to hide slope controls
+updateVisibility();
 document.body.appendChild(uiContainer);
 
 // Add color legend
 const legend = document.createElement('div');
+legend.id = 'visualizationLegend';
 legend.style.cssText =
   'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);' +
   'width: 400px; height: 20px; background: linear-gradient(to right,' +
@@ -266,6 +367,7 @@ legend.style.cssText =
   'border-radius: 4px; border: 2px solid rgba(0,0,0,0.5); z-index: 1000;';
 
 const legendText = document.createElement('div');
+legendText.id = 'legendText';
 legendText.style.cssText =
   'position: absolute; bottom: -30px; width: 100%; text-align: center;' +
   'color: white; font-family: monospace; font-size: 12px; text-shadow: 1px 1px 2px black;';
@@ -273,6 +375,26 @@ legendText.innerHTML = 'Low <span>&larr;</span> Height <span>&rarr;</span> High'
 
 legend.appendChild(legendText);
 document.body.appendChild(legend);
+
+// Slope color legend
+const slopeLegend = document.createElement('div');
+slopeLegend.id = 'slopeLegend';
+slopeLegend.style.cssText =
+  'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);' +
+  'width: 400px; height: 20px; background: linear-gradient(to right,' +
+  'rgb(0,0,255) 0%,' +      // Blue - flat (0° slope)
+  'rgb(128,0,128) 50%,' +   // Purple - medium slope
+  'rgb(255,0,0) 100%);' +   // Red - steep (90° slope)
+  'border-radius: 4px; border: 2px solid rgba(0,0,0,0.5); z-index: 1000; display: none;';
+
+const slopeLegendText = document.createElement('div');
+slopeLegendText.style.cssText =
+  'position: absolute; bottom: -30px; width: 100%; text-align: center;' +
+  'color: white; font-family: monospace; font-size: 12px; text-shadow: 1px 1px 2px black;';
+slopeLegendText.innerHTML = 'Flat (0°) <span>&larr;</span> Slope Angle <span>&rarr;</span> Steep (90°)';
+
+slopeLegend.appendChild(slopeLegendText);
+document.body.appendChild(slopeLegend);
 
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
