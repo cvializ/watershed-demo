@@ -43,30 +43,39 @@ const terrainSize = 12;
 const segments = 80;
 const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
 
-// Convert plane to height-based terrain
-const positions = geometry.attributes.position;
+// Create displacement map texture from calculateHeight function
+const createDisplacementTexture = (size: number): THREE.DataTexture => {
+  const data = new Float32Array(size * size);
+  const terrainScale = terrainSize / 2;
 
-// Apply hydraulic erosion to carve the terrain
-// applyErosion(positions as THREE.BufferAttribute, 8000);
+  for (let i = 0; i < size * size; i++) {
+    const x = (i % size) / size * terrainSize - terrainScale;
+    const z = Math.floor(i / size) / size * terrainSize - terrainScale;
+    data[i] = calculateHeight(x, z);
+  }
 
-// Calculate height for each vertex using the terrain module
-for (let i = 0; i < positions.count; i++) {
-  const x = positions.getX(i);
-  const y = positions.getY(i);
+  const texture = new THREE.DataTexture(data, size, size, THREE.RedFormat, THREE.FloatType);
+  texture.needsUpdate = true;
+  return texture;
+};
 
-  // Calculate height using lower frequency noise for rolling hills
-  let height = calculateHeight(x, y);
+// Create displacement map texture (512x512 for good detail/performance)
+const displacementTexture = createDisplacementTexture(512);
 
-  positions.setZ(i, height);
-}
+// Import displacement map shader
+import displacementMapVert from './shaders/displacement-map.vert?raw';
+import displacementMapFrag from './shaders/displacement-map.frag?raw';
 
-geometry.attributes.position.needsUpdate = true;
-geometry.computeVertexNormals();
-
-// Create material with flat color and double-sided rendering for triangles
-const material = new THREE.MeshLambertMaterial({
-  color: 0x668c42, // Forest green
-  side: THREE.DoubleSide,
+// Create custom shader material with vertex displacement using the height texture
+const displacementMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    uDisplacementMap: { value: displacementTexture },
+    uDisplacementScale: { value: 2.5 },
+    uDisplacementBias: { value: -1.5 }
+  },
+  vertexShader: displacementMapVert,
+  fragmentShader: displacementMapFrag,
+  side: THREE.DoubleSide
 });
 
 // Create compute shader material for height visualization (GPU-based)
@@ -82,12 +91,12 @@ const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
 arrows.rotation.x = -Math.PI / 2;
 scene.add(arrows);
 
-const terrain = new THREE.Mesh(geometry, material);
+const terrain = new THREE.Mesh(geometry, displacementMaterial);
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);
 
 // Store original material for toggling
-const originalMaterial = material;
+const originalMaterial = displacementMaterial;
 
 // Create a normal material for comparison verification
 const normalMaterial = new THREE.MeshNormalMaterial({
@@ -117,16 +126,16 @@ toggleButton.style.cssText =
   'padding: 8px 16px; background: #4CAF50; color: white; border: none;' +
   'border-radius: 4px; cursor: pointer; font-size: 12px;';
 
-// Track visualization mode: 0 = original, 1 = height, 2 = slope, 3 = normal (verify), 4 = arrows
+// Track visualization mode: 0 = displacement (3D terrain), 1 = height, 2 = slope, 3 = normal (verify), 4 = arrows
 let visualizationMode = 0;
-toggleButton.textContent = 'Mode: Original';
+toggleButton.textContent = 'Mode: 3D Displacement';
 toggleButton.addEventListener('click', () => {
   visualizationMode = (visualizationMode + 1) % 5;
   
   if (visualizationMode === 0) {
-    // Original solid color material
+    // Displacement map material for actual 3D terrain geometry
     terrain.material = originalMaterial as any;
-    toggleButton.textContent = 'Mode: Original';
+    toggleButton.textContent = 'Mode: 3D Displacement';
     legend.style.display = 'block';
     slopeLegend.style.display = 'none';
   } else if (visualizationMode === 1) {
@@ -241,6 +250,43 @@ function updateSlopeRange() {
 minSlopeInput.addEventListener('change', updateSlopeRange);
 maxSlopeInput.addEventListener('change', updateSlopeRange);
 
+// Displacement controls (only show in displacement mode)
+const minDisplacementLabel = document.createElement('label');
+minDisplacementLabel.textContent = 'Min Displacement:';
+minDisplacementLabel.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
+
+const minDisplacementInput = document.createElement('input');
+minDisplacementInput.type = 'number';
+minDisplacementInput.value = '-1.5';
+minDisplacementInput.title = 'Minimum displacement value (vertical offset)';
+minDisplacementInput.style.cssText = 'display: block; margin-bottom: 8px; padding: 4px; width: 100%;';
+
+const maxDisplacementLabel = document.createElement('label');
+maxDisplacementLabel.textContent = 'Max Displacement:';
+maxDisplacementLabel.style.cssText = 'font-size: 12px; margin-bottom: 4px; display: block;';
+
+const maxDisplacementInput = document.createElement('input');
+maxDisplacementInput.type = 'number';
+maxDisplacementInput.value = '2.5';
+maxDisplacementInput.title = 'Maximum displacement value (height scale)';
+maxDisplacementInput.style.cssText = 'display: block; margin-bottom: 4px; padding: 4px; width: 100%;';
+
+// Update displacement shader uniforms when values change
+function updateDisplacementRange() {
+  if (visualizationMode === 0 && terrain.material) {
+    const shaderMat = terrain.material as any;
+    if (shaderMat.uniforms?.uDisplacementBias) {
+      shaderMat.uniforms.uDisplacementBias.value = parseFloat(minDisplacementInput.value);
+    }
+    if (shaderMat.uniforms?.uDisplacementScale) {
+      shaderMat.uniforms.uDisplacementScale.value = parseFloat(maxDisplacementInput.value);
+    }
+  }
+}
+
+minDisplacementInput.addEventListener('change', updateDisplacementRange);
+maxDisplacementInput.addEventListener('change', updateDisplacementRange);
+
 // Only show slope controls when in slope mode
 function updateVisibility() {
   const isSlopeMode = visualizationMode === 2;
@@ -248,6 +294,13 @@ function updateVisibility() {
   minSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
   maxSlopeLabel.style.display = isSlopeMode ? 'block' : 'none';
   maxSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
+  
+  // Only show displacement controls in original/displacement mode
+  const isDisplacementMode = visualizationMode === 0;
+  minDisplacementLabel.style.display = isDisplacementMode ? 'block' : 'none';
+  minDisplacementInput.style.display = isDisplacementMode ? 'block' : 'none';
+  maxDisplacementLabel.style.display = isDisplacementMode ? 'block' : 'none';
+  maxDisplacementInput.style.display = isDisplacementMode ? 'block' : 'none';
 }
 
 uiContainer.appendChild(toggleButton);
@@ -256,6 +309,12 @@ uiContainer.appendChild(minSlopeLabel);
 uiContainer.appendChild(minSlopeInput);
 uiContainer.appendChild(maxSlopeLabel);
 uiContainer.appendChild(maxSlopeInput);
+
+// Displacement controls (only in mode 0)
+uiContainer.appendChild(minDisplacementLabel);
+uiContainer.appendChild(minDisplacementInput);
+uiContainer.appendChild(maxDisplacementLabel);
+uiContainer.appendChild(maxDisplacementInput);
 
 // Call updateVisibility initially to hide slope controls
 updateVisibility();
@@ -329,7 +388,7 @@ function updateOverlay() {
     lastTime = now;
   }
 
-  overlay.textContent = `FPS: ${fps} | Objects: ${scene.children.length} | Vertices: ${positions.count}`;
+  overlay.textContent = `FPS: ${fps} | Objects: ${scene.children.length}`;
 }
 
 function animate() {
