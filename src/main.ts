@@ -41,7 +41,7 @@ controls.autoRotate = false;
 // Create triangular terrain mesh
 const terrainSize = 12;
 const segments = 80;
-const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
+const geometry = createTerrainGeometry();
 
 // Create displacement map texture from calculateHeight function
 const createDisplacementTexture = (size: number): THREE.DataTexture => {
@@ -65,6 +65,7 @@ const displacementTexture = createDisplacementTexture(512);
 // Import displacement map shader
 import displacementMapVert from './shaders/displacement-map.vert?raw';
 import displacementMapFrag from './shaders/displacement-map.frag?raw';
+import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
 
 // Create custom shader material with vertex displacement using the height texture
 const displacementMaterial = new THREE.ShaderMaterial({
