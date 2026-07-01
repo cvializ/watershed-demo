@@ -256,3 +256,9 @@ export function createDownslopeArrowMaterial(): THREE.LineBasicMaterial {
         opacity: 0.8,
     });
 }
+
+// Export shader sources on the module for testing
+(globalThis as any).heightVisualizationVert = heightVisualizationVert;
+(globalThis as any).heightVisualizationFrag = heightVisualizationFrag;
+(globalThis as any).slopeVisualizationVert = slopeVisualizationVert;
+(globalThis as any).slopeVisualizationFrag = slopeVisualizationFrag;
