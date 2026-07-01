@@ -8,6 +8,7 @@ import { createSlopeVisualizationMaterial } from './nodes/material/createSlopeVi
 import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeArrowMaterial.js';
 import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
 import { createDisplacementMaterial } from './nodes/material/createDisplacementMaterial.js';
+import { createWaterFlowMaterial } from './nodes/material/createWaterFlowMaterial.js';
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 
 // Import DOM manipulation utilities
@@ -76,6 +77,20 @@ const arrowMaterial = createDownslopeArrowMaterial();
 const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
 arrows.rotation.x = -Math.PI / 2;
 scene.add(arrows);
+
+// Create animated water flow material
+// We use a simple approach: create the water layer once and let the shader compute
+// water distribution based on terrain height, with time-based accumulation in basins
+const waterResult = createWaterFlowMaterial(displacementTexture, 0.5);
+const waterLayer = new THREE.Mesh(geometry, waterResult.material);
+waterLayer.rotation.x = -Math.PI / 2;
+scene.add(waterLayer);
+
+// Store water simulation data for frame-by-frame updates
+let waterTextureData = new Float32Array(waterResult.width * waterResult.height);
+for (let i = 0; i < waterTextureData.length; i++) {
+    waterTextureData[i] = 1.0; // Start with uniform water coverage
+}
 
 const terrain = new THREE.Mesh(geometry, displacementMaterial);
 terrain.rotation.x = -Math.PI / 2;
@@ -194,30 +209,42 @@ function setVisualizationMode(mode: number) {
     showLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
+    waterLayer.visible = false;
   } else if (visualizationMode === 1) {
     // Height-based visualization
     terrain.material = computeMaterial as any;
     showLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
+    waterLayer.visible = false;
   } else if (visualizationMode === 2) {
     // Slope-based visualization (normal map)
     terrain.material = slopeMaterial as any;
     hideLegend(legend);
     showLegend(slopeLegend);
     arrows.visible = false;
+    waterLayer.visible = false;
   } else if (visualizationMode === 3) {
     // Normal material for verification
     terrain.material = normalMaterial as any;
     hideLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
-  } else {
+    waterLayer.visible = false;
+  } else if (visualizationMode === 4) {
     // Downslope arrows visualization
     terrain.material = originalMaterial as any;
     hideLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = true;
+    waterLayer.visible = false;
+  } else {
+    // Water flow visualization
+    terrain.material = originalMaterial as any;
+    hideLegend(legend);
+    hideLegend(slopeLegend);
+    arrows.visible = false;
+    waterLayer.visible = true;
   }
 
   // Update visibility based on current mode
@@ -263,6 +290,75 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
+// Water simulation data
+const WATER_DRAIN_RATE = 0.02;
+const WATER_ACCUMULATION_RATE = 0.03;
+
+// Water simulation function: calculate water distribution based on terrain
+function updateWaterSimulation() {
+    const w = waterResult.width;
+    const h = waterResult.height;
+    
+    // Sample terrain heights at each pixel location
+    const tempData = new Float32Array(w * h);
+    
+    for (let z = 0; z < h; z++) {
+        const zIndex = z / (h - 1);
+        for (let x = 0; x < w; x++) {
+            const xIndex = x / (w - 1);
+            
+            // Get terrain height at this position
+            const sampleUV = new THREE.Vector2(xIndex, zIndex);
+            const terrainHeight = textureSample(displacementTexture, sampleUV);
+            
+            // Get current water level
+            const idx = z * w + x;
+            let waterLevel = waterTextureData[idx];
+            
+            // Calculate gradient (slope) at this point
+            let hRight = textureSample(displacementTexture, new THREE.Vector2(Math.min(xIndex + 0.01, 1), zIndex));
+            let hDown = textureSample(displacementTexture, new THREE.Vector2(xIndex, Math.min(zIndex + 0.01, 1)));
+            
+            // Drain water from high slopes
+            const slope = Math.abs(hRight - terrainHeight) + Math.abs(hDown - terrainHeight);
+            const elevation = smoothstep(-1.5, 1.0, terrainHeight);
+            waterLevel -= elevation * slope * WATER_DRAIN_RATE;
+            
+            // Accumulate in basins (low areas)
+            if (terrainHeight < -0.5) {
+                waterLevel += WATER_ACCUMULATION_RATE;
+            }
+            
+            // Cap and clamp
+            waterLevel = Math.max(0, Math.min(waterLevel, 2.0));
+            tempData[idx] = waterLevel;
+        }
+    }
+    
+    // Update the actual water data
+    for (let i = 0; i < w * h; i++) {
+        waterTextureData[i] = tempData[i];
+    }
+}
+
+// Simple texture sample helper (approximate)
+function textureSample(texture: THREE.DataTexture, uv: THREE.Vector2): number {
+    const w = texture.image.width;
+    const h = texture.image.height;
+    const data = texture.image.data as Float32Array;
+    
+    const x = Math.floor(uv.x * (w - 1));
+    const z = Math.floor(uv.y * (h - 1));
+    
+    const idx = z * w + x;
+    return data[idx];
+}
+
+function smoothstep(min: number, max: number, value: number): number {
+    const t = Math.max(0, Math.min((value - min) / (max - min), 1));
+    return t * t * (3 - 2 * t);
+}
+
 // Diagnostic overlay
 const overlay = createOverlay();
 
@@ -285,6 +381,22 @@ function updateOverlay() {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  
+  // Update water animation time
+  const currentTime = performance.now() * 0.001;
+  if (waterResult.material && waterResult.material.uniforms?.uTime) {
+    waterResult.material.uniforms.uTime.value = currentTime;
+  }
+  
+  // Update water texture with simulation data each frame
+  if (waterResult.waterTexture && waterTextureData) {
+    // Run water simulation each frame
+    updateWaterSimulation();
+    
+    waterResult.waterTexture.image.data = waterTextureData;
+    waterResult.waterTexture.needsUpdate = true;
+  }
+  
   updateOverlay();
   renderer.render(scene, camera);
 }

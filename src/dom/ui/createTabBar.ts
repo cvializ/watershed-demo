@@ -6,6 +6,7 @@ const modes = [
   { id: 2, name: 'Slope', hasLegend: false },
   { id: 3, name: 'Verify (Normal)', hasLegend: false },
   { id: 4, name: 'Downslope Arrows', hasLegend: false },
+  { id: 5, name: 'Water Flow', hasLegend: false },
 ];
 
 export const createTabBar = (
