@@ -112,6 +112,15 @@ npm run build    # Build for production
 - Update documentation when adding features
 - Never commit credentials or API keys
 
+## Pre-Completion Checklist
+Before marking any task as complete, please run the validate script if present:
+```bash
+npm run validate
+# or
+yarn validate
+```
+This ensures all validations pass before finalizing work.
+
 ## Preferences
 - **Prefer functional programming**: Favor pure functions, immutability, and composition over class-based mutable state
 - **Prefer arrow functions**: Use arrow functions (`=>`) instead of function declarations or function expressions for concise syntax and lexical `this` binding
