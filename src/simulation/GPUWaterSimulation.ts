@@ -485,6 +485,22 @@ export class GPUWaterSimulation {
     }
     
     /**
+     * Get raw water height pixel data for debug visualization
+     */
+    public getWaterHeightData(): Float32Array {
+        const texture = this.getWaterHeightTexture();
+        console.log('getWaterHeightData - texture:', texture, 'image.data exists:', !!texture.image?.data);
+        if (texture.image && texture.image.data) {
+            const data = texture.image.data as Float32Array;
+            // Return a copy to avoid external modifications
+            return new Float32Array(data);
+        }
+        // Return empty array if data not available
+        console.warn('Water height texture data not available');
+        return new Float32Array(this.width * this.height);
+    }
+    
+    /**
      * Get the current velocity texture
      */
     public getVelocityTexture(): THREE.DataTexture {
@@ -524,20 +540,39 @@ export class GPUWaterSimulation {
     /**
      * Add a water source (spring) at a specific position
      */
-    public addWaterSource(position: THREE.Vector2, flowRate: number = 0.05): void {
+    public addWaterSource(position: THREE.Vector2, flowRate: number = 0.05, radius: number = 10): void {
         const texture = this.currentHeightBuffer === 0 ? 
             this.waterHeightTexture : this.outputHeightTexture;
         
         const u = (position.x + 1.0) * 0.5;
         const v = (position.y + 1.0) * 0.5;
         
-        // Add water at the source position
-        const centerIdx = Math.floor(v * this.height) * this.width + Math.floor(u * this.width);
-        const data = texture.image.data as Float32Array;
-        if (centerIdx >= 0 && centerIdx < data.length) {
-            data[centerIdx] = Math.min(1.0, data[centerIdx] + flowRate);
-            texture.needsUpdate = true;
+        // Convert to texture coordinates
+        const centerX = Math.floor(u * this.width);
+        const centerY = Math.floor(v * this.height);
+        
+        // Add water in a circular region
+        for (let i = -radius; i <= radius; i++) {
+            for (let j = -radius; j <= radius; j++) {
+                const x = centerX + i;
+                const y = centerY + j;
+                
+                // Check bounds
+                if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+                    // Check if within circular radius
+                    const dist = Math.sqrt(i * i + j * j);
+                    if (dist <= radius) {
+                        const idx = y * this.width + x;
+                        const data = texture.image.data as Float32Array;
+                        if (data[idx] < 1.0) {
+                            data[idx] = Math.min(1.0, data[idx] + flowRate * 0.5);
+                        }
+                    }
+                }
+            }
         }
+        
+        texture.needsUpdate = true;
     }
     
     /**
@@ -552,6 +587,11 @@ export class GPUWaterSimulation {
         if (this.waterHeightTexture.image.data) {
             this.waterHeightTexture.image.data.set(initialWaterData);
             this.waterHeightTexture.needsUpdate = true;
+        }
+        
+        if (this.outputHeightTexture.image.data) {
+            this.outputHeightTexture.image.data.set(initialWaterData);
+            this.outputHeightTexture.needsUpdate = true;
         }
         
         const initialVelocityData = new Float32Array(this.width * this.height * 2);

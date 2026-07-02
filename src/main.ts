@@ -137,6 +137,24 @@ const slopeControls = createSlopeControls((minSlope, maxSlope) => {
   updateShaderSlopeRange(minSlope, maxSlope);
 });
 
+// Debug toggle button
+function createDebugToggle() {
+  const label = document.createElement('label');
+  label.textContent = 'Show Water Height Debug';
+  label.style.fontSize = '12px';
+  label.htmlFor = 'waterHeightDebugToggle';
+  
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.id = 'waterHeightDebugToggle';
+  input.checked = false;
+  
+  return { label, input };
+}
+
+// Create debug toggle elements (done once)
+const debugToggle = createDebugToggle();
+
 // UI Container
 const uiContainer = createUIContainer({
   tabContainer: tabContainer.container,
@@ -148,8 +166,17 @@ const uiContainer = createUIContainer({
   minSlopeInput: slopeControls.minInput,
   maxSlopeLabel: slopeControls.maxLabel,
   maxSlopeInput: slopeControls.maxInput,
+  debugToggleLabel: debugToggle.label,
+  debugToggleInput: debugToggle.input,
 });
 document.body.appendChild(uiContainer);
+
+// Debug toggle handler
+const debugToggleInput = uiContainer.querySelector('#waterHeightDebugToggle') as HTMLInputElement;
+debugToggleInput?.addEventListener('change', (e) => {
+  showWaterHeightDebug = (e as any).target.checked;
+  debugCanvas.style.display = showWaterHeightDebug ? 'block' : 'none';
+});
 
 // Shader uniform update functions
 function updateShaderHeightRange(minHeight: number, maxHeight: number) {
@@ -244,28 +271,6 @@ updateVisibility(visualizationMode, {
   maxSlopeInput: slopeControls.maxInput,
 });
 
-// Add debugging: render the water simulation texture to screen for verification
-const debugWaterTexture = document.createElement('div');
-debugWaterTexture.style.position = 'absolute';
-debugWaterTexture.style.top = '10px';
-debugWaterTexture.style.left = '10px';
-debugWaterTexture.style.width = '256px';
-debugWaterTexture.style.height = '256px';
-debugWaterTexture.style.border = '2px solid cyan';
-debugWaterTexture.style.zIndex = '1000';
-document.body.appendChild(debugWaterTexture);
-
-// Create a canvas to render the simulation texture
-const debugCanvas = document.createElement('canvas');
-debugCanvas.width = 512;
-debugCanvas.height = 512;
-const debugCtx = debugCanvas.getContext('2d');
-let debugImgData: ImageData | null = null;
-if (debugCtx) {
-  debugImgData = debugCtx.createImageData(512, 512);
-  debugWaterTexture.appendChild(debugCanvas);
-}
-
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 scene.add(ambientLight);
@@ -278,6 +283,33 @@ scene.add(directionalLight);
 
 // Diagnostic overlay
 const overlay = createOverlay();
+
+// Debug overlay for water height texture
+let showWaterHeightDebug = false;
+const debugCanvas = document.createElement('canvas');
+document.body.appendChild(debugCanvas);
+
+// Initialize debug canvas styles
+const initDebugCanvas = () => {
+  const width = gpuWaterSimulation.width;
+  const height = gpuWaterSimulation.height;
+  debugCanvas.width = width;
+  debugCanvas.height = height;
+  // Smaller display size (256x256) with appropriate positioning below UI
+  debugCanvas.style.cssText =
+    'position: fixed; top: 180px; right: 10px; background: rgba(0,0,0,0.8);' +
+    'border: 2px solid #4CAF50; border-radius: 8px; z-index: 1000;' +
+    (showWaterHeightDebug ? 'display: block;' : 'display: none;');
+  
+  // Create smaller preview by scaling down in CSS
+  debugCanvas.style.width = '256px';
+  debugCanvas.style.height = '256px';
+  debugCanvas.style.objectFit = 'contain';
+};
+initDebugCanvas();
+
+// Create a full-screen quad for rendering the water height texture
+gpuWaterSimulation.getWaterHeightTexture(); // Ensure texture exists
 
 let frameCount = 0;
 let lastTime = performance.now();
@@ -293,6 +325,47 @@ function updateOverlay() {
   }
 
   overlay.update(fps, scene.children.length);
+}
+
+function updateDebugCanvas() {
+  // Create a temporary render target to capture the debug texture
+  const tempRenderTarget = new THREE.WebGLRenderTarget(256, 256);
+  
+  // Create a simple material that uses the water height texture
+  const debugMaterial = new THREE.MeshBasicMaterial({
+    map: gpuWaterSimulation.getWaterHeightTexture(),
+    transparent: false
+  });
+  
+  const tempScene = new THREE.Scene();
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), debugMaterial);
+  tempScene.add(mesh);
+  
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera.position.z = 1;
+  
+  const oldRenderTarget = renderer.getRenderTarget();
+  renderer.setRenderTarget(tempRenderTarget);
+  renderer.render(tempScene, camera);
+  
+  // Read the pixels from our render target
+  const pixels = new Uint8Array(256 * 256 * 4);
+  renderer.readRenderTargetPixels(tempRenderTarget, 0, 0, 256, 256, pixels);
+  
+  const ctx = debugCanvas.getContext('2d');
+  if (ctx) {
+    const imageData = ctx.createImageData(256, 256);
+    
+    // Copy pixels directly to canvas (already from render target)
+    for (let i = 0; i < 256 * 256 * 4; i++) {
+      imageData.data[i] = pixels[i];
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+  }
+  
+  renderer.setRenderTarget(oldRenderTarget);
+  tempRenderTarget.dispose();
 }
 
 function animate() {
@@ -316,24 +389,10 @@ function animate() {
         waterResult.material.uniforms.uWaterMap.value = simWaterHeight;
       }
     }
-  }
-  
-  // Update debug visualization
-  if (debugCtx && gpuWaterSimulation) {
-    const waterHeight = gpuWaterSimulation.getWaterHeightTexture();
-    if (waterHeight.image.data && debugImgData) {
-      const data = waterHeight.image.data as Float32Array;
-      let totalWater = 0.0;
-      for (let i = 0; i < 512 * 512; i++) {
-        const val = Math.min(1.0, data[i] * 2.0); // Scale for visibility
-        const idx = i * 4;
-        debugImgData.data[idx] = val * 255;     // R
-        debugImgData.data[idx + 1] = val * 255; // G  
-        debugImgData.data[idx + 2] = val * 255; // B
-        debugImgData.data[idx + 3] = 255;       // Alpha
-        totalWater += data[i];
-      }
-      debugCtx.putImageData(debugImgData, 0, 0);
+    
+    // Update debug canvas with water height texture if enabled
+    if (showWaterHeightDebug) {
+      updateDebugCanvas();
     }
   }
   
