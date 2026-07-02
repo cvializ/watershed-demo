@@ -26,7 +26,8 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
-import { exampleDebugMaterials } from './utils/debugUtils.js';
+import { exampleDebugMaterials, renderToConsole } from './utils/debugUtils.js';
+import { createDebugWaterHeightMaterial } from './nodes/material/createDebugWaterHeightMaterial.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -138,23 +139,23 @@ const slopeControls = createSlopeControls((minSlope, maxSlope) => {
   updateShaderSlopeRange(minSlope, maxSlope);
 });
 
-// Debug toggle button
-function createDebugToggle() {
-  const label = document.createElement('label');
-  label.textContent = 'Show Water Height Debug';
-  label.style.fontSize = '12px';
-  label.htmlFor = 'waterHeightDebugToggle';
+// Button to trigger water height console render
+function createConsoleRenderButton() {
+  const button = document.createElement('button');
+  button.textContent = 'Render Water Height to Console';
+  button.type = 'button';
+  button.style.cssText = 
+    'padding: 8px 12px; background-color: #4CAF50; color: white; ' +
+    'border: none; border-radius: 4px; cursor: pointer; font-size: 12px; ' +
+    'transition: background-color 0.2s; margin-top: 8px;';
+  button.onmouseover = () => { button.style.backgroundColor = '#45a049'; };
+  button.onmouseout = () => { button.style.backgroundColor = '#4CAF50'; };
   
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.id = 'waterHeightDebugToggle';
-  input.checked = false;
-  
-  return { label, input };
+  return button;
 }
 
-// Create debug toggle elements (done once)
-const debugToggle = createDebugToggle();
+// Create console render button (done once)
+const consoleRenderButton = createConsoleRenderButton();
 
 // UI Container
 const uiContainer = createUIContainer({
@@ -167,16 +168,23 @@ const uiContainer = createUIContainer({
   minSlopeInput: slopeControls.minInput,
   maxSlopeLabel: slopeControls.maxLabel,
   maxSlopeInput: slopeControls.maxInput,
-  debugToggleLabel: debugToggle.label,
-  debugToggleInput: debugToggle.input,
 });
 document.body.appendChild(uiContainer);
 
-// Debug toggle handler
-const debugToggleInput = uiContainer.querySelector('#waterHeightDebugToggle') as HTMLInputElement;
-debugToggleInput?.addEventListener('change', (e) => {
-  showWaterHeightDebug = (e as any).target.checked;
-  debugCanvas.style.display = showWaterHeightDebug ? 'block' : 'none';
+// Add console render button to UI
+uiContainer.appendChild(document.createElement('br'));
+uiContainer.appendChild(consoleRenderButton);
+
+// Console render button handler
+consoleRenderButton.addEventListener('click', async () => {
+  console.log('%c--- Water Height Debug ---', 'color: #00ff88; font-weight: bold; font-size: 14px;');
+
+  // Render to console
+  await renderToConsole(waterResult.material, {
+    width: 256,
+    height: 256,
+    showSize: true
+  });
 });
 
 // Shader uniform update functions
@@ -285,33 +293,6 @@ scene.add(directionalLight);
 // Diagnostic overlay
 const overlay = createOverlay();
 
-// Debug overlay for water height texture
-let showWaterHeightDebug = false;
-const debugCanvas = document.createElement('canvas');
-document.body.appendChild(debugCanvas);
-
-// Initialize debug canvas styles
-const initDebugCanvas = () => {
-  const width = gpuWaterSimulation.width;
-  const height = gpuWaterSimulation.height;
-  debugCanvas.width = width;
-  debugCanvas.height = height;
-  // Smaller display size (256x256) with appropriate positioning below UI
-  debugCanvas.style.cssText =
-    'position: fixed; top: 180px; right: 10px; background: rgba(0,0,0,0.8);' +
-    'border: 2px solid #4CAF50; border-radius: 8px; z-index: 1000;' +
-    (showWaterHeightDebug ? 'display: block;' : 'display: none;');
-  
-  // Create smaller preview by scaling down in CSS
-  debugCanvas.style.width = '256px';
-  debugCanvas.style.height = '256px';
-  debugCanvas.style.objectFit = 'contain';
-};
-initDebugCanvas();
-
-// Create a full-screen quad for rendering the water height texture
-gpuWaterSimulation.getWaterHeightTexture(); // Ensure texture exists
-
 let frameCount = 0;
 let lastTime = performance.now();
 let fps = 0;
@@ -326,48 +307,6 @@ function updateOverlay() {
   }
 
   overlay.update(fps, scene.children.length);
-}
-
-function updateDebugCanvas() {
-  // Create a temporary render target to capture the debug texture
-  const tempRenderTarget = new THREE.WebGLRenderTarget(256, 256);
-  
-  // Create a simple material that uses the water height texture
-  // const debugMaterial = new THREE.MeshBasicMaterial({
-  //   map: gpuWaterSimulation.getWaterHeightTexture(),
-  //   transparent: false
-  // });
-  const debugMaterial = new THREE.MeshNormalMaterial();
-
-  const tempScene = new THREE.Scene();
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), debugMaterial);
-  tempScene.add(mesh);
-  
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-  camera.position.z = 1;
-  
-  const oldRenderTarget = renderer.getRenderTarget();
-  renderer.setRenderTarget(tempRenderTarget);
-  renderer.render(tempScene, camera);
-  
-  // Read the pixels from our render target
-  const pixels = new Uint8Array(256 * 256 * 4);
-  renderer.readRenderTargetPixels(tempRenderTarget, 0, 0, 256, 256, pixels);
-  
-  const ctx = debugCanvas.getContext('2d');
-  if (ctx) {
-    const imageData = ctx.createImageData(256, 256);
-    
-    // Copy pixels directly to canvas (already from render target)
-    for (let i = 0; i < 256 * 256 * 4; i++) {
-      imageData.data[i] = pixels[i];
-    }
-    
-    ctx.putImageData(imageData, 0, 0);
-  }
-  
-  renderer.setRenderTarget(oldRenderTarget);
-  tempRenderTarget.dispose();
 }
 
 function animate() {
@@ -390,11 +329,6 @@ function animate() {
       if (waterResult.material.uniforms?.uWaterMap) {
         waterResult.material.uniforms.uWaterMap.value = simWaterHeight;
       }
-    }
-    
-    // Update debug canvas with water height texture if enabled
-    if (showWaterHeightDebug) {
-      updateDebugCanvas();
     }
   }
   

@@ -10,8 +10,6 @@ export interface UIContainerConfig {
   minSlopeInput?: HTMLInputElement;
   maxSlopeLabel?: HTMLLabelElement;
   maxSlopeInput?: HTMLInputElement;
-  debugToggleLabel?: HTMLLabelElement;
-  debugToggleInput?: HTMLInputElement;
 }
 
 export const createUIContainer = (config: UIContainerConfig): HTMLDivElement => {
@@ -47,14 +45,6 @@ export const createUIContainer = (config: UIContainerConfig): HTMLDivElement => 
   }
   if (config.maxHeightInput) {
     uiContainer.appendChild(config.maxHeightInput);
-  }
-
-  if (config.debugToggleLabel && config.debugToggleInput) {
-    const debugRow = document.createElement('div');
-    debugRow.style.cssText = 'margin-top: 10px; display: flex; align-items: center; gap: 8px;';
-    debugRow.appendChild(config.debugToggleInput);
-    debugRow.appendChild(config.debugToggleLabel);
-    uiContainer.appendChild(debugRow);
   }
 
   return uiContainer;
