@@ -26,6 +26,7 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
+import { exampleInlineShader, exampleWithInlineShader } from './utils/console-image-renderer.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -332,11 +333,12 @@ function updateDebugCanvas() {
   const tempRenderTarget = new THREE.WebGLRenderTarget(256, 256);
   
   // Create a simple material that uses the water height texture
-  const debugMaterial = new THREE.MeshBasicMaterial({
-    map: gpuWaterSimulation.getWaterHeightTexture(),
-    transparent: false
-  });
-  
+  // const debugMaterial = new THREE.MeshBasicMaterial({
+  //   map: gpuWaterSimulation.getWaterHeightTexture(),
+  //   transparent: false
+  // });
+  const debugMaterial = new THREE.MeshNormalMaterial();
+
   const tempScene = new THREE.Scene();
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), debugMaterial);
   tempScene.add(mesh);
@@ -411,3 +413,5 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+exampleWithInlineShader();
