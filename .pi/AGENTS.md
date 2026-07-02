@@ -112,6 +112,9 @@ npm run build    # Build for production
 - Update documentation when adding features
 - Never commit credentials or API keys
 
+## Barrel File Convention
+**Never create export barrel files**: Do not create index.ts or barrel files that re-export multiple modules. Each module should export its contents directly, and imports should use explicit paths to individual files rather than importing from a barrel file.
+
 ## Pre-Completion Checklist
 Before marking any task as complete, please run the validate script if present:
 ```bash
