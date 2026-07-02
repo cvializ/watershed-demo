@@ -15,6 +15,8 @@ import { createDebugDisplacementMaterial } from '../nodes/material/createDebugDi
 import { createDebugTimeMaterial } from '../nodes/material/createDebugTimeMaterial.js';
 import { createDebugHeightRangeMaterial } from '../nodes/material/createDebugHeightRangeMaterial.js';
 
+const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+
 /**
  * Configuration options for rendering to console
  */
@@ -41,7 +43,6 @@ export async function renderToConsole(
     height = 256,
     format = 'image/png',
     quality = 0.9,
-    showSize = true
   } = options;
 
   try {
@@ -94,16 +95,11 @@ export async function renderToConsole(
         `display: inline-block`,
         `line-height: ${height}px`
       ].join('; ');
-
-      if (showSize) {
-        console.log(`%cImage ( rendered with Three.js )`, styles);
+      
+      if (isSafari) {
+        console.log(img);
       } else {
-        console.log(`%c`, styles);
-      }
-
-      // Log additional information
-      if (showSize) {
-        console.log(`%cDimensions: ${width}x${height}`, 'color: #666; font-size: 12px;');
+        console.log(`%cxxx`, styles);
       }
     };
 
@@ -321,5 +317,5 @@ export async function exampleDebugMaterials(): Promise<void> {
     { name: 'Debug Height Range', material: createDebugHeightRangeMaterial() }
   ];
   
-  await renderMultipleToConsole(materials, { width: 128, height: 128 });
+  await renderMultipleToConsole(materials, { width: 256, height: 256 });
 }

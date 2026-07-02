@@ -26,8 +26,7 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
-import { exampleDebugMaterials, renderToConsole } from './utils/debugUtils.js';
-import { createDebugWaterHeightMaterial } from './nodes/material/createDebugWaterHeightMaterial.js';
+import { renderToConsole } from './utils/debugUtils.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -347,5 +346,3 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-exampleDebugMaterials();
