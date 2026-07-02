@@ -33,11 +33,11 @@ export class GPUWaterSimulation {
     private currentHeightBuffer: number = 0;
     private currentVelocityBuffer: number = 0;
     
-    // Simulation parameters
-    public gravity: number = 9.81;
-    public viscosity: number = 0.01;
-    public evaporationRate: number = 0.001;
-    public precipitationRate: number = 0.0;
+    // Simulation parameters (reduced for slower simulation)
+    public gravity: number = 0.5;   // Reduced from 1.0 for much slower water
+    public viscosity: number = 0.1; // Increased for smoother flow
+    public evaporationRate: number = 0.0005; // Very low evaporation
+    public precipitationRate: number = 0.1; // Constant rainfall
     
     private materialHeight: THREE.ShaderMaterial | null = null;
     private materialVelocity: THREE.ShaderMaterial | null = null;
@@ -211,7 +211,8 @@ export class GPUWaterSimulation {
                     
                     // Compute new height
                     float dhdt = divHV + externalSources;
-                    float newHeight = h - dhdt * 0.166; // Time step
+                    // Using much smaller time step for stable, slow simulation
+                    float newHeight = h - dhdt * 0.002; // Very slow time step
                     
                     // Add viscous smoothing
                     newHeight += uViscosity * laplacian * 0.1;
@@ -292,8 +293,8 @@ export class GPUWaterSimulation {
                     // Using semi-implicit Euler: v_new = v_old + dt * (-g∇h + ν∇²v - (v·∇)v)
                     vec2 dvdT = -uGravity * heightGrad + uViscosity * laplacianVel - advection;
                     
-                    // Update velocity
-                    vec2 newVel = vel + dvdT * 0.166;
+                    // Update velocity with much slower time step
+                    vec2 newVel = vel + dvdT * 0.002; // Very slow simulation
                     
                     // Clamp velocity to prevent numerical instability
                     float maxSpeed = 2.0;
@@ -383,7 +384,7 @@ export class GPUWaterSimulation {
      * Update the water simulation using GPU render targets
      * Uses ping-pong rendering for stable integration
      */
-    public update(renderer: THREE.WebGLRenderer, dt: number = 0.166): void {
+    public update(renderer: THREE.WebGLRenderer, dt: number = 0.002): void {
         if (!this.materialHeight || !this.materialVelocity) return;
         
         // Update time
@@ -450,19 +451,28 @@ export class GPUWaterSimulation {
     /**
      * Copy texture data from render target to data texture
      */
-    private copyTexture(renderer: THREE.WebGLRenderer, sourceTexture: THREE.Texture, targetTexture: THREE.DataTexture): void {
-        const width = sourceTexture.image.width;
-        const height = sourceTexture.image.height;
+    private copyTexture(renderer: THREE.WebGLRenderer, _sourceTexture: THREE.Texture, targetTexture: THREE.DataTexture): void {
+        // For GPU render targets, we need to read from the render target directly
+        const renderTarget = this.heightRenderTarget;
+        
+        const width = renderTarget.width;
+        const height = renderTarget.height;
         
         const pixels = new Float32Array(width * height * 4);
         renderer.readRenderTargetPixels(
-            this.heightRenderTarget,
+            renderTarget,
             0, 0, width, height,
             pixels
         );
         
-        // Copy to target texture
-        targetTexture.image.data.set(pixels.slice(0, width * height));
+        // Copy to target texture data array
+        if (targetTexture.image && targetTexture.image.data) {
+            const targetData = targetTexture.image.data as Float32Array;
+            // For RedFormat, only copy the first component
+            for (let i = 0; i < width * height; i++) {
+                targetData[i] = pixels[i * 4]; // R channel
+            }
+        }
         targetTexture.needsUpdate = true;
     }
     
@@ -501,7 +511,7 @@ export class GPUWaterSimulation {
                 
                 if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
                     const idx = y * this.width + x;
-                    if (texture.image.data[idx] < 1.0) {
+                    if (texture.image.data && texture.image.data[idx] < 1.0) {
                         texture.image.data[idx] = Math.min(1.0, texture.image.data[idx] + amount);
                     }
                 }
@@ -523,8 +533,9 @@ export class GPUWaterSimulation {
         
         // Add water at the source position
         const centerIdx = Math.floor(v * this.height) * this.width + Math.floor(u * this.width);
-        if (centerIdx >= 0 && centerIdx < texture.image.data.length) {
-            texture.image.data[centerIdx] = Math.min(1.0, texture.image.data[centerIdx] + flowRate);
+        const data = texture.image.data as Float32Array;
+        if (centerIdx >= 0 && centerIdx < data.length) {
+            data[centerIdx] = Math.min(1.0, data[centerIdx] + flowRate);
             texture.needsUpdate = true;
         }
     }
@@ -538,16 +549,20 @@ export class GPUWaterSimulation {
             initialWaterData[i] = 0.1;
         }
         
-        this.waterHeightTexture.image.data.set(initialWaterData);
-        this.waterHeightTexture.needsUpdate = true;
+        if (this.waterHeightTexture.image.data) {
+            this.waterHeightTexture.image.data.set(initialWaterData);
+            this.waterHeightTexture.needsUpdate = true;
+        }
         
         const initialVelocityData = new Float32Array(this.width * this.height * 2);
         for (let i = 0; i < this.width * this.height * 2; i++) {
             initialVelocityData[i] = 0.0;
         }
         
-        this.velocityTexture.image.data.set(initialVelocityData);
-        this.velocityTexture.needsUpdate = true;
+        if (this.velocityTexture.image.data) {
+            this.velocityTexture.image.data.set(initialVelocityData);
+            this.velocityTexture.needsUpdate = true;
+        }
     }
     
     /**

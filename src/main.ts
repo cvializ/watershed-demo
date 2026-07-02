@@ -25,7 +25,6 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
-import { WaterSimulation } from './simulation/waterSimulation.js';
 import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
 
 // Setup scene
@@ -79,13 +78,16 @@ const waterLayer = new THREE.Mesh(geometry, waterResult.material);
 waterLayer.rotation.x = -Math.PI / 2;
 scene.add(waterLayer);
 
-// Store water simulation data for frame-by-frame updates
-const waterSimulation = new WaterSimulation(512, 512);
-waterSimulation.setupMaterial(heightMapTexture);
-
 // Advanced GPU water simulation with realistic physics
 const gpuWaterSimulation = new GPUWaterSimulation(512, 512);
 gpuWaterSimulation.setupTerrain(heightMapTexture);
+
+// Initialize water simulation with some initial water
+gpuWaterSimulation.reset();
+
+// Add a continuous water source in the center to make water visible
+const waterSourcePos = new THREE.Vector2(0, 0); // Center of terrain
+gpuWaterSimulation.addWaterSource(waterSourcePos, 0.1);
 
 const terrain = new THREE.Mesh(geometry, computeMaterial);
 terrain.rotation.x = -Math.PI / 2;
@@ -93,7 +95,11 @@ scene.add(terrain);
 
 // Store original material for toggling
 const originalMaterial = computeMaterial;
-
+const normalMaterial = new THREE.MeshStandardMaterial({
+  color: 0xaaaaaa,
+  roughness: 0.5,
+  metalness: 0.1
+});
 
 // Add wireframe overlay to emphasize triangular mesh structure
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);
@@ -238,6 +244,28 @@ updateVisibility(visualizationMode, {
   maxSlopeInput: slopeControls.maxInput,
 });
 
+// Add debugging: render the water simulation texture to screen for verification
+const debugWaterTexture = document.createElement('div');
+debugWaterTexture.style.position = 'absolute';
+debugWaterTexture.style.top = '10px';
+debugWaterTexture.style.left = '10px';
+debugWaterTexture.style.width = '256px';
+debugWaterTexture.style.height = '256px';
+debugWaterTexture.style.border = '2px solid cyan';
+debugWaterTexture.style.zIndex = '1000';
+document.body.appendChild(debugWaterTexture);
+
+// Create a canvas to render the simulation texture
+const debugCanvas = document.createElement('canvas');
+debugCanvas.width = 512;
+debugCanvas.height = 512;
+const debugCtx = debugCanvas.getContext('2d');
+let debugImgData: ImageData | null = null;
+if (debugCtx) {
+  debugImgData = debugCtx.createImageData(512, 512);
+  debugWaterTexture.appendChild(debugCanvas);
+}
+
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 scene.add(ambientLight);
@@ -277,29 +305,35 @@ function animate() {
     waterResult.material.uniforms.uTime.value = currentTime;
   }
   
-  // Update water simulation using render target approach (legacy)
-  if (waterSimulation) {
-    waterSimulation.update(renderer);
-    
-    // Update the water flow material's uniform with simulation output
-    if (waterResult.material && waterResult.waterTexture) {
-      const simWaterTexture = waterSimulation.getWaterTexture();
-      if (waterResult.material.uniforms?.uWaterMap) {
-        waterResult.material.uniforms.uWaterMap.value = simWaterTexture;
-      }
-    }
-  }
-  
   // Update advanced GPU water simulation (realistic physics)
   if (gpuWaterSimulation) {
     gpuWaterSimulation.update(renderer);
     
     // Update the water flow material's uniform with simulation output
-    if (waterResult.material && waterResult.waterTexture) {
+    if (waterResult.material) {
       const simWaterHeight = gpuWaterSimulation.getWaterHeightTexture();
       if (waterResult.material.uniforms?.uWaterMap) {
         waterResult.material.uniforms.uWaterMap.value = simWaterHeight;
       }
+    }
+  }
+  
+  // Update debug visualization
+  if (debugCtx && gpuWaterSimulation) {
+    const waterHeight = gpuWaterSimulation.getWaterHeightTexture();
+    if (waterHeight.image.data && debugImgData) {
+      const data = waterHeight.image.data as Float32Array;
+      let totalWater = 0.0;
+      for (let i = 0; i < 512 * 512; i++) {
+        const val = Math.min(1.0, data[i] * 2.0); // Scale for visibility
+        const idx = i * 4;
+        debugImgData.data[idx] = val * 255;     // R
+        debugImgData.data[idx + 1] = val * 255; // G  
+        debugImgData.data[idx + 2] = val * 255; // B
+        debugImgData.data[idx + 3] = 255;       // Alpha
+        totalWater += data[i];
+      }
+      debugCtx.putImageData(debugImgData, 0, 0);
     }
   }
   

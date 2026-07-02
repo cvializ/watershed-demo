@@ -123,6 +123,9 @@ void main() {
     if (hDown > terrainHeight) incomingWater += waterDown * 0.25;
     if (hUp > terrainHeight) incomingWater += waterUp * 0.25;
     
+    // Constant water source to simulate rainfall/springs
+    float constantSource = 0.15; // Constant water input to maintain water level
+    
     // Calculate terrain properties
     float avgSurrounding = (hLeft + hRight + hDown + hUp) * 0.25;
     float isBasin = max(0.0, avgSurrounding - terrainHeight);
@@ -159,17 +162,27 @@ void main() {
     }
     
     // Combine all effects - conservation of water: new = old + incoming - outgoing
-    float newWater = prevWaterLevel + accumulation - drain - plateauDrain;
+    float newWater = prevWaterLevel + accumulation - drain - plateauDrain + constantSource;
     
     // Clamp water level
     newWater = clamp(newWater, 0.0, 2.0);
     
+    // Debug: Boost water levels for visibility
+    newWater = clamp(newWater * 1.5, 0.0, 2.0);
+    
+    // Debug visualization: use a brighter color to make water more visible
     // Water color based on level (deeper = darker blue, shallower = lighter)
-    vec3 deepColor = vec3(0.0, 0.25, 0.6);
-    vec3 shallowColor = vec3(0.0, 0.0, 1.0);
+    vec3 deepColor = vec3(0.0, 0.25, 0.8);
+    vec3 shallowColor = vec3(0.0, 0.75, 1.0);
     vec3 waterColor = mix(deepColor, shallowColor, clamp(newWater * 0.5, 0.0, 1.0));
     
-    float opacity = clamp(newWater * 0.8, 0.05, 0.7);
+    // Increased opacity for better visibility
+    float baseOpacity = clamp(newWater * 1.2 + 0.1, 0.08, 0.9);
     
+    // Add a subtle shimmer effect based on time
+    float shimmer = sin(uTime * 2.0 + vUv.x * 10.0) * 0.1;
+    float opacity = clamp(baseOpacity + shimmer, 0.05, 0.95);
+    
+    // Output with debug visualization
     gl_FragColor = vec4(waterColor, opacity);
 }

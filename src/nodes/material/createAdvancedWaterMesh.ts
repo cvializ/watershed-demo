@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import { GPUWaterSimulation } from '../simulation/GPUWaterSimulation.js';
+import { GPUWaterSimulation } from '../../simulation/GPUWaterSimulation.js';
 
 /**
  * Create an advanced water mesh with GPU-based physics simulation
  * 
- * @param geometry - Terrain geometry to base the water on
+ * @param geometry - Terrain geometry to base the water on (unused, placeholder)
  * @param heightMapTexture - Texture containing terrain elevation data
  * @param gpuSimulation - GPUWaterSimulation instance for physics calculations
  * @returns Water mesh with advanced visualization
  */
 export function createAdvancedWaterMesh(
-    geometry: THREE.BufferGeometry,
+    _geometry: THREE.BufferGeometry,
     heightMapTexture: THREE.DataTexture,
     gpuSimulation?: GPUWaterSimulation
 ): {
@@ -157,12 +157,12 @@ export function createAdvancedWaterMesh(
 /**
  * Create a simplified water visualization using existing material structure
  * 
- * @param geometry - Terrain geometry
+ * @param geometry - Terrain geometry (unused, placeholder)
  * @param heightMapTexture - Terrain height map texture
  * @returns Water mesh configuration
  */
 export function createWaterMesh(
-    geometry: THREE.BufferGeometry,
+    _geometry: THREE.BufferGeometry,
     heightMapTexture: THREE.DataTexture
 ): {
     mesh: THREE.Mesh;
