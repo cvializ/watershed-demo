@@ -7,6 +7,16 @@
  */
 import * as THREE from 'three';
 
+// Import debug materials from their new location
+import {
+  createDebugPositionMaterial,
+  createDebugFaceNormalMaterial,
+  createDebugDepthMaterial,
+  createDebugDisplacementMaterial,
+  createDebugTimeMaterial,
+  createDebugHeightRangeMaterial
+} from '../nodes/materials';
+
 /**
  * Configuration options for rendering to console
  */
@@ -173,23 +183,6 @@ export async function renderMultipleToConsole(
 }
 
 /**
- * Helper function to create a shader material from GLSL strings
- * @param vertexShader - Vertex shader GLSL code
- * @param fragmentShader - Fragment shader GLSL code
- * @returns A new THREE.ShaderMaterial
- */
-export function createShaderMaterial(
-  vertexShader: string,
-  fragmentShader: string
-): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    uniforms: {},
-    vertexShader,
-    fragmentShader
-  });
-}
-
-/**
  * Example usage with an inline static shader
  * 
  * This function demonstrates how to use the console image renderer
@@ -305,4 +298,30 @@ export async function exampleInlineShader(): Promise<void> {
   });
   
   console.log('%c==============================', 'color: #00ff88; font-weight: bold;');
+}
+
+/**
+ * Example: Render all debug materials to console
+ * 
+ * Usage:
+ * ```typescript
+ * import { exampleDebugMaterials } from './utils/console-image-renderer';
+ * 
+ * // Just call it to see the results in console
+ * exampleDebugMaterials();
+ * ```
+ */
+export async function exampleDebugMaterials(): Promise<void> {
+  console.log('%c--- Debug Materials Preview ---', 'color: #00ff88; font-weight: bold; font-size: 14px;');
+  
+  const materials = [
+    { name: 'Debug Position', material: createDebugPositionMaterial() },
+    { name: 'Debug Face Normal', material: createDebugFaceNormalMaterial() },
+    { name: 'Debug Depth', material: createDebugDepthMaterial() },
+    { name: 'Debug Displacement', material: createDebugDisplacementMaterial() },
+    { name: 'Debug Time', material: createDebugTimeMaterial() },
+    { name: 'Debug Height Range', material: createDebugHeightRangeMaterial() }
+  ];
+  
+  await renderMultipleToConsole(materials, { width: 128, height: 128 });
 }

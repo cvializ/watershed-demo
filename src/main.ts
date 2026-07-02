@@ -26,7 +26,7 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
-import { exampleInlineShader, exampleWithInlineShader } from './utils/console-image-renderer.js';
+import { exampleDebugMaterials, exampleInlineShader, exampleWithInlineShader } from './utils/console-image-renderer.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -414,4 +414,4 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-exampleWithInlineShader();
+exampleDebugMaterials();
