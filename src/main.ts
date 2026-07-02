@@ -26,7 +26,7 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { GPUWaterSimulation } from './simulation/GPUWaterSimulation.js';
-import { exampleDebugMaterials } from './utils/console-image-renderer.js';
+import { exampleDebugMaterials } from './utils/debugUtils.js';
 
 // Setup scene
 const scene = new THREE.Scene();

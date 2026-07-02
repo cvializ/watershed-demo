@@ -2,5 +2,9 @@
   "$schema": "https://knip.dev/schema.json",
   "entry": [
     "tests/test.ts"
+  ],
+  "ignore": [
+    "**/*debug*",
+    "**/*Debug*"
   ]
 }

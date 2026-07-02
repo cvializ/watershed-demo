@@ -116,13 +116,13 @@ npm run build    # Build for production
 **Never create export barrel files**: Do not create index.ts or barrel files that re-export multiple modules. Each module should export its contents directly, and imports should use explicit paths to individual files rather than importing from a barrel file.
 
 ## Pre-Completion Checklist
-Before marking any task as complete, please run the validate script if present:
+**Mandatory**: Before marking any task that changes code as complete, you MUST run the validate script:
 ```bash
 npm run validate
 # or
 yarn validate
 ```
-This ensures all validations pass before finalizing work.
+This is required for all code-changing tasks. The task is not complete until validation passes.
 
 ## Preferences
 - **Prefer functional programming**: Favor pure functions, immutability, and composition over class-based mutable state
