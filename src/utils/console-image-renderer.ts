@@ -8,14 +8,12 @@
 import * as THREE from 'three';
 
 // Import debug materials from their new location
-import {
-  createDebugPositionMaterial,
-  createDebugFaceNormalMaterial,
-  createDebugDepthMaterial,
-  createDebugDisplacementMaterial,
-  createDebugTimeMaterial,
-  createDebugHeightRangeMaterial
-} from '../nodes/materials';
+import { createDebugPositionMaterial } from '../nodes/material/createDebugPositionMaterial.js';
+import { createDebugFaceNormalMaterial } from '../nodes/material/createDebugFaceNormalMaterial.js';
+import { createDebugDepthMaterial } from '../nodes/material/createDebugDepthMaterial.js';
+import { createDebugDisplacementMaterial } from '../nodes/material/createDebugDisplacementMaterial.js';
+import { createDebugTimeMaterial } from '../nodes/material/createDebugTimeMaterial.js';
+import { createDebugHeightRangeMaterial } from '../nodes/material/createDebugHeightRangeMaterial.js';
 
 /**
  * Configuration options for rendering to console
