@@ -38,7 +38,7 @@ export const createWaterFlowSimulation = (
     // Add uniforms for terrain heightmap and simulation parameters
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: null };
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 1.0 };
-    waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.98 };
+    waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.995 }; // Reduced evaporation to preserve water longer
     waterHeightVariable.material.uniforms.waterSourceStrength = { value: 0.01 };
 
     const error = gpuCompute.init();
@@ -163,7 +163,7 @@ const getWaterFlowFragmentShader = (): string => {
  */
 const createInitialWaterTexture = (size: number): THREE.DataTexture => {
     const data = new Float32Array(size * size * 4); // RGBA
-    const waterHeight = 0.05; // Uniform layer of water across entire texture
+    const waterHeight = 0.1; // Uniform layer of water across entire texture (increased from 0.05)
 
     for (let i = 0; i < size * size; i++) {
         data[i * 4 + 0] = waterHeight; // R: water height (uniform across all texels)
@@ -174,5 +174,10 @@ const createInitialWaterTexture = (size: number): THREE.DataTexture => {
 
     const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
     texture.needsUpdate = true;
+    console.log('Initial water texture created:', {
+        size,
+        firstValue: data[0],
+        lastValue: data[data.length - 4]
+    });
     return texture;
 };

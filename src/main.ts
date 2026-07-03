@@ -26,7 +26,6 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
-import { createSceneTreeGUI } from './dom/createSceneTreeGUI.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -63,8 +62,18 @@ const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0,
 
 // Create water flow simulation
 const waterSimulation = createWaterFlowSimulation(128, renderer);
+console.log('Water simulation created');
 
-// Create water visualization material
+// Set the terrain heightmap uniform for water simulation
+if (waterSimulation.gpuCompute) {
+  const waterVar = waterSimulation.waterHeightVariable;
+  if (waterVar.material.uniforms?.terrainHeightmap) {
+    waterVar.material.uniforms.terrainHeightmap.value = heightMapTexture;
+    console.log('Terrain heightmap set for water simulation');
+  }
+}
+
+// Create water visualization material (pass heightMapTexture for terrain reference)
 const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create shader material for slope visualization
@@ -252,9 +261,6 @@ scene.add(directionalLight);
 // Diagnostic overlay
 const overlay = createOverlay();
 
-// Scene graph inspector GUI - created but hidden by default
-const sceneTreeGUI = createSceneTreeGUI(scene);
-
 let frameCount = 0;
 let lastTime = performance.now();
 
@@ -277,9 +283,7 @@ function animate() {
     const fps = Math.round(frameCount / ((now - lastTime) / 1000));
     overlay.update(fps, scene.children.length);
   }
-  
-  sceneTreeGUI.update();
-  
+
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
     waterSimulation.gpuCompute.compute();
@@ -290,6 +294,9 @@ function animate() {
       const mat = terrain.material as any;
       if (mat.uniforms?.uWaterHeightmap) {
         mat.uniforms.uWaterHeightmap.value = waterTexture;
+        if (frameCount % 60 === 0) {
+          console.log('Water texture updated, frame:', frameCount);
+        }
       }
     }
   }
