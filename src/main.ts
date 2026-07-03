@@ -246,6 +246,9 @@ updateVisibility(visualizationMode, {
   maxSlopeInput: slopeControls.maxInput,
 });
 
+// Set initial visualization mode material
+setVisualizationMode(visualizationMode);
+
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 ambientLight.name = 'ambient-light';

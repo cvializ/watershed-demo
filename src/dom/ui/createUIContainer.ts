@@ -54,15 +54,16 @@ export const updateVisibility = (
   visualizationMode: number,
   config: UIContainerConfig
 ): void => {
-  const isSlopeMode = visualizationMode === 2;
+  // Slope controls show in Slope mode (mode 1)
+  const isSlopeMode = visualizationMode === 1;
   
   if (config.minSlopeLabel) config.minSlopeLabel.style.display = isSlopeMode ? 'block' : 'none';
   if (config.minSlopeInput) config.minSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
   if (config.maxSlopeLabel) config.maxSlopeLabel.style.display = isSlopeMode ? 'block' : 'none';
   if (config.maxSlopeInput) config.maxSlopeInput.style.display = isSlopeMode ? 'block' : 'none';
 
-  // Only show height controls in height mode
-  const isHeightMode = visualizationMode === 1;
+  // Height controls show in Height mode (mode 0)
+  const isHeightMode = visualizationMode === 0;
   if (config.minHeightLabel) config.minHeightLabel.style.display = isHeightMode ? 'block' : 'none';
   if (config.minHeightInput) config.minHeightInput.style.display = isHeightMode ? 'block' : 'none';
   if (config.maxHeightLabel) config.maxHeightLabel.style.display = isHeightMode ? 'block' : 'none';
