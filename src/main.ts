@@ -9,6 +9,8 @@ import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeAr
 import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
+import { createWaterFlowSimulation } from './nodes/water/createWaterFlowSimulation.js';
+import { createWaterVisualizationMaterial } from './nodes/material/createWaterVisualizationMaterial.js';
 
 // Import DOM manipulation utilities
 import { createTabBar, updateTabActiveState } from './dom/ui/createTabBar.js';
@@ -58,6 +60,12 @@ const geometry = createTerrainGeometry();
 // Create height map for GPU-based height visualization and water simulation
 const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
+
+// Create water flow simulation
+const waterSimulation = createWaterFlowSimulation(128, renderer);
+
+// Create water visualization material
+const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create shader material for slope visualization
 const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);
@@ -184,12 +192,22 @@ function setVisualizationMode(mode: number) {
     hideLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = true;
-  } else {
-    // Water flow visualization (mode 4)
-    terrain.material = originalMaterial;
+  } else if (visualizationMode === 4) {
+    // Water flow visualization
+    terrain.material = waterVisualizationMaterial;
     hideLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
+
+    // Update terrain shader with water heightmap uniform if material supports it
+    if (terrain.material) {
+      const mat = terrain.material as any;
+      if (!mat.uniforms?.uWaterHeightmap) {
+        // Add the uniform for water heightmap if not already present
+        mat.uniforms = mat.uniforms || {};
+        mat.uniforms.uWaterHeightmap = { value: null };
+      }
+    }
   }
 
   // Update visibility based on current mode
@@ -261,6 +279,21 @@ function animate() {
   }
   
   sceneTreeGUI.update();
+  
+  // Run water simulation in Water Flow mode
+  if (visualizationMode === 4) {
+    waterSimulation.gpuCompute.compute();
+    
+    // Update terrain shader with current water texture
+    const waterTexture = waterSimulation.getWaterTexture();
+    if (terrain.material) {
+      const mat = terrain.material as any;
+      if (mat.uniforms?.uWaterHeightmap) {
+        mat.uniforms.uWaterHeightmap.value = waterTexture;
+      }
+    }
+  }
+  
   renderer.render(scene, camera);
 }
 animate();
