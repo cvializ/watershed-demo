@@ -24,7 +24,7 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
-import GUI from 'lil-gui';
+import { createSceneTreeGUI } from './dom/createSceneTreeGUI.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -229,31 +229,28 @@ scene.add(directionalLight);
 // Diagnostic overlay
 const overlay = createOverlay();
 
-// Dev overlay using lilgui
-const devGui = new GUI({ title: 'Dev Overlay' });
-devGui.add({ hello: 'Hello World' }, 'hello').name('Dev Message');
+// Scene graph inspector GUI - created but hidden by default
+const sceneTreeGUI = createSceneTreeGUI(scene);
 
 let frameCount = 0;
 let lastTime = performance.now();
-let fps = 0;
-
-function updateOverlay() {
-  frameCount++;
-  const now = performance.now();
-  if (now - lastTime >= 1000) {
-    fps = frameCount;
-    frameCount = 0;
-    lastTime = now;
-  }
-
-  overlay.update(fps, scene.children.length);
-}
 
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
   
-  updateOverlay();
+  // Calculate FPS
+  frameCount++;
+  const now = performance.now();
+  let fps = 0;
+  if (now - lastTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastTime = now;
+  }
+  
+  overlay.update(fps, scene.children.length);
+  sceneTreeGUI.update();
   renderer.render(scene, camera);
 }
 animate();
