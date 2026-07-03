@@ -86,10 +86,6 @@ gpuWaterSimulation.setupTerrain(heightMapTexture);
 // Initialize water simulation with some initial water
 gpuWaterSimulation.reset();
 
-// Add a continuous water source in the center to make water visible
-const waterSourcePos = new THREE.Vector2(0, 0); // Center of terrain
-gpuWaterSimulation.addWaterSource(waterSourcePos, 0.1);
-
 const terrain = new THREE.Mesh(geometry, computeMaterial);
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);

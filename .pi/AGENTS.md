@@ -1,5 +1,42 @@
 # Project Conventions
 
+## Critical: No Class Generation Policy
+**IMPORTANT**: You must NOT generate class syntax (`class { ... }`) under any circumstances unless explicitly requested by the user. This project follows a strict functional programming paradigm.
+
+**What to do instead**:
+- Use arrow functions and plain objects instead of class instances
+- Use factory functions to create objects with the desired shape
+- Use closures for encapsulation instead of private class fields
+- Prefer immutable data structures
+
+**Example - DON'T do this**:
+```ts
+class Counter {
+  private count = 0;
+  
+  increment() {
+    this.count++;
+  }
+  
+  getCount() {
+    return this.count;
+  }
+}
+```
+
+**Example - DO this instead**:
+```ts
+type Counter = { count: number };
+
+const createCounter = (): Counter => ({ count: 0 });
+
+const increment = (counter: Counter): Counter => ({ ...counter, count: counter.count + 1 });
+
+const getCount = (counter: Counter): number => counter.count;
+```
+
+---
+
 ## Development Approach
 - **Plan in incrementally verifiable chunks**: Break down all plans into small, testable increments that can be implemented and verified sequentially
 - Each chunk should produce observable progress - a passing test, working feature, or verifiable output
@@ -42,15 +79,19 @@ export default defineConfig({
 })
 ```
 
-### Functional Programming First
-Prefer a functional programming approach over class-based mutable state for the following reasons:
+### Strict Functional Programming Policy
+**DO NOT GENERATE CLASSES unless explicitly requested.** This project follows a strict functional programming approach and you must adhere to it:
+
+- **Never use class syntax** - do not generate `class { ... }` blocks
+- **Use pure functions and immutability** - always prefer functions that return new values over methods that mutate state
+- **Only exceptions**: When the user explicitly asks for a class, or when integrating with external APIs that strictly require class-based types
+
+**Reasons for this policy**:
 - **Predictability**: Pure functions always produce the same output for the same input, eliminating unpredictable state transitions
 - **Testability**: Pure functions are easier to test in isolation without mocking complex object graphs or managing state setup
 - **Concurrency safety**: Immutability eliminates race conditions and thread-safety issues
-- **Composability**: Functions that return new values instead of mutating state compose more naturally
+- **Composability**: Functions that return new values compose more naturally
 - **Debugging simplicity**: Stack traces and call chains are clearer when objects aren't unexpectedly mutated
-
-**When to use classes**: Only use class-based design when there's a clear need for polymorphism, complex inheritance hierarchies, or when integrating with class-based APIs. Even then, prefer immutability for data within the class.
 
 ### Function Syntax Preferences
 **Prefer arrow functions over function declarations and function expressions**: Arrow functions provide several advantages for functional programming:
@@ -124,12 +165,12 @@ yarn validate
 ```
 This is required for all code-changing tasks. The task is not complete until validation passes.
 
-## Preferences
-- **Prefer functional programming**: Favor pure functions, immutability, and composition over class-based mutable state
-- **Prefer arrow functions**: Use arrow functions (`=>`) instead of function declarations or function expressions for concise syntax and lexical `this` binding
-- Use functional programming patterns (e.g., map/filter/reduce, monads) where appropriate - avoid side effects and unnecessary mutation
-- Avoid mutable state unless absolutely necessary (e.g., performance-critical inner loops)
-- When mutation is needed, encapsulate it clearly and document why immutability wouldn't work
+## Strict Coding Preferences
+- **NO CLASSES**: Do not generate class syntax under any circumstances unless explicitly requested by the user
+- **Functional programming only**: Favor pure functions, immutability, and composition over class-based mutable state
+- **Arrow functions only**: Use arrow functions (`=>`) instead of function declarations or function expressions
+- Use functional programming patterns (e.g., map/filter/reduce) - avoid side effects and unnecessary mutation
+- Avoid mutable state entirely unless explicitly justified
 - Prefer composition over inheritance
 - Write clear commit messages with conventional commits
 - Prefer small, focused change sets that implement one verifiable chunk
