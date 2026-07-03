@@ -1,11 +1,96 @@
 import * as THREE from 'three';
 import GUI from 'lil-gui';
+import { renderToConsole } from '../utils/debugUtils';
+
+/**
+ * Configuration for material preview rendering
+ */
+export interface MaterialPreviewOptions {
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Render a material to a data URL for display in lil-gui or elsewhere
+ */
+export function renderMaterialToDataURL(
+  material: THREE.Material,
+  options: MaterialPreviewOptions = {}
+): string {
+  const { width = 128, height = 128 } = options;
+
+  try {
+    // Create a scene and renderer for off-screen rendering
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const renderer = new THREE.WebGLRenderer({ 
+      preserveDrawingBuffer: true,
+      alpha: true
+    });
+
+    // Configure renderer
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+    // Create a quad that covers the screen
+    const quadGeometry = new THREE.PlaneGeometry(2, 2);
+    const mesh = new THREE.Mesh(quadGeometry, material);
+
+    scene.add(mesh);
+
+    // Render the scene
+    renderer.render(scene, camera);
+
+    // Get the data URL from the renderer
+    const dataURL = renderer.domElement.toDataURL('image/png', 0.9);
+    
+    // Clean up
+    renderer.dispose();
+    scene.remove(mesh);
+
+    return dataURL;
+  } catch (e) {
+    console.warn('Failed to render material:', e);
+    return '';
+  }
+}
+
+/**
+ * Check if an object is a Three.js Material
+ */
+function isMaterial(obj: any): obj is THREE.Material {
+  return obj && obj.isMaterial;
+}
+
+/**
+ * Add material preview image to GUI folder
+ */
+function addMaterialPreview(
+  folder: any,
+  material: THREE.Material,
+  options: MaterialPreviewOptions = {}
+): void {
+    // Add to GUI using nativeElement (lil-gui API)
+    folder.add({
+      'Do Stuff': () => { 
+        renderToConsole(material, options);
+      }
+    }, 'Do Stuff');
+}
+
+/**
+ * Configuration for the Scene Graph GUI
+ */
+export interface SceneTreeGUIOptions {
+  /** Material preview rendering options */
+  materialPreview?: MaterialPreviewOptions;
+}
 
 /**
  * Create a lil-gui overlay that displays scene graph information
  * and allows property editing for Three.js objects
  */
-export function createSceneTreeGUI(scene: THREE.Scene): {
+export function createSceneTreeGUI(scene: THREE.Scene, options: SceneTreeGUIOptions = {}): {
   update: () => void;
   destroy: () => void;
 } {
@@ -71,7 +156,7 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
   /**
    * Add properties to the appropriate folder based on node hierarchy
    */
-  const addNodeProperties = (node: THREE.Object3D, guiInstance: any): void => {
+  const addNodeProperties = (node: THREE.Object3D, guiInstance: any, materialOptions?: MaterialPreviewOptions): void => {
     const folder = getNodeFolder(node, guiInstance);
 
     // Mark that we've visited this node's properties
@@ -100,6 +185,13 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
           // Skip Three.js specific objects
           if (prop === 'geometry') return;
           
+          // Add material preview if this is a material
+          if (isMaterial(value)) {
+            const matFolder = folder.addFolder(`${prop} (${value.type})`);
+            addMaterialPreview(matFolder, value, materialOptions);
+            return;
+          }
+          
           // Handle different types
           if (typeof value === 'number') {
             folder.add({ [prop]: value }, prop, -1000, 1000);
@@ -127,13 +219,13 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
             const subFolder = folder.addFolder(`${prop} (object)`);
             Object.keys(value).forEach(subProp => {
               const subValue = (value as any)[subProp];
-              if (typeof subValue === 'number') {
-                subFolder.add({ [subProp]: subValue }, subProp);
-              } else if (typeof subValue === 'string') {
-                subFolder.add({ [subProp]: subValue }, subProp);
-              } else if (typeof subValue === 'boolean') {
-                subFolder.add({ [subProp]: subValue }, subProp);
-              }
+                if (typeof subValue === 'number') {
+                  subFolder.add({ [subProp]: subValue }, subProp);
+                } else if (typeof subValue === 'string') {
+                  subFolder.add({ [subProp]: subValue }, subProp);
+                } else if (typeof subValue === 'boolean') {
+                  subFolder.add({ [subProp]: subValue }, subProp);
+                }
             });
           }
         } catch (e) {
@@ -146,16 +238,16 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
   /**
    * Recursively process children and create their folders
    */
-  const processChildren = (parent: THREE.Object3D, parentFolder: any): void => {
+  const processChildren = (parent: THREE.Object3D, parentFolder: any, materialOptions?: MaterialPreviewOptions): void => {
     parent.children.forEach(child => {
       // Add properties for this child node
-      addNodeProperties(child, parentFolder);
+      addNodeProperties(child, parentFolder, materialOptions);
       
       // Recursively process children if they exist
       if (child.children.length > 0) {
         const childFolder = nodeFolders.get(child);
         if (childFolder) {
-          processChildren(child, childFolder);
+          processChildren(child, childFolder, materialOptions);
         }
       }
     });
@@ -164,7 +256,7 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
   /**
    * Build the scene tree with proper folder hierarchy
    */
-  const buildSceneTree = () => {
+  const buildSceneTree = (materialOptions?: MaterialPreviewOptions): void => {
     // Remove all existing folders by destroying and recreating
     gui.destroy();
     
@@ -181,10 +273,10 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
     scene.children.forEach(child => {
       roots.push(child);
       // Add properties for this root node
-      addNodeProperties(child, newGui);
+      addNodeProperties(child, newGui, materialOptions);
       
       // Recursively process children
-      processChildren(child, nodeFolders.get(child) || newGui);
+      processChildren(child, nodeFolders.get(child) || newGui, materialOptions);
     });
   };
 
@@ -206,7 +298,7 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
   };
 
   // Build initial scene tree
-  buildSceneTree();
+  buildSceneTree(options.materialPreview);
 
   return { update, destroy };
 }
