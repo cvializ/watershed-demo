@@ -247,14 +247,19 @@ function animate() {
   // Calculate FPS
   frameCount++;
   const now = performance.now();
-  let fps = 0;
+  
+  // Update FPS display every second
   if (now - lastTime >= 1000) {
-    fps = frameCount;
+    const fps = frameCount;
+    overlay.update(fps, scene.children.length);
     frameCount = 0;
     lastTime = now;
+  } else {
+    // Calculate FPS based on current measurement window
+    const fps = Math.round(frameCount / ((now - lastTime) / 1000));
+    overlay.update(fps, scene.children.length);
   }
   
-  overlay.update(fps, scene.children.length);
   sceneTreeGUI.update();
   renderer.render(scene, camera);
 }
