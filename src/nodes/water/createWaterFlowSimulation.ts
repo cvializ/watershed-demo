@@ -37,9 +37,8 @@ export const createWaterFlowSimulation = (
 
     // Add uniforms for terrain heightmap and simulation parameters
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: null };
-    waterHeightVariable.material.uniforms.simulationSpeed = { value: 1.0 };
-    waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.995 }; // Reduced evaporation to preserve water longer
-    waterHeightVariable.material.uniforms.waterSourceStrength = { value: 0.01 };
+    waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.1 }; // Slower simulation for visible flow
+    waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.999 }; // Minimal water loss per frame
 
     const error = gpuCompute.init();
     if (error !== null) {
@@ -63,7 +62,6 @@ const getWaterFlowFragmentShader = (): string => {
         uniform sampler2D terrainHeightmap;
         uniform float simulationSpeed;
         uniform float infiltrationRate;
-        uniform float waterSourceStrength;
 
         void main() {
             vec2 cellSize = 1.0 / resolution.xy;
@@ -146,13 +144,6 @@ const getWaterFlowFragmentShader = (): string => {
             // Apply infiltration/evaporation (conservation with loss)
             newWaterHeight *= infiltrationRate;
 
-            // Add water source in center (for testing)
-            vec2 centerOffset = uv - vec2(0.5);
-            float distanceToCenter = length(centerOffset);
-            if (distanceToCenter < 0.1) {
-                newWaterHeight += waterSourceStrength;
-            }
-
             gl_FragColor = vec4(newWaterHeight, 0.0, 0.0, 1.0);
         }
     `;
@@ -163,7 +154,7 @@ const getWaterFlowFragmentShader = (): string => {
  */
 const createInitialWaterTexture = (size: number): THREE.DataTexture => {
     const data = new Float32Array(size * size * 4); // RGBA
-    const waterHeight = 0.1; // Uniform layer of water across entire texture (increased from 0.05)
+    const waterHeight = 0.5; // Uniform layer of water across entire texture (increased from 0.05)
 
     for (let i = 0; i < size * size; i++) {
         data[i * 4 + 0] = waterHeight; // R: water height (uniform across all texels)
