@@ -19,7 +19,7 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
 
   // Property types to exclude from display
   const excludedProperties = new Set([
-    'uuid', 'id', 'parent', 'children', 'geometry', 'material',
+    'uuid', 'id', 'parent', 'children', 'geometry',
     '_modelViewMatrix', '_normalMatrix', 'matrix', 'matrixWorld'
   ]);
 
@@ -59,6 +59,7 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
         // Create a new folder for this node
         const folderName = `${nodeInPath.type} - ${nodeInPath.name || 'unnamed'}`;
         const newFolder = currentFolder.addFolder(folderName);
+        newFolder.close(); // Start with folders collapsed
         nodeFolders.set(nodeInPath, newFolder);
         currentFolder = newFolder;
       }
@@ -97,7 +98,7 @@ export function createSceneTreeGUI(scene: THREE.Scene): {
           }
           
           // Skip Three.js specific objects
-          if (prop === 'geometry' || prop === 'material') return;
+          if (prop === 'geometry') return;
           
           // Handle different types
           if (typeof value === 'number') {

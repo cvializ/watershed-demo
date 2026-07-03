@@ -66,10 +66,12 @@ const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);
 const arrowGeometry = createDownslopeArrowGeometry(geometry, 0.3);
 const arrowMaterial = createDownslopeArrowMaterial();
 const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
+arrows.name = 'downslope-arrows';
 arrows.rotation.x = -Math.PI / 2;
 scene.add(arrows);
 
 const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial() as THREE.Material);
+terrain.name = 'terrain';
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);
 
@@ -86,6 +88,7 @@ const wireframeMaterial = new THREE.LineBasicMaterial({
   transparent: true,
 });
 const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+wireframe.name = 'terrain-wireframe';
 wireframe.rotation.x = -Math.PI / 2;
 scene.add(wireframe);
 
@@ -218,9 +221,11 @@ updateVisibility(visualizationMode, {
 
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+ambientLight.name = 'ambient-light';
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+directionalLight.name = 'directional-light';
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
