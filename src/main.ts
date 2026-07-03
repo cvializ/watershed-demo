@@ -24,6 +24,7 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
+import GUI from 'lil-gui';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -227,6 +228,10 @@ scene.add(directionalLight);
 
 // Diagnostic overlay
 const overlay = createOverlay();
+
+// Dev overlay using lilgui
+const devGui = new GUI({ title: 'Dev Overlay' });
+devGui.add({ hello: 'Hello World' }, 'hello').name('Dev Message');
 
 let frameCount = 0;
 let lastTime = performance.now();
