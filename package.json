@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "lint": "oxlint .",
-    "validate": "npm run lint && npm run knip && npm run typecheck && npm run test && npm run build"
+    "validate": "CI=1 npm run lint && npm run knip && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "three": "^0.185.0"

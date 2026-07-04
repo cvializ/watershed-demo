@@ -157,13 +157,15 @@ npm run build    # Build for production
 **Never create export barrel files**: Do not create index.ts or barrel files that re-export multiple modules. Each module should export its contents directly, and imports should use explicit paths to individual files rather than importing from a barrel file.
 
 ## Pre-Completion Checklist
-**Mandatory**: Before marking any task that changes code as complete, you MUST run the validate script:
+**Mandatory**: Before marking any task that changes code as complete, you MUST run the validate script using a subagent:
 ```bash
 npm run validate
 # or
 yarn validate
 ```
 This is required for all code-changing tasks. The task is not complete until validation passes.
+
+**Use subagents for validation**: Delegate validation tasks to a dedicated subagent to ensure isolation and proper execution context. Use the `pi-subagents` skill with a fresh-context fork for validation runs.
 
 ## Strict Coding Preferences
 - **NO CLASSES**: Do not generate class syntax under any circumstances unless explicitly requested by the user

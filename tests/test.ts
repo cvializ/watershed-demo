@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-const vertexShaderModules = import.meta.glob('../src/shaders/*.vert', { as: 'raw' });
-const fragmentShaderModules = import.meta.glob('../src/shaders/*.frag', { as: 'raw' });
+const vertexShaderModules = import.meta.glob('../src/shaders/*.vert', { query: '?raw', import: 'default' });
+const fragmentShaderModules = import.meta.glob('../src/shaders/*.frag', { query: '?raw', import: 'default' });
 
 const getBasename = (path: string): string => {
     const pathWithoutExtensionMatches = /(?<basename>.+)\..+$/.exec(path);

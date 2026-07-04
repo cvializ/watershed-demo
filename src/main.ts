@@ -42,6 +42,8 @@ const camera = new THREE.OrthographicCamera(
   1000
 );
 camera.position.set(15, 12, 15);
+camera.zoom = 2.5;
+camera.updateProjectionMatrix();
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -258,8 +260,6 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 directionalLight.name = 'directional-light';
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
-
-
 
 // Diagnostic overlay
 const overlay = createOverlay();
