@@ -368,5 +368,4 @@ window.addEventListener('click', (event) => {
   }
 });
 
-
-// waterSimulation.addWater(0, 0, 10, 100);
+waterSimulation.addWater(0, 0, 10, 100);
