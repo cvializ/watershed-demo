@@ -348,14 +348,13 @@ window.addEventListener('click', (event) => {
 
     // Convert world coordinates to terrain-local coordinates for water simulation
     // Terrain is rotated -π/2 around X-axis:
-    // - World X corresponds to terrain's width direction
-    // - World Z corresponds to terrain's height direction (inverted from original plane Y)
-    // The displacement texture maps: column→X, row→Z
+    // - World X corresponds to terrain's width direction (original plane X)
+    // - World Z corresponds to terrain's height direction (original plane Y, inverted)
+    // The displacement texture maps: column→X (-6 to +6), row→Z (-6 to +6)
     
     // Map world coordinates to [0, terrainSize] for the water simulation
-    // X maps directly, Z is inverted (original Y was flipped when rotated)
     const x = point.x + terrainSize / 2;
-    const y = -point.z + terrainSize / 2;
+    const y = point.z + terrainSize / 2;  // Removed the negative sign
 
     // Debug: log converted coordinates
     console.log('Converted terrain coords:', { x, y });
@@ -365,8 +364,8 @@ window.addEventListener('click', (event) => {
     const uvY = y / terrainSize;
     const width = 128; // simulation grid size
     const texelX = Math.floor(uvX * width);
-    const texelY = Math.floor((1.0 - uvY) * width);
-    console.log('Texture texel coords:', { uvX, uvY, texelX, texelY });
+    const centerY = Math.floor((1.0 - uvY) * width);  // Y is flipped for texture coordinates
+    console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
 
     // Add water at the clicked location (amount: 0.3)
     if (waterSimulation.addWater) {

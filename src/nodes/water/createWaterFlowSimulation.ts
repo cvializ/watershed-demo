@@ -156,7 +156,7 @@ const getWaterFlowFragmentShader = (): string => {
  */
 const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
     const data = new Float32Array(size * size * 4); // RGBA
-    const waterHeight = 0.0; // No initial water - click to add water where needed
+    const waterHeight = 0.5; // No initial water - click to add water where needed
 
     for (let i = 0; i < size * size; i++) {
         data[i * 4 + 0] = waterHeight; // R: water height (uniform across all texels)
