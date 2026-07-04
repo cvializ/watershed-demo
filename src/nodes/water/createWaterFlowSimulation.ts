@@ -45,15 +45,12 @@ export const createWaterFlowSimulation = (
         console.error('GPU computation initialization error:', error);
     }
 
-    // Store references for water texture updates
-    const initialWaterTexture = waterTexture;
-    
     return {
         gpuCompute,
         waterHeightVariable,
         getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
-        addWater: (x: number, y: number, amount: number = 0.5) => 
-            addWater(gpuCompute, waterHeightVariable, initialWaterTexture, x, y, terrainSize, amount)
+        addWater: (x: number, y: number, amount: number = 0.5, radius: number = 3) => 
+            addWater(gpuCompute, waterHeightVariable, terrainSize, x, y, amount, radius)
     };
 };
 
@@ -159,7 +156,7 @@ const getWaterFlowFragmentShader = (): string => {
  */
 const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
     const data = new Float32Array(size * size * 4); // RGBA
-    const waterHeight = 0.5; // Uniform layer of water across entire texture (increased from 0.05)
+    const waterHeight = 0.0; // No initial water - click to add water where needed
 
     for (let i = 0; i < size * size; i++) {
         data[i * 4 + 0] = waterHeight; // R: water height (uniform across all texels)
@@ -180,49 +177,64 @@ const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; 
 
 /**
  * Utility function to add water at a specific location on the terrain.
- * This modifies the initial water texture directly by accessing the Float32Array data,
- * then updates both render targets with the modified texture using renderTexture.
+ * This modifies the initial water texture data directly, then updates both render targets
+ * with the modified data using renderTexture.
  * 
  * @param gpuCompute - The GPU computation renderer
  * @param waterHeightVariable - The water height variable from the simulation
- * @param initialWaterTexture - The initial water texture to modify
+ * @param terrainSize - Physical size of the terrain in world units
  * @param x - X coordinate in world space (0 to terrainSize)
  * @param y - Y coordinate in world space (0 to terrainSize)
- * @param terrainSize - Physical size of the terrain in world units
  * @param amount - Amount of water to add (default: 0.5)
+ * @param radius - Radius of the water circle in texels (default: 3)
  */
 // @knip-ignore
 const addWater = (
     gpuCompute: GPUComputationRenderer,
     waterHeightVariable: any,
-    initialWaterTexture: THREE.DataTexture,
+    terrainSize: number,
     x: number,
     y: number,
-    terrainSize: number,
-    amount: number = 0.5
+    amount: number = 0.5,
+    radius: number = 3
 ) => {
+    // Get the initial water texture (DataTexture with accessible data)
+    const initialWaterTexture = waterHeightVariable.initialValueTexture as THREE.DataTexture;
     const width = initialWaterTexture.image.width;
+    
+    // Access the data array from the initial texture
+    const data = initialWaterTexture.image.data as Float32Array;
     
     // Convert world coordinates to UV coordinates (0 to 1)
     const uvX = x / terrainSize;
     const uvY = y / terrainSize;
     
-    // Convert UV to texel coordinates
-    const texelX = Math.floor(uvX * width);
-    const texelY = Math.floor((1.0 - uvY) * width); // Flip Y for texture coordinate system
+    // Convert UV to texel coordinates (flip Y for texture coordinate system)
+    const centerX = Math.floor(uvX * width);
+    const centerY = Math.floor((1.0 - uvY) * width);
     
-    // Clamp to valid range
-    const clampedX = Math.max(0, Math.min(texelX, width - 1));
-    const clampedY = Math.max(0, Math.min(texelY, width - 1));
+    // Calculate the radius in texels (squared for distance check)
+    const radiusSq = radius * radius;
     
-    // Access the data array from the initial texture
-    const data = initialWaterTexture.image.data as Float32Array;
-    
-    // Calculate the index in the RGBA array
-    const index = (clampedY * width + clampedX) * 4;
-    
-    // Add water to the R channel (water height)
-    data[index] = Math.min(1.0, data[index] + amount);
+    // Add water in a circular pattern around the clicked location
+    for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            // Check if within circular radius
+            if (dx * dx + dy * dy <= radiusSq) {
+                const texelX = centerX + dx;
+                const texelY = centerY + dy;
+                
+                // Clamp to valid range
+                if (texelX >= 0 && texelX < width && texelY >= 0 && texelY < width) {
+                    // Calculate the index in the RGBA array
+                    const index = (texelY * width + texelX) * 4;
+                    
+                    // Add water to the R channel (water height)
+                    data[index] = Math.min(1.0, data[index] + amount);
+                }
+            }
+        }
+    }
     
     // Mark texture as needing update
     initialWaterTexture.needsUpdate = true;
@@ -232,5 +244,5 @@ const addWater = (
     gpuCompute.renderTexture(initialWaterTexture, waterHeightVariable.renderTargets[0]);
     gpuCompute.renderTexture(initialWaterTexture, waterHeightVariable.renderTargets[1]);
     
-    console.log('Water added at:', { x, y, amount, texelX: clampedX, texelY: clampedY });
+    console.log('Water added at:', { x, y, amount, centerX, centerY, radius });
 };
