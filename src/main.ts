@@ -281,7 +281,7 @@ function animate() {
 
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
-    // Run the GPU computation
+    // Run the GPU computation - single pass calculates both outflow and inflow
     waterSimulation.gpuCompute.compute();
     
     // Update terrain shader with current water texture
@@ -363,9 +363,9 @@ window.addEventListener('click', (event) => {
     console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
 
     // Add water at the clicked location (amount: 0.3)
-    waterSimulation.addWater(x, y, 10, 50);
+    waterSimulation.addWater(x, y, 10, 25);
     console.log('Water added at:', { x, y });
   }
 });
 
-waterSimulation.addWater(0, 0, 10, 100);
+// waterSimulation.addWater(0, 0, 10, 100);
