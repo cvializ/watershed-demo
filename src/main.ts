@@ -54,8 +54,10 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.autoRotate = false;
 
-// Create triangular terrain mesh
+// Terrain size (must be defined before creating terrain)
 const terrainSize = 12;
+
+// Create triangular terrain mesh
 const geometry = createTerrainGeometry();
 
 // Create height map for GPU-based height visualization and water simulation
@@ -63,7 +65,7 @@ const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create water flow simulation
-const waterSimulation = createWaterFlowSimulation(128, renderer);
+const waterSimulation = createWaterFlowSimulation(128, terrainSize, renderer);
 console.log('Water simulation created');
 
 // Set the terrain heightmap uniform for water simulation
@@ -317,4 +319,45 @@ window.addEventListener('resize', () => {
   camera.bottom = frustumSize / -2;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Handle click to add water
+window.addEventListener('click', (event) => {
+  // Only handle clicks when in Water Flow mode
+  if (visualizationMode !== 4) {
+    return;
+  }
+
+  // Calculate mouse position in normalized device coordinates
+  const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+  const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // Create raycaster
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera);
+
+  // Intersect with terrain (account for rotation)
+  const terrainIntersects = raycaster.intersectObject(terrain);
+
+  if (terrainIntersects.length > 0) {
+    const intersect = terrainIntersects[0];
+    const point = intersect.point;
+
+    // Convert world coordinates to terrain-local coordinates
+    // Terrain is rotated -π/2 around X-axis, so:
+    // - World X becomes World Z (after rotation)
+    // - World Y becomes World Y (height)
+    // - World Z becomes -World X (after rotation)
+    
+    // After rotation, the terrain lies in the XZ plane
+    // We need to map world coordinates to the 0-terrainSize range
+    const x = point.z + terrainSize / 2; // Z becomes X in terrain space
+    const y = -point.x + terrainSize / 2; // -X becomes Y in terrain space
+
+    // Add water at the clicked location (amount: 0.3)
+    if (waterSimulation.addWater) {
+      waterSimulation.addWater(x, y, 0.3);
+      console.log('Water added at:', { x, y });
+    }
+  }
 });
