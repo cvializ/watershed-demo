@@ -23,7 +23,7 @@ export const createWaterFlowSimulation = (
 ) => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    const waterTexture = createInitialWaterTexture(width);
+    const { texture: waterTexture } = createInitialWaterTexture(width);
 
     // Add water height variable - stores current water depth at each cell
     const waterHeightVariable = gpuCompute.addVariable(
@@ -154,7 +154,7 @@ const getWaterFlowFragmentShader = (): string => {
 /**
  * Creates an initial water texture with a one-time layer of water covering the entire terrain.
  */
-const createInitialWaterTexture = (size: number): THREE.DataTexture => {
+const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
     const data = new Float32Array(size * size * 4); // RGBA
     const waterHeight = 0.5; // Uniform layer of water across entire texture (increased from 0.05)
 
@@ -172,14 +172,14 @@ const createInitialWaterTexture = (size: number): THREE.DataTexture => {
         firstValue: data[0],
         lastValue: data[data.length - 4]
     });
-    return texture;
+    return { texture, data };
 };
 
 /**
  * Utility function to add water at a specific location on the terrain.
- * This reads the current texture, modifies it, and marks it for update.
- * Note: Direct texture modification works best when the simulation hasn't started yet,
- * or when you want to reset the texture before running the simulation.
+ * This modifies the texture data directly by accessing the Float32Array.
+ * Note: For GPU computation simulations, we modify the initial texture data
+ * and set needsUpdate to push changes to the GPU.
  * 
  * @param gpuCompute - The GPU computation renderer
  * @param waterHeightVariable - The water height variable from the simulation
@@ -190,15 +190,16 @@ const createInitialWaterTexture = (size: number): THREE.DataTexture => {
  */
 // @knip-ignore
 const addWater = (
-    gpuCompute: GPUComputationRenderer,
+    _gpuCompute: GPUComputationRenderer,
     waterHeightVariable: any,
     x: number,
     y: number,
     terrainSize: number,
     amount: number = 0.5
 ) => {
-    // Get the texture size from the variable's initial texture
-    const width = waterHeightVariable.initialValueTexture.image.width;
+    // Get the texture size from the variable's initial texture (which is a DataTexture)
+    const initTexture = waterHeightVariable.initialValueTexture as THREE.DataTexture;
+    const width = initTexture.image.width;
     
     // Convert world coordinates to UV coordinates (0 to 1)
     const uvX = x / terrainSize;
@@ -212,14 +213,8 @@ const addWater = (
     const clampedX = Math.max(0, Math.min(texelX, width - 1));
     const clampedY = Math.max(0, Math.min(texelY, width - 1));
     
-    // Get current render target texture (the one being used by the GPU computation)
-    const renderTarget = gpuCompute.getCurrentRenderTarget(waterHeightVariable);
-    const texture = renderTarget.texture;
-    
-    // Access the data array from the texture image
-    // For DataTexture with FloatType, the data is a Float32Array
-    const imageData = (texture.image as THREE.DataTexture).image;
-    const data = imageData.data as Float32Array;
+    // Access the data array from the initial texture
+    const data = initTexture.image.data as Float32Array;
     
     // Calculate the index in the RGBA array
     const index = (clampedY * width + clampedX) * 4;
@@ -227,7 +222,7 @@ const addWater = (
     // Add water to the R channel (water height)
     data[index] = Math.min(1.0, data[index] + amount);
     
-    // Mark texture as needing update
-    texture.needsUpdate = true;
+    // Mark initial texture as needing update
+    initTexture.needsUpdate = true;
     console.log('Water added at:', { x, y, amount, texelX: clampedX, texelY: clampedY });
 };
