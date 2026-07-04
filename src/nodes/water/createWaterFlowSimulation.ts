@@ -22,7 +22,6 @@ export const createWaterFlowSimulation = (
 ) => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    // Create initial water texture (mostly dry with a water source in the center)
     const waterTexture = createInitialWaterTexture(width);
 
     // Add water height variable - stores current water depth at each cell
