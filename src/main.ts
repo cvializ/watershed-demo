@@ -9,7 +9,7 @@ import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeAr
 import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
-import { createWaterFlowSimulation } from './nodes/water/createWaterFlowSimulation.js';
+import { createWaterFlowSimulation } from './systems/createWaterFlowSimulation.js';
 import { createWaterVisualizationMaterial } from './nodes/material/createWaterVisualizationMaterial.js';
 
 // Import DOM manipulation utilities
