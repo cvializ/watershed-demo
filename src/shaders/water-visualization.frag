@@ -9,12 +9,6 @@ varying vec2 vUv;
 
 // Simple water visualization - blue overlay based on water height
 void main() {
-    // Sample terrain height
-    float terrainHeight = texture2D(uHeightMap, vUv).r;
-    
-    // Normalize terrain height for coloring
-    float normalizedHeight = (terrainHeight - uMinHeight) / (uMaxHeight - uMinHeight);
-    
     // Base terrain color
     vec3 terrainColor = vec3(0.4, 0.3, 0.2); // Brownish terrain
     

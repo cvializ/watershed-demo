@@ -19,7 +19,8 @@ import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer
 export const createWaterFlowSimulation = (
     width: number,
     terrainSize: number,
-    renderer: THREE.WebGLRenderer
+    renderer: THREE.WebGLRenderer,
+    heightMapTexture: THREE.Texture,
 ) => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
@@ -34,18 +35,15 @@ export const createWaterFlowSimulation = (
 
     // Make variable depend on itself (for ping-pong buffering)
     gpuCompute.setVariableDependencies(waterHeightVariable, [waterHeightVariable]);
+    const { texture: waterToAddTexture } = createWaterToAddTexture(width);
+
 
     // Add uniforms for terrain heightmap and simulation parameters
-    waterHeightVariable.material.uniforms.terrainHeightmap = { value: null };
+    waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
+    waterHeightVariable.material.uniforms.waterToAdd = { value: waterToAddTexture };
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.1 }; // Slower simulation for visible flow
     waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.999 }; // Minimal water loss per frame
     
-    // Add uniform for water to add (painted on click, cleared after simulation)
-    waterHeightVariable.material.uniforms.waterToAdd = { value: null };
-    
-    // Create a persistent texture for water to add (will be painted on click, cleared after simulation)
-    const { texture: waterToAddTexture } = createWaterToAddTexture(width);
-
     const error = gpuCompute.init();
     if (error !== null) {
         console.error('GPU computation initialization error:', error);
@@ -235,11 +233,7 @@ const addWater = (
 ) => {
     // Get the water-to-add texture (DataTexture with accessible data)
     const waterToAddTexture = waterHeightVariable.material.uniforms.waterToAdd.value as THREE.DataTexture;
-    if (!waterToAddTexture) {
-        console.warn('waterToAdd texture not set');
-        return;
-    }
-    
+
     const width = waterToAddTexture.image.width;
     
     // Access the data array from the water-to-add texture

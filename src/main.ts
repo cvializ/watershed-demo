@@ -65,25 +65,7 @@ const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create water flow simulation
-const waterSimulation = createWaterFlowSimulation(128, terrainSize, renderer);
-console.log('Water simulation created');
-
-// Set the terrain heightmap uniform for water simulation
-if (waterSimulation.gpuCompute) {
-  const waterVar = waterSimulation.waterHeightVariable;
-  
-  // Set terrain heightmap uniform
-  if (waterVar.material.uniforms?.terrainHeightmap) {
-    waterVar.material.uniforms.terrainHeightmap.value = heightMapTexture;
-    console.log('Terrain heightmap set for water simulation');
-  }
-  
-  // Set water-to-add texture uniform
-  if (waterVar.material.uniforms?.waterToAdd && waterSimulation.waterToAddTexture) {
-    waterVar.material.uniforms.waterToAdd.value = waterSimulation.waterToAddTexture;
-    console.log('Water-to-add texture set for water simulation');
-  }
-}
+const waterSimulation = createWaterFlowSimulation(128, terrainSize, renderer, heightMapTexture);
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
 const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
@@ -304,26 +286,19 @@ function animate() {
     
     // Update terrain shader with current water texture
     const waterTexture = waterSimulation.getWaterTexture();
-    if (terrain.material) {
-      const mat = terrain.material as any;
-      if (mat.uniforms?.uWaterHeightmap) {
-        mat.uniforms.uWaterHeightmap.value = waterTexture;
-        if (frameCount % 60 === 0) {
-          console.log('Water texture updated, frame:', frameCount);
-        }
-      }
+    waterVisualizationMaterial.uniforms.uWaterHeightmap.value = waterTexture;
+    if (frameCount % 60 === 0) {
+      console.log('Water texture updated, frame:', frameCount);
     }
-    
+  
     // Clear the water-to-add texture for the next frame
-    if (waterSimulation.waterToAddTexture) {
-      const waterToAddTex = waterSimulation.waterToAddTexture;
-      const data = waterToAddTex.image.data as Float32Array;
-      // Set all values to 0 (zero out the water-to-add texture)
-      for (let i = 0; i < data.length; i++) {
-        data[i] = 0.0;
-      }
-      waterToAddTex.needsUpdate = true;
+    const waterToAddTex = waterSimulation.waterToAddTexture;
+    const data = waterToAddTex.image.data as Float32Array;
+    // Set all values to 0 (zero out the water-to-add texture)
+    for (let i = 0; i < data.length; i++) {
+      data[i] = 0.0;
     }
+    waterToAddTex.needsUpdate = true;
   }
   
   renderer.render(scene, camera);
@@ -388,9 +363,10 @@ window.addEventListener('click', (event) => {
     console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
 
     // Add water at the clicked location (amount: 0.3)
-    if (waterSimulation.addWater) {
-      waterSimulation.addWater(x, y, 0.3);
-      console.log('Water added at:', { x, y });
-    }
+    waterSimulation.addWater(x, y, 10, 50);
+    console.log('Water added at:', { x, y });
   }
 });
+
+
+// waterSimulation.addWater(0, 0, 10, 100);
