@@ -48,6 +48,98 @@ const getCount = (counter: Counter): number => counter.count;
 - This improves code readability and makes refactoring easier
 - Configure your editor/IDE to resolve absolute imports correctly
 
+### TypeScript Type Safety Policy
+**Avoid `any` and `unknown`**: Both types bypass or delay type checking. Use proper types instead:
+
+**Don't use `any`**: The `any` type completely bypasses TypeScript's type checking.
+
+**Don't use `unknown`**: The `unknown` type defers type checking and often leads to unsafe assertions later.
+
+**Use existing or define proper types instead**:
+- **First, check for existing types**: Look in the codebase and library types for suitable types to use
+- **Import existing types** from modules rather than redefining them
+- **Use library-provided types** (e.g., `HTMLElement` from DOM libs, React's `FC`, etc.)
+- **Define types only when needed**: Create interfaces/types for domain concepts not covered by existing types
+- **Use generics** for reusable functions that handle multiple types
+- **Use type unions** for values that can be one of several known types
+- **Use type guards** to narrow union types safely
+- **For generic object mappings**: Use `Record<string, never>` or specific key types instead of `{ [key: string]: any }`
+- **For external data**: Parse and validate with libraries like `zod` or custom validators, then convert to typed objects
+- **For existing code with `any`**: Incrementally replace with proper types during refactoring
+
+**Examples**:
+```ts
+// DON'T do this
+const data = fetchSomeData() as any;
+data.someProperty; // No type checking!
+
+// DON'T do this either
+const processData = (data: unknown): void => {
+  const obj = data as { id: number; name: string };
+  obj.id; // Unsafe assertion!
+};
+
+// DO this - use existing types when available
+import { HTMLElement } from 'node';
+const element: HTMLElement = document.getElementById('my-app');
+element.classList.add('active'); // Type checked!
+
+// DO this - use library types from npm packages
+import { User } from 'some-auth-library';
+const user: User = await fetchUser();
+console.log(user.id, user.email); // Type checked!
+
+// DO this - define types only for domain-specific concepts
+type TaskStatus = 'pending' | 'in-progress' | 'completed';
+interface Task {
+  id: string;
+  title: string;
+  status: TaskStatus;
+}
+const completeTask = (task: Task): void => {
+  task.status = 'completed'; // Type checked!
+};
+
+// For uncertain types, use unions and guards
+type ResponseData = Task | { error: string };
+
+const handleResponse = (data: ResponseData): void => {
+  if ('error' in data) {
+    console.error(data.error);
+  } else {
+    console.log(task.id, task.title); // Type narrowed!
+  }
+};
+
+// For generic object mappings with known keys
+type StatusMap = Record<'pending' | 'in-progress' | 'completed', number>;
+const statusCounts: StatusMap = { pending: 0, 'in-progress': 0, completed: 0 };
+```
+
+**Examples**:
+```ts
+// DON'T do this
+const data = fetchSomeData() as any;
+data.someProperty; // No type checking!
+
+// DO this - define proper types
+interface UserData {
+  id: number;
+  name: string;
+  email?: string;
+}
+
+const data = fetchSomeData() as UserData;
+data.id; // Type checked!
+
+// Or use unknown and type guard
+const processData = (data: unknown): void => {
+  if (typeof data === 'object' && data !== null) {
+    // Safe to work with known structure
+  }
+};
+```
+
 ### Build System Configuration for Absolute Imports
 Ensure your build system supports ES Module imports and absolute imports from the `src/` directory:
 
