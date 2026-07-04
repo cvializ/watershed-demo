@@ -39,6 +39,12 @@ export const createWaterFlowSimulation = (
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: null };
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.1 }; // Slower simulation for visible flow
     waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.999 }; // Minimal water loss per frame
+    
+    // Add uniform for water to add (painted on click, cleared after simulation)
+    waterHeightVariable.material.uniforms.waterToAdd = { value: null };
+    
+    // Create a persistent texture for water to add (will be painted on click, cleared after simulation)
+    const { texture: waterToAddTexture } = createWaterToAddTexture(width);
 
     const error = gpuCompute.init();
     if (error !== null) {
@@ -49,8 +55,9 @@ export const createWaterFlowSimulation = (
         gpuCompute,
         waterHeightVariable,
         getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
+        waterToAddTexture, // Expose the water-to-add texture for painting on click
         addWater: (x: number, y: number, amount: number = 0.5, radius: number = 3) => 
-            addWater(gpuCompute, waterHeightVariable, terrainSize, x, y, amount, radius)
+            addWater(waterHeightVariable, terrainSize, x, y, amount, radius)
     };
 };
 
@@ -62,6 +69,7 @@ const getWaterFlowFragmentShader = (): string => {
         #include <common>
 
         uniform sampler2D terrainHeightmap;
+        uniform sampler2D waterToAdd;
         uniform float simulationSpeed;
         uniform float infiltrationRate;
 
@@ -71,6 +79,12 @@ const getWaterFlowFragmentShader = (): string => {
 
             // Read current water height
             float currentWaterHeight = texture2D(waterHeight, uv).r;
+            
+            // Read water amount to add from the water-to-add texture
+            float addAmount = texture2D(waterToAdd, uv).r;
+            
+            // Add the incoming water to current height
+            float newWaterHeight = currentWaterHeight + addAmount;
 
             // Read terrain height at this cell
             float terrainHeight = texture2D(terrainHeightmap, uv).r;
@@ -79,7 +93,7 @@ const getWaterFlowFragmentShader = (): string => {
             vec4 flowContribution = vec4(0.0);
 
             // Sample all 8 neighbors (Moore neighborhood)
-            float centerHeight = terrainHeight + currentWaterHeight;
+            float centerHeight = terrainHeight + newWaterHeight;
 
             // North
             vec4 northData = texture2D(waterHeight, uv + vec2(0.0, cellSize.y));
@@ -130,23 +144,23 @@ const getWaterFlowFragmentShader = (): string => {
             float slopeMagnitude = centerHeight - lowestTotal;
             
             // Flow speed depends on slope - steeper = faster flow
-            float flowAmount = min(currentWaterHeight, slopeMagnitude * simulationSpeed);
+            float flowAmount = min(newWaterHeight, slopeMagnitude * simulationSpeed);
 
             // Transfer water to downslope neighbor
-            float newWaterHeight = currentWaterHeight;
+            float finalWaterHeight = newWaterHeight;
             
             if (slopeMagnitude > 0.001 && flowDirection != vec2(0.0)) {
                 // Send water to downslope cell
                 flowContribution = vec4(flowAmount, 0.0, 0.0, 0.0);
                 
                 // Retain remaining water
-                newWaterHeight = currentWaterHeight - flowAmount;
+                finalWaterHeight = newWaterHeight - flowAmount;
             }
 
             // Apply infiltration/evaporation (conservation with loss)
-            newWaterHeight *= infiltrationRate;
+            finalWaterHeight *= infiltrationRate;
 
-            gl_FragColor = vec4(newWaterHeight, 0.0, 0.0, 1.0);
+            gl_FragColor = vec4(finalWaterHeight, 0.0, 0.0, 1.0);
         }
     `;
 };
@@ -176,11 +190,33 @@ const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; 
 };
 
 /**
+ * Creates a water-to-add texture for adding water via the simulation shader uniform.
+ * This texture is painted on click and cleared after each simulation step.
+ */
+const createWaterToAddTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
+    const data = new Float32Array(size * size * 4); // RGBA, all zeros
+    
+    for (let i = 0; i < size * size; i++) {
+        data[i * 4 + 0] = 0.0; // R: water amount to add (all zeros initially)
+        data[i * 4 + 1] = 0.0; // G: unused
+        data[i * 4 + 2] = 0.0; // B: unused
+        data[i * 4 + 3] = 1.0; // A: alpha
+    }
+
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+    texture.needsUpdate = true;
+    console.log('Water-to-add texture created:', {
+        size,
+        firstValue: data[0]
+    });
+    return { texture, data };
+};
+
+/**
  * Utility function to add water at a specific location on the terrain.
- * This modifies the initial water texture data directly, then updates both render targets
- * with the modified data using renderTexture.
+ * Paints water into the waterToAdd texture which is consumed by the simulation shader.
+ * The texture is cleared after each simulation step, so water is only added for one frame.
  * 
- * @param gpuCompute - The GPU computation renderer
  * @param waterHeightVariable - The water height variable from the simulation
  * @param terrainSize - Physical size of the terrain in world units
  * @param x - X coordinate in world space (0 to terrainSize)
@@ -190,7 +226,6 @@ const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; 
  */
 // @knip-ignore
 const addWater = (
-    gpuCompute: GPUComputationRenderer,
     waterHeightVariable: any,
     terrainSize: number,
     x: number,
@@ -198,12 +233,17 @@ const addWater = (
     amount: number = 0.5,
     radius: number = 10
 ) => {
-    // Get the initial water texture (DataTexture with accessible data)
-    const initialWaterTexture = waterHeightVariable.initialValueTexture as THREE.DataTexture;
-    const width = initialWaterTexture.image.width;
+    // Get the water-to-add texture (DataTexture with accessible data)
+    const waterToAddTexture = waterHeightVariable.material.uniforms.waterToAdd.value as THREE.DataTexture;
+    if (!waterToAddTexture) {
+        console.warn('waterToAdd texture not set');
+        return;
+    }
     
-    // Access the data array from the initial texture
-    const data = initialWaterTexture.image.data as Float32Array;
+    const width = waterToAddTexture.image.width;
+    
+    // Access the data array from the water-to-add texture
+    const data = waterToAddTexture.image.data as Float32Array;
     
     // Convert world coordinates to UV coordinates (0 to 1)
     const uvX = x / terrainSize;
@@ -229,7 +269,7 @@ const addWater = (
                     // Calculate the index in the RGBA array
                     const index = (texelY * width + texelX) * 4;
                     
-                    // Add water to the R channel (water height)
+                    // Add water to the R channel (water amount to add)
                     data[index] = Math.min(1.0, data[index] + amount);
                 }
             }
@@ -237,12 +277,7 @@ const addWater = (
     }
     
     // Mark texture as needing update
-    initialWaterTexture.needsUpdate = true;
+    waterToAddTexture.needsUpdate = true;
     
-    // Update both render targets with the modified initial texture
-    // This ensures the simulation reads from our updated values on the next frame
-    gpuCompute.renderTexture(initialWaterTexture, waterHeightVariable.renderTargets[0]);
-    gpuCompute.renderTexture(initialWaterTexture, waterHeightVariable.renderTargets[1]);
-    
-    console.log('Water added at:', { x, y, amount, centerX, centerY, radius });
+    console.log('Water to add painted at:', { x, y, amount, centerX, centerY, radius });
 };

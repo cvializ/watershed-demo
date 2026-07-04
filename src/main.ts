@@ -71,9 +71,17 @@ console.log('Water simulation created');
 // Set the terrain heightmap uniform for water simulation
 if (waterSimulation.gpuCompute) {
   const waterVar = waterSimulation.waterHeightVariable;
+  
+  // Set terrain heightmap uniform
   if (waterVar.material.uniforms?.terrainHeightmap) {
     waterVar.material.uniforms.terrainHeightmap.value = heightMapTexture;
     console.log('Terrain heightmap set for water simulation');
+  }
+  
+  // Set water-to-add texture uniform
+  if (waterVar.material.uniforms?.waterToAdd && waterSimulation.waterToAddTexture) {
+    waterVar.material.uniforms.waterToAdd.value = waterSimulation.waterToAddTexture;
+    console.log('Water-to-add texture set for water simulation');
   }
 }
 
@@ -291,6 +299,7 @@ function animate() {
 
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
+    // Run the GPU computation
     waterSimulation.gpuCompute.compute();
     
     // Update terrain shader with current water texture
@@ -303,6 +312,17 @@ function animate() {
           console.log('Water texture updated, frame:', frameCount);
         }
       }
+    }
+    
+    // Clear the water-to-add texture for the next frame
+    if (waterSimulation.waterToAddTexture) {
+      const waterToAddTex = waterSimulation.waterToAddTexture;
+      const data = waterToAddTex.image.data as Float32Array;
+      // Set all values to 0 (zero out the water-to-add texture)
+      for (let i = 0; i < data.length; i++) {
+        data[i] = 0.0;
+      }
+      waterToAddTex.needsUpdate = true;
     }
   }
   
