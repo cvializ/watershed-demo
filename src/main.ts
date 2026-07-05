@@ -14,11 +14,7 @@ import { createCloudShadowSystem } from './systems/createCloudShadowSystem.js';
 
 // Import DOM manipulation utilities
 import { createTabBar, updateTabActiveState } from './dom/ui/createTabBar.js';
-import {
-  createHeightControls,
-  createSlopeControls,
-} from './dom/ui/createControls.js';
-import { createUIContainer, updateVisibility } from './dom/ui/createUIContainer.js';
+import { createUIContainer } from './dom/ui/createUIContainer.js';
 import {
   createVisualizationLegend,
   createSlopeLegend,
@@ -130,53 +126,11 @@ const tabContainer = createTabBar((mode: number) => {
 activeTabButtons = tabContainer.buttons;
 updateTabActiveState(activeTabButtons, visualizationMode);
 
-// Create controls
-const heightControls = createHeightControls((minHeight, maxHeight) => {
-  updateShaderHeightRange(minHeight, maxHeight);
-});
-
-const slopeControls = createSlopeControls((minSlope, maxSlope) => {
-  updateShaderSlopeRange(minSlope, maxSlope);
-});
-
 // UI Container
 const uiContainer = createUIContainer({
   tabContainer: tabContainer.container,
-  minHeightLabel: heightControls.minLabel,
-  minHeightInput: heightControls.minInput,
-  maxHeightLabel: heightControls.maxLabel,
-  maxHeightInput: heightControls.maxInput,
-  minSlopeLabel: slopeControls.minLabel,
-  minSlopeInput: slopeControls.minInput,
-  maxSlopeLabel: slopeControls.maxLabel,
-  maxSlopeInput: slopeControls.maxInput,
 });
 document.body.appendChild(uiContainer);
-
-// Shader uniform update functions
-function updateShaderHeightRange(minHeight: number, maxHeight: number) {
-  if (visualizationMode === 0 && terrain.material) {
-    const shaderMat = terrain.material as any;
-    if (shaderMat.uniforms?.uMinHeight) {
-      shaderMat.uniforms.uMinHeight.value = minHeight;
-    }
-    if (shaderMat.uniforms?.uMaxHeight) {
-      shaderMat.uniforms.uMaxHeight.value = maxHeight;
-    }
-  }
-}
-
-function updateShaderSlopeRange(minSlope: number, maxSlope: number) {
-  if (visualizationMode === 1 && terrain.material) {
-    const shaderMat = terrain.material as any;
-    if (shaderMat.uniforms?.uMinSlope) {
-      shaderMat.uniforms.uMinSlope.value = minSlope;
-    }
-    if (shaderMat.uniforms?.uMaxSlope) {
-      shaderMat.uniforms.uMaxSlope.value = maxSlope;
-    }
-  }
-}
 
 function setVisualizationMode(mode: number) {
   visualizationMode = mode;
@@ -223,33 +177,7 @@ function setVisualizationMode(mode: number) {
       }
     }
   }
-
-  // Update visibility based on current mode
-  updateVisibility(visualizationMode, {
-    tabContainer: tabContainer.container,
-    minHeightLabel: heightControls.minLabel,
-    minHeightInput: heightControls.minInput,
-    maxHeightLabel: heightControls.maxLabel,
-    maxHeightInput: heightControls.maxInput,
-    minSlopeLabel: slopeControls.minLabel,
-    minSlopeInput: slopeControls.minInput,
-    maxSlopeLabel: slopeControls.maxLabel,
-    maxSlopeInput: slopeControls.maxInput,
-  });
 }
-
-// Initial visibility update
-updateVisibility(visualizationMode, {
-  tabContainer: tabContainer.container,
-  minHeightLabel: heightControls.minLabel,
-  minHeightInput: heightControls.minInput,
-  maxHeightLabel: heightControls.maxLabel,
-  maxHeightInput: heightControls.maxInput,
-  minSlopeLabel: slopeControls.minLabel,
-  minSlopeInput: slopeControls.minInput,
-  maxSlopeLabel: slopeControls.maxLabel,
-  maxSlopeInput: slopeControls.maxInput,
-});
 
 // Set initial visualization mode material
 setVisualizationMode(visualizationMode);
