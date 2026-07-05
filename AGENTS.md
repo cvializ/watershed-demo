@@ -48,6 +48,38 @@ const getCount = (counter: Counter): number => counter.count;
 - This improves code readability and makes refactoring easier
 - Configure your editor/IDE to resolve absolute imports correctly
 
+### Variable Naming Convention
+**Use full words and avoid abbreviations**: Variable names should be descriptive and use complete words. Only use abbreviations when they are part of an API, standard convention, or domain-specific terminology.
+
+**Good examples**:
+```ts
+// Use full words for clarity
+const totalCount = 10;
+const errorMessage = 'Invalid input';
+const processItem = (item: Item): void => { ... };
+interface UserRecord {
+  firstName: string;
+  lastName: string;
+}
+
+// OK - API-relevant names
+const requestId = 'abc123';
+const apiKey = 'secret-key';
+const formData = new FormData();
+```
+
+**Avoid abbreviations like**:
+```ts
+// DON'T do this - abbreviations are unclear
+tc = 10;        // totalCount
+msg = '...';    // errorMessage
+processI = (...); // processItem
+
+// DON'T do this - cryptic single letters
+data.forEach(x => { ... });  // Use 'item', 'element', etc.
+arr.map(e => e * 2);         // Use descriptive names
+```
+
 ### TypeScript Type Safety Policy
 **Avoid `any` and `unknown`**: Both types bypass or delay type checking. Use proper types instead:
 

@@ -282,7 +282,7 @@ function animate() {
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
     // Run the GPU computation - single pass calculates both outflow and inflow
-    waterSimulation.gpuCompute.compute();
+    waterSimulation.compute(); 
     
     // Update terrain shader with current water texture
     const waterTexture = waterSimulation.getWaterTexture();
@@ -292,13 +292,13 @@ function animate() {
     }
   
     // Clear the water-to-add texture for the next frame
-    const waterToAddTex = waterSimulation.waterToAddTexture;
-    const data = waterToAddTex.image.data as Float32Array;
+    const waterToAddTexture = waterSimulation.getWaterToAddTexture();
+    const data = waterToAddTexture.image.data as Float32Array;
     // Set all values to 0 (zero out the water-to-add texture)
     for (let i = 0; i < data.length; i++) {
       data[i] = 0.0;
     }
-    waterToAddTex.needsUpdate = true;
+    waterToAddTexture.needsUpdate = true;
   }
   
   renderer.render(scene, camera);

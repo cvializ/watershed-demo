@@ -315,10 +315,9 @@ export const createWaterFlowSimulation = (
     }
 
     return {
-        gpuCompute,
-        waterHeightVariable,
+        compute: () => gpuCompute.compute(),
         getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
-        waterToAddTexture, // Expose the water-to-add texture for painting on click
+        getWaterToAddTexture: () => waterToAddTexture, // Expose the water-to-add texture for painting on click
         addWater: (x: number, y: number, amount: number, radius: number) => 
             addWater(waterHeightVariable, terrainSize, x, y, amount, radius)
     };
