@@ -32,10 +32,10 @@ const getWaterFlowFragmentShader = (): string => {
 
             // Read current water height from previous frame
             float currentWaterHeight = texture2D(waterHeight, uv).r;
-            
+
             // Read water amount to add from the water-to-add texture
             float addAmount = texture2D(waterToAdd, uv).r;
-            
+
             // Add the incoming water to current height
             float newWaterHeight = currentWaterHeight + addAmount;
 
@@ -62,7 +62,7 @@ const getWaterFlowFragmentShader = (): string => {
             float slope = centerTotalHeight - lowestTotal;
             float outflow = 0.0;
             if (slope > 0.001) {
-                outflow = min(newWaterHeight, slope * simulationSpeed);
+                outflow = newWaterHeight * simulationSpeed;
             }
 
             // Determine which direction this cell flows to (for neighbor inflow calculation)
@@ -117,7 +117,7 @@ const getWaterFlowFragmentShader = (): string => {
             if (northLowestDir == 1 && northMinTotal < northTotalHeight) {
                 float southTotal = terrainHeight + newWaterHeight;
                 float northToSouthSlope = northTotalHeight - southTotal;
-                inflow += min(northWater, northToSouthSlope * simulationSpeed);
+                inflow += northWater * simulationSpeed;
             }
             
             // South neighbor: check if it flows NORTH (to me)
@@ -158,7 +158,7 @@ const getWaterFlowFragmentShader = (): string => {
             if (southLowestDir == 0 && southMinTotal < southTotalHeight) {
                 float northTotal = terrainHeight + newWaterHeight;
                 float southToNorthSlope = southTotalHeight - northTotal;
-                inflow += min(southWater, southToNorthSlope * simulationSpeed);
+                inflow += southWater * simulationSpeed;
             }
             
             // East neighbor: check if it flows WEST (to me)
@@ -199,7 +199,7 @@ const getWaterFlowFragmentShader = (): string => {
             if (eastLowestDir == 3 && eastMinTotal < eastTotalHeight) {
                 float westTotal = terrainHeight + newWaterHeight;
                 float eastToWestSlope = eastTotalHeight - westTotal;
-                inflow += min(eastWater, eastToWestSlope * simulationSpeed);
+                inflow += eastWater * simulationSpeed;
             }
             
             // West neighbor: check if it flows EAST (to me)
@@ -240,7 +240,7 @@ const getWaterFlowFragmentShader = (): string => {
             if (westLowestDir == 2 && westMinTotal < westTotalHeight) {
                 float eastTotal = terrainHeight + newWaterHeight;
                 float westToEastSlope = westTotalHeight - eastTotal;
-                inflow += min(westWater, westToEastSlope * simulationSpeed);
+                inflow += westWater * simulationSpeed;
             }
 
             // Final water height = (current - outflow) + inflow
@@ -306,7 +306,7 @@ export const createWaterFlowSimulation = (
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
     waterHeightVariable.material.uniforms.waterToAdd = { value: waterToAddTexture };
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.2 };
-    waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.99 };
+    waterHeightVariable.material.uniforms.infiltrationRate = { value: 1 };
     waterHeightVariable.material.uniforms.drainageRate = { value: 0.05 };
     
     const error = gpuCompute.init();
