@@ -62,7 +62,7 @@ const getWaterFlowFragmentShader = (): string => {
             float slope = centerTotalHeight - lowestTotal;
             float outflow = 0.0;
             if (slope > 0.001) {
-                outflow = currentWaterHeight * simulationSpeed;
+                outflow = newWaterHeight * simulationSpeed;
             }
 
             // Determine which direction this cell flows to (for neighbor inflow calculation)
@@ -250,7 +250,6 @@ const getWaterFlowFragmentShader = (): string => {
             finalWaterHeight *= infiltrationRate;
             
             // Drain water that has accumulated (simulate evaporation/runoff to ocean)
-            // When drainageRate is 0, no water is drained (all water remains on terrain)
             float drainage = finalWaterHeight * drainageRate;
             finalWaterHeight -= drainage;
             
@@ -307,9 +306,8 @@ export const createWaterFlowSimulation = (
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
     waterHeightVariable.material.uniforms.waterToAdd = { value: waterToAddTexture };
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.2 };
-    waterHeightVariable.material.uniforms.infiltrationRate = { value: .99 };
-    // Drainage rate set to 0 so water flows and accumulates when infiltration is disabled
-    waterHeightVariable.material.uniforms.drainageRate = { value: 0.1 };
+    waterHeightVariable.material.uniforms.infiltrationRate = { value: 1 };
+    waterHeightVariable.material.uniforms.drainageRate = { value: 0.05 };
     
     const error = gpuCompute.init();
     if (error !== null) {
