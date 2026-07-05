@@ -26,7 +26,6 @@ const getD8WaterFlowFragmentShader = (): string => {
         uniform vec4 uWaterDropPoint; // (x, y, radius, amount) in world coordinates, z=0 means no drop
         uniform float uTerrainSize;
         uniform float simulationSpeed;
-        uniform float infiltrationRate;
         uniform float drainageRate;
 
         // Direction vectors for 8 neighbors (dx, dy)
@@ -181,9 +180,6 @@ const getD8WaterFlowFragmentShader = (): string => {
             // Final water height = (current - outflow) + inflow
             float finalWaterHeight = newWaterHeight - outflow + inflow;
             
-            // Apply infiltration/evaporation (conservation with some loss)
-            finalWaterHeight *= infiltrationRate;
-            
             // Drain water that has accumulated (simulate evaporation/runoff)
             float drainage = finalWaterHeight * drainageRate;
             finalWaterHeight -= drainage;
@@ -245,8 +241,7 @@ export const createD8WaterFlowSimulation = (
     waterHeightVariable.material.uniforms.uTerrainSize = { value: terrainSize };
     waterHeightVariable.material.uniforms.uWaterDropPoint = { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) }; // No initial drop
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.15 }; // Slightly slower than 4-direction for stability
-    waterHeightVariable.material.uniforms.infiltrationRate = { value: 1.0 }; // Small infiltration/evaporation
-    waterHeightVariable.material.uniforms.drainageRate = { value: 0.02 }; // Small drainage
+    waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 }; // Small drainage (evaporation/runoff)
     
     const error = gpuCompute.init();
     if (error !== null) {
