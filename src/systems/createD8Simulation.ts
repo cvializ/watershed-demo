@@ -86,6 +86,9 @@ const getCloudShadowFragmentShader = (): string => {
  * Cloud shadow support: Cloud shadow intensity is pre-computed in a separate GPU computation
  * variable and passed as a texture uniform. Water deposition is calculated by sampling this texture.
  * 
+ * Water sources support: Water source points are pre-computed in a separate GPU computation
+ * variable and passed as a texture uniform. Water is added at source locations from this texture.
+ * 
  * Key D8 principles:
  * 1. Calculate total height (terrain + water) for center and all 8 neighbors
  * 2. Find the neighbor with lowest total height (downslope direction)
@@ -96,6 +99,10 @@ const getCloudShadowFragmentShader = (): string => {
  * Cloud shadow feature:
  * 6. Cloud shadow texture sampled per-pixel for deposition calculation
  * 7. Water is added proportional to cloud shadow intensity from pre-computed texture
+ * 
+ * Water sources feature:
+ * 8. Water sources texture sampled per-pixel for additional water input
+ * 9. Multiple water sources can be efficiently added and combined on GPU
  */
 const getD8WaterFlowFragmentShader = (): string => {
     return /* glsl */`
@@ -103,7 +110,7 @@ const getD8WaterFlowFragmentShader = (): string => {
 
         uniform sampler2D terrainHeightmap;
         uniform sampler2D cloudShadowMap; // Cloud shadow texture from cloud shadow computation variable
-        uniform vec4 uWaterDropPoint; // (x, y, radius, amount) in world coordinates, z=0 means no drop
+        uniform sampler2D waterSourcesMap; // Water sources texture from water sources computation variable
         uniform float uTerrainSize;
         uniform float simulationSpeed;
         uniform float drainageRate;
@@ -131,7 +138,10 @@ const getD8WaterFlowFragmentShader = (): string => {
             // Sample cloud shadow intensity from the pre-computed texture
             float cloudShadow = texture2D(cloudShadowMap, uv).r;
             
-            // Convert UV to world coordinates for drop point distance check
+            // Sample water sources from the pre-computed texture
+            float waterSource = texture2D(waterSourcesMap, uv).r;
+            
+            // Convert UV to world coordinates
             float worldX = uv.x * uTerrainSize;
             float worldY = (1.0 - uv.y) * uTerrainSize; // Flip Y for terrain coords
             
@@ -143,23 +153,11 @@ const getD8WaterFlowFragmentShader = (): string => {
                 cloudDeposition = cloudShadow * 0.015; // Deposition rate
             }
 
-            // Check if this cell is within the user-added water drop radius and add water
-            float userAddAmount = 0.0;
-            if (uWaterDropPoint.z > 0.0) {
-                // Calculate distance from drop point
-                float dx = worldX - uWaterDropPoint.x;
-                float dy = worldY - uWaterDropPoint.y;
-                float distSq = dx * dx + dy * dy;
-                
-                // Add water if within radius (uWaterDropPoint.z is radius, so compare to radius squared)
-                float radiusSq = uWaterDropPoint.z * uWaterDropPoint.z;
-                if (distSq <= radiusSq) {
-                    userAddAmount = uWaterDropPoint.w; // Use amount from uniform
-                }
-            }
+            // Add water sources from the pre-computed texture (already computed on GPU)
+            float sourceAmount = waterSource;
 
             // Add all water sources to current height
-            float newWaterHeight = currentWaterHeight + cloudDeposition + userAddAmount;
+            float newWaterHeight = currentWaterHeight + cloudDeposition + sourceAmount;
 
             // Read terrain height at this cell
             float terrainHeight = texture2D(terrainHeightmap, uv).r;
@@ -285,6 +283,102 @@ const getD8WaterFlowFragmentShader = (): string => {
 };
 
 /**
+ * Creates the fragment shader for computing water sources.
+ * 
+ * This shader renders water source points to a texture using the GPUComputationRenderer.
+ * Each water source is represented as a soft-edged circular amount based on its position,
+ * radius, and amount. The result is a texture where each pixel contains the total
+ * water source amount at that world position.
+ */
+const getWaterSourcesFragmentShader = (): string => {
+    return /* glsl */`
+        #include <common>
+
+        uniform sampler2D terrainHeightmap;
+        uniform vec4 uWaterSourcePoints[16]; // Array of water source data: (x, y, radius, amount), max 16 sources
+        uniform int uWaterSourceCount;       // Number of active water sources
+        uniform float uTerrainSize;
+
+        /**
+         * Calculate water source amount at a specific world position.
+         */
+        float calculateWaterSource(vec2 point, vec4 source) {
+            // Distance from point to source center
+            float dx = point.x - source.x;
+            float dy = point.y - source.y;
+            float distSq = dx * dx + dy * dy;
+            
+            // Soft-edged circular water source
+            float radiusSq = source.z * source.z;
+            
+            // Smooth falloff at edges using smoothstep
+            if (distSq < radiusSq) {
+                float t = 1.0 - distSq / radiusSq; // 1 at center, 0 at edge
+                return source.w * t * t * (3.0 - 2.0 * t); // Smoothstep with amount
+            }
+            
+            return 0.0;
+        }
+
+        /**
+         * Calculate total water source from all sources at a position.
+         */
+        float getTotalWaterSource(vec2 point) {
+            float totalSource = 0.0;
+            
+            for (int i = 0; i < 16; i++) {
+                if (i >= uWaterSourceCount) break;
+                
+                float source = calculateWaterSource(point, uWaterSourcePoints[i]);
+                totalSource += source; // Additive sources
+            }
+            
+            return totalSource;
+        }
+
+        void main() {
+            vec2 cellSize = 1.0 / resolution.xy;
+            vec2 uv = gl_FragCoord.xy * cellSize;
+
+            // Convert UV to world coordinates
+            float worldX = uv.x * uTerrainSize;
+            float worldY = (1.0 - uv.y) * uTerrainSize; // Flip Y for terrain coords
+            vec2 worldPos = vec2(worldX, worldY);
+            
+            // Calculate total water source amount
+            float waterSource = getTotalWaterSource(worldPos);
+            
+            // Output: R=water source amount, GBA unused
+            gl_FragColor = vec4(waterSource, 0.0, 0.0, 1.0);
+        }
+    `;
+};
+
+/**
+ * Creates an initial water sources texture with no water sources (all zeros).
+ */
+const createInitialWaterSourcesTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
+    const data = new Float32Array(size * size * 4); // RGBA
+    const initialSourceAmount = 0.0; // No water sources initially
+
+    for (let i = 0; i < size * size; i++) {
+        data[i * 4 + 0] = initialSourceAmount; // R: water source amount
+        data[i * 4 + 1] = 0.0;                 // G: unused
+        data[i * 4 + 2] = 0.0;                 // B: unused
+        data[i * 4 + 3] = 1.0;                 // A: alpha
+    }
+
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+    texture.needsUpdate = true;
+    console.log('Initial water sources texture created:', {
+        size,
+        firstValue: data[0],
+        lastValue: data[data.length - 4]
+    });
+    return { texture, data };
+};
+
+/**
  * Creates a GPU-based D8 water surface flow simulation on terrain.
  * 
  * The D8 algorithm is a widely used method for river network generation in GIS.
@@ -301,6 +395,11 @@ const getD8WaterFlowFragmentShader = (): string => {
  * - Cloud shadow computation is separated into its own GPU computation variable
  * - The water simulation samples cloud shadow intensity from a pre-computed texture
  * - This allows clean separation of concerns and potential reuse of cloud shadows
+ * 
+ * Water sources approach:
+ * - Water source computation is separated into its own GPU computation variable
+ * - The water simulation samples water sources from a pre-computed texture
+ * - This allows multiple water sources to be efficiently added and combined on GPU
  * 
  * Key differences from 4-direction simulation:
  * - Considers diagonal neighbors (8 total instead of 4)
@@ -325,6 +424,9 @@ export const createD8WaterFlowSimulation = (
     
     // Create initial water texture with no initial water
     const { texture: waterTexture } = createInitialWaterTexture(width);
+    
+    // Create initial water sources texture with no water sources
+    const { texture: waterSourcesTexture } = createInitialWaterSourcesTexture(width);
 
     // Add cloud shadow variable - computes cloud shadow intensity per pixel
     const cloudShadowVariable = gpuCompute.addVariable(
@@ -338,6 +440,18 @@ export const createD8WaterFlowSimulation = (
     cloudShadowVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
     cloudShadowVariable.material.uniforms.uTerrainSize = { value: terrainSize };
     
+    // Add water sources variable - stores water source amounts per pixel
+    const waterSourcesVariable = gpuCompute.addVariable(
+        'waterSources',
+        getWaterSourcesFragmentShader(),
+        waterSourcesTexture
+    );
+    gpuCompute.setVariableDependencies(waterSourcesVariable, [waterSourcesVariable]);
+    
+    // Add terrain heightmap uniform to water sources variable
+    waterSourcesVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
+    waterSourcesVariable.material.uniforms.uTerrainSize = { value: terrainSize };
+    
     // Add water height variable - stores current water depth at each cell
     const waterHeightVariable = gpuCompute.addVariable(
         'waterHeight',
@@ -345,8 +459,8 @@ export const createD8WaterFlowSimulation = (
         waterTexture
     );
 
-    // Make variable depend on itself (for ping-pong buffering) and cloud shadow
-    gpuCompute.setVariableDependencies(waterHeightVariable, [cloudShadowVariable, waterHeightVariable]);
+    // Make variable depend on itself (for ping-pong buffering), cloud shadow, and water sources
+    gpuCompute.setVariableDependencies(waterHeightVariable, [cloudShadowVariable, waterSourcesVariable, waterHeightVariable]);
 
     // Add uniforms for terrain heightmap and simulation parameters
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
@@ -362,9 +476,14 @@ export const createD8WaterFlowSimulation = (
     }
     cloudShadowVariable.material.uniforms.uClouds = { value: cloudUniforms };
     cloudShadowVariable.material.uniforms.uCloudCount = { value: 0 }; // Initially no clouds
-
-    // Add water drop point uniform AFTER init (render targets are created during init)
-    waterHeightVariable.material.uniforms.uWaterDropPoint = { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) };
+    
+    // Add water sources uniforms (array of vec4: x, y, radius, amount)
+    const waterSourceUniforms: THREE.Vector4[] = [];
+    for (let i = 0; i < 16; i++) {
+        waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
+    }
+    waterSourcesVariable.material.uniforms.uWaterSourcePoints = { value: waterSourceUniforms };
+    waterSourcesVariable.material.uniforms.uWaterSourceCount = { value: 0 }; // Initially no sources
 
     const error = gpuCompute.init();
     if (error !== null) {
@@ -373,6 +492,9 @@ export const createD8WaterFlowSimulation = (
 
     // Set cloud shadow map uniform AFTER init (render targets are created during init)
     waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
+    
+    // Set water sources map uniform AFTER init (render targets are created during init)
+    waterHeightVariable.material.uniforms.waterSourcesMap = { value: gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture };
 
     return {
         compute: (cloudUniforms?: THREE.Vector4[], cloudCount: number = 0) => {
@@ -385,21 +507,19 @@ export const createD8WaterFlowSimulation = (
                 cloudShadowVariable.material.uniforms.uCloudCount.value = cloudCount;
             }
             
-            // First pass: compute cloud shadows, then water flow
+            // First pass: compute water sources, then cloud shadows, then water flow
             gpuCompute.compute();
-
-            // Clear the water drop point uniform for the next frame
-            const dropPointUniform = waterHeightVariable.material.uniforms.uWaterDropPoint;
-            if (dropPointUniform) {
-                dropPointUniform.value.set(0.0, 0.0, 0.0, 0.0);
-            }
             
-            // Debug: check if water texture has any non-zero values (commented out for production)
-            // const debugWaterTex = gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
+            // Clear water sources for next frame (they've been consumed by the simulation)
+            const sourceArray = waterSourcesVariable.material.uniforms.uWaterSourcePoints.value;
+            for (let i = 0; i < sourceArray.length; i++) {
+                sourceArray[i].set(0.0, 0.0, 0.0, 0.0);
+            }
+            waterSourcesVariable.material.uniforms.uWaterSourceCount.value = 0;
         },
         getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
         addWater: (x: number, y: number, amount: number, radius: number) => 
-            addWater(waterHeightVariable, x, y, amount, radius)
+            addWater(waterSourcesVariable, x, y, amount, radius)
     };
 };
 
@@ -453,28 +573,37 @@ const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; 
 
 /**
  * Utility function to add water at a specific location on the terrain.
- * Sets a uniform with the drop point coordinates which the shader uses to add water.
- * The uniform is cleared after each simulation step.
+ * Sets a uniform with the source point coordinates which the water sources shader uses to add water.
+ * The uniform is cleared after each simulation step (water sources are consumed).
  * 
- * @param waterHeightVariable - The water height variable from the simulation
+ * @param waterSourcesVariable - The water sources variable from the simulation
  * @param x - X coordinate in world space (0 to terrainSize)
  * @param y - Y coordinate in world space (0 to terrainSize)
  * @param amount - Amount of water to add
  * @param radius - Radius of the water circle in world units
  */
 const addWater = (
-    waterHeightVariable: any,
+    waterSourcesVariable: any,
     x: number,
     y: number,
     amount: number,
     radius: number,
 ) => {
-    // Set the water drop point uniform
-    const dropPointUniform = waterHeightVariable.material.uniforms.uWaterDropPoint;
-    if (dropPointUniform) {
-        dropPointUniform.value.set(x, y, radius, amount);
-        console.log('Water drop point set:', { x, y, radius, amount });
+    // Set the water source point uniform
+    const sourcesUniform = waterSourcesVariable.material.uniforms.uWaterSourcePoints;
+    const countUniform = waterSourcesVariable.material.uniforms.uWaterSourceCount;
+    
+    if (sourcesUniform && countUniform) {
+        // Add water source to the first available slot
+        const currentCount = countUniform.value;
+        if (currentCount < 16) {
+            sourcesUniform.value[currentCount].set(x, y, radius, amount);
+            countUniform.value = currentCount + 1;
+            console.log('Water source added:', { x, y, radius, amount, count: countUniform.value });
+        } else {
+            console.warn('Maximum water sources (16) reached, ignoring additional source');
+        }
     } else {
-        console.error('uWaterDropPoint uniform not found!');
+        console.error('Water sources uniforms not found!');
     }
 };
