@@ -6,8 +6,10 @@ import * as THREE from 'three';
 export type WaterFlowVisualization = {
     /**
      * Executes one step of the water flow simulation.
+     * @param cloudUniforms - Optional array of cloud data for shadow deposition
+     * @param cloudCount - Number of active clouds (up to 16)
      */
-    compute: () => void;
+    compute: (cloudUniforms?: THREE.Vector4[], cloudCount?: number) => void;
 
     /**
      * Returns the current water height texture from the GPU computation.
