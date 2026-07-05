@@ -9,7 +9,6 @@ import { createDownslopeArrowMaterial } from './nodes/material/createDownslopeAr
 import { createHeightVisualizationMaterial } from './nodes/material/createHeightVisualizationMaterial.js';
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
-import { createWaterFlowSimulation } from './systems/createWaterFlowSimulation.js';
 import { createWaterVisualizationMaterial } from './nodes/material/createWaterVisualizationMaterial.js';
 
 // Import DOM manipulation utilities
@@ -26,6 +25,7 @@ import {
   hideLegend,
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
+import { createD8WaterFlowSimulation } from './systems/createD8Simulation.js';
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -65,7 +65,7 @@ const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create water flow simulation
-const waterSimulation = createWaterFlowSimulation(128, terrainSize, renderer, heightMapTexture);
+const waterSimulation = createD8WaterFlowSimulation(128, terrainSize, renderer, heightMapTexture);
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
 const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
@@ -290,15 +290,6 @@ function animate() {
     if (frameCount % 60 === 0) {
       console.log('Water texture updated, frame:', frameCount);
     }
-  
-    // Clear the water-to-add texture for the next frame
-    const waterToAddTexture = waterSimulation.getWaterToAddTexture();
-    const data = waterToAddTexture.image.data as Float32Array;
-    // Set all values to 0 (zero out the water-to-add texture)
-    for (let i = 0; i < data.length; i++) {
-      data[i] = 0.0;
-    }
-    waterToAddTexture.needsUpdate = true;
   }
   
   renderer.render(scene, camera);

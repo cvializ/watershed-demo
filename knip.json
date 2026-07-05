@@ -5,6 +5,7 @@
   ],
   "ignore": [
     "**/*debug*",
-    "**/*Debug*"
+    "**/*Debug*",
+    "**/createD8Simulation.ts"
   ]
 }
