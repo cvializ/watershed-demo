@@ -6,55 +6,24 @@ import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer
 import type { WaterFlowVisualization } from '../types/water-flow.js';
 
 /**
- * Creates the fragment shader for D8 water surface flow simulation with cloud shadow deposition.
+ * Creates the fragment shader for computing cloud shadow intensity.
  * 
- * The D8 algorithm considers all 8 neighbors (cardinal + diagonal) to determine
- * the direction of steepest descent. Each cell flows entirely to its single downslope neighbor.
- * 
- * Cloud shadow feature: As clouds drift across the landscape, they slowly deposit water
- * where their shadows fall, simulating condensation from cooling air under clouds.
- * 
- * Key D8 principles:
- * 1. Calculate total height (terrain + water) for center and all 8 neighbors
- * 2. Find the neighbor with lowest total height (downslope direction)
- * 3. Calculate slope as difference between center and downslope neighbor
- * 4. Outflow is proportional to water height and slope
- * 5. Inflow is calculated by checking which neighbors flow TO this cell
- * 
- * Cloud shadow feature:
- * 6. Cloud positions passed as uniforms (array of vec4: x, y, size, intensity)
- * 7. Water is added proportional to cloud shadow intensity at each cell
- * 8. Slow deposition rate prevents rapid water accumulation
+ * This shader renders cloud shadows to a texture using the GPUComputationRenderer.
+ * Each cloud is represented as a soft-edged circular shadow based on its position,
+ * size, and intensity. The result is a texture where each pixel contains the total
+ * cloud shadow intensity (0.0 to 1.0) at that world position.
  */
-const getD8WaterFlowFragmentShader = (): string => {
+const getCloudShadowFragmentShader = (): string => {
     return /* glsl */`
         #include <common>
 
         uniform sampler2D terrainHeightmap;
-        uniform vec4 uWaterDropPoint; // (x, y, radius, amount) in world coordinates, z=0 means no drop
-        uniform float uTerrainSize;
-        uniform float simulationSpeed;
-        uniform float drainageRate;
-        
-        // Cloud shadow uniforms
         uniform vec4 uClouds[16]; // Array of cloud data: (x, y, size, intensity), max 16 clouds
         uniform int uCloudCount;  // Number of active clouds
-
-        // Direction vectors for 8 neighbors (dx, dy)
-        // 0: N, 1: NE, 2: E, 3: SE, 4: S, 5: SW, 6: W, 7: NW
-        const vec2 directions[8] = vec2[](
-            vec2(0.0, 1.0),    // North
-            vec2(1.0, 1.0),    // Northeast
-            vec2(1.0, 0.0),    // East
-            vec2(1.0, -1.0),   // Southeast
-            vec2(0.0, -1.0),   // South
-            vec2(-1.0, -1.0),  // Southwest
-            vec2(-1.0, 0.0),   // West
-            vec2(-1.0, 1.0)    // Northwest
-        );
+        uniform float uTerrainSize;
 
         /**
-         * Calculate cloud shadow intensity at a specific world position
+         * Calculate cloud shadow intensity at a specific world position.
          */
         float calculateCloudShadow(vec2 point, vec4 cloud) {
             // Distance from point to cloud center
@@ -75,7 +44,7 @@ const getD8WaterFlowFragmentShader = (): string => {
         }
 
         /**
-         * Calculate total cloud shadow from all clouds at a position
+         * Calculate total cloud shadow from all clouds at a position.
          */
         float getTotalCloudShadow(vec2 point) {
             float totalShadow = 0.0;
@@ -94,16 +63,77 @@ const getD8WaterFlowFragmentShader = (): string => {
             vec2 cellSize = 1.0 / resolution.xy;
             vec2 uv = gl_FragCoord.xy * cellSize;
 
-            // Read current water height from previous frame
-            float currentWaterHeight = texture2D(waterHeight, uv).r;
-
-            // Convert UV to world coordinates for cloud shadow calculation
+            // Convert UV to world coordinates
             float worldX = uv.x * uTerrainSize;
             float worldY = (1.0 - uv.y) * uTerrainSize; // Flip Y for terrain coords
             vec2 worldPos = vec2(worldX, worldY);
             
-            // Calculate cloud shadow intensity at this position
+            // Calculate total cloud shadow intensity
             float cloudShadow = getTotalCloudShadow(worldPos);
+            
+            // Output: R=cloud shadow intensity, GBA unused
+            gl_FragColor = vec4(cloudShadow, 0.0, 0.0, 1.0);
+        }
+    `;
+};
+
+/**
+ * Creates the fragment shader for D8 water surface flow simulation.
+ * 
+ * The D8 algorithm considers all 8 neighbors (cardinal + diagonal) to determine
+ * the direction of steepest descent. Each cell flows entirely to its single downslope neighbor.
+ * 
+ * Cloud shadow support: Cloud shadow intensity is pre-computed in a separate GPU computation
+ * variable and passed as a texture uniform. Water deposition is calculated by sampling this texture.
+ * 
+ * Key D8 principles:
+ * 1. Calculate total height (terrain + water) for center and all 8 neighbors
+ * 2. Find the neighbor with lowest total height (downslope direction)
+ * 3. Calculate slope as difference between center and downslope neighbor
+ * 4. Outflow is proportional to water height and slope
+ * 5. Inflow is calculated by checking which neighbors flow TO this cell
+ * 
+ * Cloud shadow feature:
+ * 6. Cloud shadow texture sampled per-pixel for deposition calculation
+ * 7. Water is added proportional to cloud shadow intensity from pre-computed texture
+ */
+const getD8WaterFlowFragmentShader = (): string => {
+    return /* glsl */`
+        #include <common>
+
+        uniform sampler2D terrainHeightmap;
+        uniform sampler2D cloudShadowMap; // Cloud shadow texture from cloud shadow computation variable
+        uniform vec4 uWaterDropPoint; // (x, y, radius, amount) in world coordinates, z=0 means no drop
+        uniform float uTerrainSize;
+        uniform float simulationSpeed;
+        uniform float drainageRate;
+
+        // Direction vectors for 8 neighbors (dx, dy)
+        // 0: N, 1: NE, 2: E, 3: SE, 4: S, 5: SW, 6: W, 7: NW
+        const vec2 directions[8] = vec2[](
+            vec2(0.0, 1.0),    // North
+            vec2(1.0, 1.0),    // Northeast
+            vec2(1.0, 0.0),    // East
+            vec2(1.0, -1.0),   // Southeast
+            vec2(0.0, -1.0),   // South
+            vec2(-1.0, -1.0),  // Southwest
+            vec2(-1.0, 0.0),   // West
+            vec2(-1.0, 1.0)    // Northwest
+        );
+
+        void main() {
+            vec2 cellSize = 1.0 / resolution.xy;
+            vec2 uv = gl_FragCoord.xy * cellSize;
+
+            // Read current water height from previous frame
+            float currentWaterHeight = texture2D(waterHeight, uv).r;
+
+            // Sample cloud shadow intensity from the pre-computed texture
+            float cloudShadow = texture2D(cloudShadowMap, uv).r;
+            
+            // Convert UV to world coordinates for drop point distance check
+            float worldX = uv.x * uTerrainSize;
+            float worldY = (1.0 - uv.y) * uTerrainSize; // Flip Y for terrain coords
             
             // Add water based on cloud shadow (slow deposition)
             float cloudDeposition = 0.0;
@@ -266,6 +296,11 @@ const getD8WaterFlowFragmentShader = (): string => {
  * 3. **Advection**: Water transfers from higher to lower cells based on slope
  * 4. **Conservation**: Inflow equals outflow (plus any infiltration/evaporation)
  * 
+ * Cloud shadow separation:
+ * - Cloud shadow computation is separated into its own GPU computation variable
+ * - The water simulation samples cloud shadow intensity from a pre-computed texture
+ * - This allows clean separation of concerns and potential reuse of cloud shadows
+ * 
  * Key differences from 4-direction simulation:
  * - Considers diagonal neighbors (8 total instead of 4)
  * - More realistic flow patterns that can curve
@@ -284,9 +319,24 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
+    // Create initial cloud shadow texture with no clouds (all zeros)
+    const { texture: cloudShadowTexture } = createInitialCloudShadowTexture(width);
+    
     // Create initial water texture with no initial water
     const { texture: waterTexture } = createInitialWaterTexture(width);
 
+    // Add cloud shadow variable - computes cloud shadow intensity per pixel
+    const cloudShadowVariable = gpuCompute.addVariable(
+        'cloudShadow',  // Use a different name to avoid conflict
+        getCloudShadowFragmentShader(),
+        cloudShadowTexture
+    );
+    gpuCompute.setVariableDependencies(cloudShadowVariable, [cloudShadowVariable]);
+    
+    // Add terrain heightmap uniform to cloud shadow variable
+    cloudShadowVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
+    cloudShadowVariable.material.uniforms.uTerrainSize = { value: terrainSize };
+    
     // Add water height variable - stores current water depth at each cell
     const waterHeightVariable = gpuCompute.addVariable(
         'waterHeight',
@@ -294,31 +344,44 @@ export const createD8WaterFlowSimulation = (
         waterTexture
     );
 
-    // Make variable depend on itself (for ping-pong buffering)
-    gpuCompute.setVariableDependencies(waterHeightVariable, [waterHeightVariable]);
+    // Make variable depend on itself (for ping-pong buffering) and cloud shadow
+    gpuCompute.setVariableDependencies(waterHeightVariable, [cloudShadowVariable, waterHeightVariable]);
 
     // Add uniforms for terrain heightmap and simulation parameters
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
-    waterHeightVariable.material.uniforms.uTerrainSize = { value: terrainSize };
-    waterHeightVariable.material.uniforms.uWaterDropPoint = { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) }; // No initial drop
-    waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.3 }; // Slightly slower than 4-direction for stability
-    waterHeightVariable.material.uniforms.drainageRate = { value: 0.005 }; // Small drainage (evaporation/runoff)
     
-    // Cloud shadow uniforms - array of 16 clouds max
-    const cloudUniforms: THREE.Vector4[] = [];
-    for (let i = 0; i < 16; i++) {
-        cloudUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
-    }
-    waterHeightVariable.material.uniforms.uClouds = { value: cloudUniforms };
-    waterHeightVariable.material.uniforms.uCloudCount = { value: 0 }; // Initially no clouds
+    // Add simulation speed and drainage rate uniforms
+    waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
+    waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 };   // Default: slow drainage
     
     const error = gpuCompute.init();
     if (error !== null) {
         console.error('D8 GPU computation initialization error:', error);
     }
+    
+    // Set cloud shadow map uniform AFTER init (render targets are created during init)
+    waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
+    
+    // Add cloud shadow uniforms to the cloud shadow variable
+    const cloudUniforms: THREE.Vector4[] = [];
+    for (let i = 0; i < 16; i++) {
+        cloudUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
+    }
+    cloudShadowVariable.material.uniforms.uClouds = { value: cloudUniforms };
+    cloudShadowVariable.material.uniforms.uCloudCount = { value: 0 }; // Initially no clouds
 
     return {
         compute: (cloudUniforms?: THREE.Vector4[], cloudCount: number = 0) => {
+            // Update cloud uniforms for cloud shadow computation
+            if (cloudUniforms !== undefined) {
+                const cloudArray = cloudShadowVariable.material.uniforms.uClouds.value;
+                for (let i = 0; i < Math.min(cloudUniforms.length, 16); i++) {
+                    cloudArray[i].copy(cloudUniforms[i]);
+                }
+                cloudShadowVariable.material.uniforms.uCloudCount.value = cloudCount;
+            }
+            
+            // First pass: compute cloud shadows, then water flow
             gpuCompute.compute();
 
             // Clear the water drop point uniform for the next frame
@@ -327,19 +390,37 @@ export const createD8WaterFlowSimulation = (
                 dropPointUniform.value.set(0.0, 0.0, 0.0, 0.0);
             }
             
-            // Update cloud uniforms if provided
-            if (cloudUniforms !== undefined) {
-                const cloudArray = waterHeightVariable.material.uniforms.uClouds.value;
-                for (let i = 0; i < Math.min(cloudUniforms.length, 16); i++) {
-                    cloudArray[i].copy(cloudUniforms[i]);
-                }
-                waterHeightVariable.material.uniforms.uCloudCount.value = cloudCount;
-            }
+            // Debug: check if water texture has any non-zero values (commented out for production)
+            // const debugWaterTex = gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
         },
         getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
         addWater: (x: number, y: number, amount: number, radius: number) => 
             addWater(waterHeightVariable, x, y, amount, radius)
     };
+};
+
+/**
+ * Creates an initial cloud shadow texture with no clouds (all zeros).
+ */
+const createInitialCloudShadowTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
+    const data = new Float32Array(size * size * 4); // RGBA
+    const initialCloudShadow = 0.0; // No clouds initially
+
+    for (let i = 0; i < size * size; i++) {
+        data[i * 4 + 0] = initialCloudShadow; // R: cloud shadow intensity
+        data[i * 4 + 1] = 0.0;                // G: unused
+        data[i * 4 + 2] = 0.0;                // B: unused
+        data[i * 4 + 3] = 1.0;                // A: alpha
+    }
+
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+    texture.needsUpdate = true;
+    console.log('Initial cloud shadow texture created:', {
+        size,
+        firstValue: data[0],
+        lastValue: data[data.length - 4]
+    });
+    return { texture, data };
 };
 
 /**
