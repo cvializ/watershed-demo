@@ -353,8 +353,7 @@ window.addEventListener('click', (event) => {
     const centerY = Math.floor((1.0 - uvY) * width);  // Y is flipped for texture coordinates
     console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
 
-    // Add water at the clicked location (amount: 0.3)
-    waterSimulation.addWater(x, y, 0.8, 10);
+    waterSimulation.addWater(x, y, 0.5, 5);
     console.log('Water added at:', { x, y });
   }
 });

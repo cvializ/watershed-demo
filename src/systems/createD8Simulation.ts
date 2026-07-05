@@ -241,7 +241,7 @@ export const createD8WaterFlowSimulation = (
     waterHeightVariable.material.uniforms.uTerrainSize = { value: terrainSize };
     waterHeightVariable.material.uniforms.uWaterDropPoint = { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) }; // No initial drop
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.15 }; // Slightly slower than 4-direction for stability
-    waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 }; // Small drainage (evaporation/runoff)
+    waterHeightVariable.material.uniforms.drainageRate = { value: 0.005 }; // Small drainage (evaporation/runoff)
     
     const error = gpuCompute.init();
     if (error !== null) {
@@ -269,13 +269,13 @@ export const createD8WaterFlowSimulation = (
  */
 const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
     const data = new Float32Array(size * size * 4); // RGBA
-    const waterHeight = 0.0; // No initial water - click to add water where needed
+    const initialWaterHeight = 0.0;
 
     for (let i = 0; i < size * size; i++) {
-        data[i * 4 + 0] = waterHeight; // R: water height (uniform across all texels)
-        data[i * 4 + 1] = 0.0;         // G: unused
-        data[i * 4 + 2] = 0.0;         // B: unused
-        data[i * 4 + 3] = 1.0;         // A: alpha
+        data[i * 4 + 0] = initialWaterHeight; // R: water height (uniform across all texels)
+        data[i * 4 + 1] = 0.0;                // G: unused
+        data[i * 4 + 2] = 0.0;                // B: unused
+        data[i * 4 + 3] = 1.0;                // A: alpha
     }
 
     const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
