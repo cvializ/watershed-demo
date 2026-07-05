@@ -151,8 +151,9 @@ const getD8WaterFlowFragmentShader = (): string => {
                 float dy = worldY - uWaterDropPoint.y;
                 float distSq = dx * dx + dy * dy;
                 
-                // Add water if within radius
-                if (distSq <= uWaterDropPoint.z) {
+                // Add water if within radius (uWaterDropPoint.z is radius, so compare to radius squared)
+                float radiusSq = uWaterDropPoint.z * uWaterDropPoint.z;
+                if (distSq <= radiusSq) {
                     userAddAmount = uWaterDropPoint.w; // Use amount from uniform
                 }
             }
@@ -354,14 +355,6 @@ export const createD8WaterFlowSimulation = (
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
     waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 };   // Default: slow drainage
     
-    const error = gpuCompute.init();
-    if (error !== null) {
-        console.error('D8 GPU computation initialization error:', error);
-    }
-    
-    // Set cloud shadow map uniform AFTER init (render targets are created during init)
-    waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
-    
     // Add cloud shadow uniforms to the cloud shadow variable
     const cloudUniforms: THREE.Vector4[] = [];
     for (let i = 0; i < 16; i++) {
@@ -369,6 +362,17 @@ export const createD8WaterFlowSimulation = (
     }
     cloudShadowVariable.material.uniforms.uClouds = { value: cloudUniforms };
     cloudShadowVariable.material.uniforms.uCloudCount = { value: 0 }; // Initially no clouds
+
+    // Add water drop point uniform AFTER init (render targets are created during init)
+    waterHeightVariable.material.uniforms.uWaterDropPoint = { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) };
+
+    const error = gpuCompute.init();
+    if (error !== null) {
+        console.error('D8 GPU computation initialization error:', error);
+    }
+
+    // Set cloud shadow map uniform AFTER init (render targets are created during init)
+    waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
 
     return {
         compute: (cloudUniforms?: THREE.Vector4[], cloudCount: number = 0) => {
@@ -469,7 +473,8 @@ const addWater = (
     const dropPointUniform = waterHeightVariable.material.uniforms.uWaterDropPoint;
     if (dropPointUniform) {
         dropPointUniform.value.set(x, y, radius, amount);
+        console.log('Water drop point set:', { x, y, radius, amount });
+    } else {
+        console.error('uWaterDropPoint uniform not found!');
     }
-    
-    console.log('D8 Water drop set at:', { x, y, radius, amount });
 };
