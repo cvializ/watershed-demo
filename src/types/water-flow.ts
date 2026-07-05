@@ -15,16 +15,11 @@ export type WaterFlowVisualization = {
     getWaterTexture: () => THREE.Texture;
 
     /**
-     * Returns the water-to-add texture for painting water on click.
-     */
-    getWaterToAddTexture: () => THREE.Texture;
-
-    /**
      * Adds water at a specific location on the terrain.
      * @param x - X coordinate in world space (0 to terrainSize)
      * @param y - Y coordinate in world space (0 to terrainSize)
      * @param amount - Amount of water to add
-     * @param radius - Radius of the water circle in texels
+     * @param radius - Radius of the water circle in world units
      */
     addWater: (x: number, y: number, amount: number, radius: number) => void;
 };

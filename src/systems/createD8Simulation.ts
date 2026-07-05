@@ -23,7 +23,8 @@ const getD8WaterFlowFragmentShader = (): string => {
         #include <common>
 
         uniform sampler2D terrainHeightmap;
-        uniform sampler2D waterToAdd;
+        uniform vec4 uWaterDropPoint; // (x, y, radius, amount) in world coordinates, z=0 means no drop
+        uniform float uTerrainSize;
         uniform float simulationSpeed;
         uniform float infiltrationRate;
         uniform float drainageRate;
@@ -48,8 +49,23 @@ const getD8WaterFlowFragmentShader = (): string => {
             // Read current water height from previous frame
             float currentWaterHeight = texture2D(waterHeight, uv).r;
 
-            // Read water amount to add from the water-to-add texture
-            float addAmount = texture2D(waterToAdd, uv).r;
+            // Check if this cell is within the water drop radius and add water
+            float addAmount = 0.0;
+            if (uWaterDropPoint.z > 0.0) {
+                // Convert UV to world coordinates (matching terrain coords)
+                float worldX = uv.x * uTerrainSize;
+                float worldY = (1.0 - uv.y) * uTerrainSize; // Flip Y for terrain coords
+                
+                // Calculate distance from drop point
+                float dx = worldX - uWaterDropPoint.x;
+                float dy = worldY - uWaterDropPoint.y;
+                float distSq = dx * dx + dy * dy;
+                
+                // Add water if within radius
+                if (distSq <= uWaterDropPoint.z) {
+                    addAmount = uWaterDropPoint.w; // Use amount from uniform
+                }
+            }
 
             // Add the incoming water to current height
             float newWaterHeight = currentWaterHeight + addAmount;
@@ -224,14 +240,12 @@ export const createD8WaterFlowSimulation = (
     // Make variable depend on itself (for ping-pong buffering)
     gpuCompute.setVariableDependencies(waterHeightVariable, [waterHeightVariable]);
 
-    // Create water-to-add texture for adding water via simulation
-    const { texture: waterToAddTexture } = createWaterToAddTexture(width);
-
     // Add uniforms for terrain heightmap and simulation parameters
     waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
-    waterHeightVariable.material.uniforms.waterToAdd = { value: waterToAddTexture };
+    waterHeightVariable.material.uniforms.uTerrainSize = { value: terrainSize };
+    waterHeightVariable.material.uniforms.uWaterDropPoint = { value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0) }; // No initial drop
     waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.15 }; // Slightly slower than 4-direction for stability
-    waterHeightVariable.material.uniforms.infiltrationRate = { value: 0.98 }; // Small infiltration/evaporation
+    waterHeightVariable.material.uniforms.infiltrationRate = { value: 1.0 }; // Small infiltration/evaporation
     waterHeightVariable.material.uniforms.drainageRate = { value: 0.02 }; // Small drainage
     
     const error = gpuCompute.init();
@@ -243,19 +257,15 @@ export const createD8WaterFlowSimulation = (
         compute: () => {
             gpuCompute.compute();
 
-            // Clear the water-to-add texture for the next frame
-            const image = waterToAddTexture.image as { data: Float32Array };
-            const data = image.data;
-            // Set all values to 0 (zero out the water-to-add texture)
-            for (let i = 0; i < data.length; i++) {
-                data[i] = 0.0;
+            // Clear the water drop point uniform for the next frame
+            const dropPointUniform = waterHeightVariable.material.uniforms.uWaterDropPoint;
+            if (dropPointUniform) {
+                dropPointUniform.value.set(0.0, 0.0, 0.0, 0.0);
             }
-            waterToAddTexture.needsUpdate = true;
         },
         getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
-        getWaterToAddTexture: () => waterToAddTexture, // Expose the water-to-add texture for painting on click
         addWater: (x: number, y: number, amount: number, radius: number) => 
-            addWater(waterHeightVariable, terrainSize, x, y, amount, radius)
+            addWater(waterHeightVariable, x, y, amount, radius)
     };
 };
 
@@ -284,91 +294,28 @@ const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; 
 };
 
 /**
- * Creates a water-to-add texture for adding water via the simulation shader uniform.
- * This texture is painted on click and cleared after each simulation step.
- */
-const createWaterToAddTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
-    const data = new Float32Array(size * size * 4); // RGBA, all zeros
-    
-    for (let i = 0; i < size * size; i++) {
-        data[i * 4 + 0] = 0.0; // R: water amount to add (all zeros initially)
-        data[i * 4 + 1] = 0.0; // G: unused
-        data[i * 4 + 2] = 0.0; // B: unused
-        data[i * 4 + 3] = 1.0; // A: alpha
-    }
-
-    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
-    texture.needsUpdate = true;
-    console.log('D8 water-to-add texture created:', {
-        size,
-        firstValue: data[0]
-    });
-    return { texture, data };
-};
-
-/**
  * Utility function to add water at a specific location on the terrain.
- * Paints water into the waterToAdd texture which is consumed by the simulation shader.
- * The texture is cleared after each simulation step, so water is only added for one frame.
+ * Sets a uniform with the drop point coordinates which the shader uses to add water.
+ * The uniform is cleared after each simulation step.
  * 
  * @param waterHeightVariable - The water height variable from the simulation
- * @param terrainSize - Physical size of the terrain in world units
  * @param x - X coordinate in world space (0 to terrainSize)
  * @param y - Y coordinate in world space (0 to terrainSize)
- * @param amount - Amount of water to add (default: 0.5)
- * @param radius - Radius of the water circle in texels (default: 10)
+ * @param amount - Amount of water to add
+ * @param radius - Radius of the water circle in world units
  */
 const addWater = (
     waterHeightVariable: any,
-    terrainSize: number,
     x: number,
     y: number,
     amount: number,
     radius: number,
 ) => {
-    // Get the water-to-add texture (DataTexture with accessible data)
-    const waterToAddUniform = waterHeightVariable.material.uniforms.waterToAdd;
-    const waterToAddTexture = waterToAddUniform.value as THREE.DataTexture;
-
-    const width = waterToAddTexture.image.width;
-    
-    // Access the data array from the water-to-add texture
-    const image = waterToAddTexture.image as { data: Float32Array };
-    const data = image.data;
-    
-    // Convert world coordinates to UV coordinates (0 to 1)
-    const uvX = x / terrainSize;
-    const uvY = y / terrainSize;
-    
-    // Convert UV to texel coordinates (flip Y for texture coordinate system)
-    const centerX = Math.floor(uvX * width);
-    const centerY = Math.floor((1.0 - uvY) * width);
-    
-    // Calculate the radius in texels (squared for distance check)
-    const radiusSq = radius * radius;
-    
-    // Add water in a circular pattern around the clicked location
-    for (let dy = -radius; dy <= radius; dy++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-            // Check if within circular radius
-            if (dx * dx + dy * dy <= radiusSq) {
-                const texelX = centerX + dx;
-                const texelY = centerY + dy;
-                
-                // Clamp to valid range
-                if (texelX >= 0 && texelX < width && texelY >= 0 && texelY < width) {
-                    // Calculate the index in the RGBA array
-                    const index = (texelY * width + texelX) * 4;
-                    
-                    // Add water to the R channel (water amount to add)
-                    data[index] = Math.min(1.0, data[index] + amount);
-                }
-            }
-        }
+    // Set the water drop point uniform
+    const dropPointUniform = waterHeightVariable.material.uniforms.uWaterDropPoint;
+    if (dropPointUniform) {
+        dropPointUniform.value.set(x, y, radius, amount);
     }
     
-    // Mark texture as needing update
-    waterToAddTexture.needsUpdate = true;
-    
-    console.log('D8 Water to add painted at:', { x, y, amount, centerX, centerY, radius });
+    console.log('D8 Water drop set at:', { x, y, radius, amount });
 };
