@@ -10,6 +10,7 @@ import { createHeightVisualizationMaterial } from './nodes/material/createHeight
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
 import { createWaterVisualizationMaterial } from './nodes/material/createWaterVisualizationMaterial.js';
+import { createCloudShadowSystem } from './systems/createCloudShadowSystem.js';
 
 // Import DOM manipulation utilities
 import { createTabBar, updateTabActiveState } from './dom/ui/createTabBar.js';
@@ -26,6 +27,8 @@ import {
 } from './dom/legend/createLegend.js';
 import { createOverlay } from './dom/createOverlay.js';
 import { createD8WaterFlowSimulation } from './systems/createD8Simulation.js';
+
+const SIM_SIZE = 512;
 
 // Setup scene
 const scene = new THREE.Scene();
@@ -65,7 +68,15 @@ const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create water flow simulation
-const waterSimulation = createD8WaterFlowSimulation(128, terrainSize, renderer, heightMapTexture);
+const waterSimulation = createD8WaterFlowSimulation(SIM_SIZE, terrainSize, renderer, heightMapTexture);
+
+// Create cloud shadow system for water deposition
+const cloudShadowSystem = createCloudShadowSystem({
+    cloudCount: 8,
+    speed: 0.3,
+    maxCloudSize: 3.0,
+    depositionRate: 0.15,
+});
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
 const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
@@ -281,14 +292,19 @@ function animate() {
 
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
+    // Update cloud shadow system and get uniforms for water shader
+    const deltaTime = 1.0 / 60.0; // Assume 60fps for cloud movement
+    const cloudData = cloudShadowSystem.update(deltaTime);
+    
     // Run the GPU computation - single pass calculates both outflow and inflow
-    waterSimulation.compute(); 
+    waterSimulation.compute(cloudData.cloudUniforms, cloudData.cloudUniforms.length); 
     
     // Update terrain shader with current water texture
     const waterTexture = waterSimulation.getWaterTexture();
     waterVisualizationMaterial.uniforms.uWaterHeightmap.value = waterTexture;
+    
     if (frameCount % 60 === 0) {
-      console.log('Water texture updated, frame:', frameCount);
+      console.log('Water texture updated with cloud shadows, frame:', frameCount);
     }
   }
   
@@ -348,7 +364,7 @@ window.addEventListener('click', (event) => {
     // Debug: log texture texel coordinates
     const uvX = x / terrainSize;
     const uvY = y / terrainSize;
-    const width = 128; // simulation grid size
+    const width = SIM_SIZE; // simulation grid size
     const texelX = Math.floor(uvX * width);
     const centerY = Math.floor((1.0 - uvY) * width);  // Y is flipped for texture coordinates
     console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
