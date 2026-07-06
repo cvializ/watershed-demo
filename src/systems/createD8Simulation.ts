@@ -4,6 +4,7 @@ import * as THREE from 'three';
 // Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import { createWaterSourcesSystem } from './createWaterSourcesSystem';
+import { createCloudShadowSystem } from './createCloudShadowSystem';
 
 export type WaterFlowVisualization = {
     /**
@@ -11,7 +12,7 @@ export type WaterFlowVisualization = {
      * @param cloudUniforms - Optional array of cloud data for shadow deposition
      * @param cloudCount - Number of active clouds (up to 16)
      */
-    compute: (cloudUniforms?: THREE.Vector4[], cloudCount?: number) => THREE.Texture;
+    compute: (deltaTime: number) => THREE.Texture;
 
     /**
      * Adds water at a specific location on the terrain.
@@ -23,77 +24,6 @@ export type WaterFlowVisualization = {
     addWater: (x: number, y: number, amount: number, radius: number) => void;
 };
 
-/**
- * Creates the fragment shader for computing cloud shadow intensity.
- * 
- * This shader renders cloud shadows to a texture using the GPUComputationRenderer.
- * Each cloud is represented as a soft-edged circular shadow based on its position,
- * size, and intensity. The result is a texture where each pixel contains the total
- * cloud shadow intensity (0.0 to 1.0) at that world position.
- */
-const getCloudShadowFragmentShader = (): string => {
-    return /* glsl */`
-        #include <common>
-
-        uniform sampler2D terrainHeightmap;
-        uniform vec4 uClouds[16]; // Array of cloud data: (x, y, size, intensity), max 16 clouds
-        uniform int uCloudCount;  // Number of active clouds
-        uniform float uTerrainSize;
-
-        /**
-         * Calculate cloud shadow intensity at a specific world position.
-         */
-        float calculateCloudShadow(vec2 point, vec4 cloud) {
-            // Distance from point to cloud center
-            float dx = point.x - cloud.x;
-            float dy = point.y - cloud.y;
-            float distSq = dx * dx + dy * dy;
-            
-            // Soft-edged circular cloud shadow
-            float radiusSq = cloud.z * cloud.z;
-            
-            // Smooth falloff at edges using smoothstep
-            if (distSq < radiusSq) {
-                float t = 1.0 - distSq / radiusSq; // 1 at center, 0 at edge
-                return cloud.w * t * t * (3.0 - 2.0 * t); // Smoothstep with intensity
-            }
-            
-            return 0.0;
-        }
-
-        /**
-         * Calculate total cloud shadow from all clouds at a position.
-         */
-        float getTotalCloudShadow(vec2 point) {
-            float totalShadow = 0.0;
-            
-            for (int i = 0; i < 16; i++) {
-                if (i >= uCloudCount) break;
-                
-                float shadow = calculateCloudShadow(point, uClouds[i]);
-                totalShadow = max(totalShadow, shadow); // Use maximum (not additive)
-            }
-            
-            return totalShadow;
-        }
-
-        void main() {
-            vec2 cellSize = 1.0 / resolution.xy;
-            vec2 uv = gl_FragCoord.xy * cellSize;
-
-            // Convert UV to world coordinates
-            float worldX = uv.x * uTerrainSize;
-            float worldY = (1.0 - uv.y) * uTerrainSize; // Flip Y for terrain coords
-            vec2 worldPos = vec2(worldX, worldY);
-            
-            // Calculate total cloud shadow intensity
-            float cloudShadow = getTotalCloudShadow(worldPos);
-            
-            // Output: R=cloud shadow intensity, GBA unused
-            gl_FragColor = vec4(cloudShadow, 0.0, 0.0, 1.0);
-        }
-    `;
-};
 
 /**
  * Creates the fragment shader for D8 water surface flow simulation.
@@ -341,23 +271,8 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    const { texture: cloudShadowTexture } = createInitialCloudShadowTexture(width);
-    const cloudShadowVariable = gpuCompute.addVariable(
-        'cloudShadow',  // Use a different name to avoid conflict
-        getCloudShadowFragmentShader(),
-        cloudShadowTexture
-    );
-    gpuCompute.setVariableDependencies(cloudShadowVariable, [cloudShadowVariable]);
-    cloudShadowVariable.material.uniforms.uTerrainSize = { value: terrainSize };
-    
-    const cloudUniforms: THREE.Vector4[] = [];
-    for (let i = 0; i < 16; i++) {
-        cloudUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
-    }
-    cloudShadowVariable.material.uniforms.uClouds = { value: cloudUniforms };
-    cloudShadowVariable.material.uniforms.uCloudCount = { value: 0 };
-
-    const { waterSourcesVariable, addWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
+    const { cloudShadowVariable, updateClouds } = createCloudShadowSystem(gpuCompute, width, terrainSize);
+    const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
 
     const { texture: waterTexture } = createInitialWaterTexture(width);
     const waterHeightVariable = gpuCompute.addVariable(
@@ -378,59 +293,23 @@ export const createD8WaterFlowSimulation = (
     }
 
     return {
-        compute: (cloudUniforms?: THREE.Vector4[], cloudCount: number = 0) => {
-            // Update cloud uniforms for cloud shadow computation
-            if (cloudUniforms !== undefined) {
-                const cloudArray = cloudShadowVariable.material.uniforms.uClouds.value;
-                for (let i = 0; i < Math.min(cloudUniforms.length, 16); i++) {
-                    cloudArray[i].copy(cloudUniforms[i]);
-                }
-                cloudShadowVariable.material.uniforms.uCloudCount.value = cloudCount;
-            }
+        compute: (deltaTime: number) => {
+            updateClouds(deltaTime);
             
             console.log('Water source count:', waterSourcesVariable.material.uniforms.uWaterSourceCount.value);
-
+            
             gpuCompute.compute();
 
             // Update uniforms with the results of the computation?
             waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
             waterHeightVariable.material.uniforms.waterSourcesMap = { value: gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture };
 
-            // Clear water sources for next frame (they've been consumed by the simulation)
-            const sourceArray = waterSourcesVariable.material.uniforms.uWaterSourcePoints.value;
-            for (let i = 0; i < sourceArray.length; i++) {
-                sourceArray[i].set(0.0, 0.0, 0.0, 0.0);
-            }
-            waterSourcesVariable.material.uniforms.uWaterSourceCount.value = 0;
+            clearWater();
 
             return gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
         },
         addWater,
     };
-};
-
-/**
- * Creates an initial cloud shadow texture with no clouds (all zeros).
- */
-const createInitialCloudShadowTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
-    const data = new Float32Array(size * size * 4); // RGBA
-    const initialCloudShadow = 0.0; // No clouds initially
-
-    for (let i = 0; i < size * size; i++) {
-        data[i * 4 + 0] = initialCloudShadow; // R: cloud shadow intensity
-        data[i * 4 + 1] = 0.0;                // G: unused
-        data[i * 4 + 2] = 0.0;                // B: unused
-        data[i * 4 + 3] = 1.0;                // A: alpha
-    }
-
-    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
-    texture.needsUpdate = true;
-    console.log('Initial cloud shadow texture created:', {
-        size,
-        firstValue: data[0],
-        lastValue: data[data.length - 4]
-    });
-    return { texture, data };
 };
 
 /**
