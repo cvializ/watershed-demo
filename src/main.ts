@@ -10,7 +10,6 @@ import { createHeightVisualizationMaterial } from './nodes/material/createHeight
 import { createDisplacementTexture } from './nodes/texture/createDisplacementTexture.js';
 import { createTerrainGeometry } from './nodes/geometry/createTerrainGeometry.js';
 import { createWaterVisualizationMaterial } from './nodes/material/createWaterVisualizationMaterial.js';
-import { createCloudShadowSystem } from './systems/createCloudShadowSystem.js';
 
 // Import DOM manipulation utilities
 import { createTabBar, updateTabActiveState } from './dom/ui/createTabBar.js';
@@ -65,14 +64,6 @@ const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0,
 
 // Create water flow simulation
 const waterSimulation = createD8WaterFlowSimulation(SIM_SIZE, terrainSize, renderer, heightMapTexture);
-
-// Create cloud shadow system for water deposition
-const cloudShadowSystem = createCloudShadowSystem({
-    cloudCount: 8,
-    speed: 0.3,
-    maxCloudSize: 3.0,
-    depositionRate: 0.15,
-});
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
 const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
@@ -220,12 +211,8 @@ function animate() {
 
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
-    // Update cloud shadow system and get uniforms for water shader
-    const deltaTime = 1.0 / 60.0; // Assume 60fps for cloud movement
-    const cloudData = cloudShadowSystem.update(deltaTime);
-    
     // Run the GPU computation - single pass calculates both outflow and inflow
-    const texture = waterSimulation.compute(cloudData.cloudUniforms, cloudData.cloudUniforms.length); 
+    const texture = waterSimulation.compute(1/60.0); 
     waterVisualizationMaterial.uniforms.uWaterHeightmap.value = texture;
   }
   

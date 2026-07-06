@@ -123,6 +123,14 @@ export const createWaterSourcesSystem = (
         waterSourcesVariable,
         addWater: (x: number, y: number, amount: number, radius: number) => {
             addWater(waterSourcesVariable, x, y, amount, radius);
+        },
+        clearWater: () => {
+            // Clear water sources for next frame (they've been consumed by the simulation)
+            const sourceArray = waterSourcesVariable.material.uniforms.uWaterSourcePoints.value;
+            for (let i = 0; i < sourceArray.length; i++) {
+                sourceArray[i].set(0.0, 0.0, 0.0, 0.0);
+            }
+            waterSourcesVariable.material.uniforms.uWaterSourceCount.value = 0;
         }
     }
 }
