@@ -226,7 +226,6 @@ function animate() {
     
     // Run the GPU computation - single pass calculates both outflow and inflow
     const texture = waterSimulation.compute(cloudData.cloudUniforms, cloudData.cloudUniforms.length); 
-    
     waterVisualizationMaterial.uniforms.uWaterHeightmap.value = texture;
   }
   
