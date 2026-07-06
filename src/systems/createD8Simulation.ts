@@ -435,81 +435,56 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    // Create initial cloud shadow texture with no clouds (all zeros)
     const { texture: cloudShadowTexture } = createInitialCloudShadowTexture(width);
-    
-    // Create initial water texture with no initial water
-    const { texture: waterTexture } = createInitialWaterTexture(width);
-    
-    // Create initial water sources texture with no water sources
-    const { texture: waterSourcesTexture } = createInitialWaterSourcesTexture(width);
-
-    // Add cloud shadow variable - computes cloud shadow intensity per pixel
     const cloudShadowVariable = gpuCompute.addVariable(
         'cloudShadow',  // Use a different name to avoid conflict
         getCloudShadowFragmentShader(),
         cloudShadowTexture
     );
     gpuCompute.setVariableDependencies(cloudShadowVariable, [cloudShadowVariable]);
-    
-    // Add terrain heightmap uniform to cloud shadow variable
     cloudShadowVariable.material.uniforms.uTerrainSize = { value: terrainSize };
     
-    // Add water sources variable - stores water source amounts per pixel
+    const cloudUniforms: THREE.Vector4[] = [];
+    for (let i = 0; i < 16; i++) {
+        cloudUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
+    }
+    cloudShadowVariable.material.uniforms.uClouds = { value: cloudUniforms };
+    cloudShadowVariable.material.uniforms.uCloudCount = { value: 0 };
+
+    const { texture: waterSourcesTexture } = createInitialWaterSourcesTexture(width);
     const waterSourcesVariable = gpuCompute.addVariable(
         'waterSources',
         getWaterSourcesFragmentShader(),
         waterSourcesTexture
     );
     gpuCompute.setVariableDependencies(waterSourcesVariable, [waterSourcesVariable]);
-    
-    // Add terrain heightmap uniform to water sources variable
     waterSourcesVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
     waterSourcesVariable.material.uniforms.uTerrainSize = { value: terrainSize };
-    
-    // Add water height variable - stores current water depth at each cell
-    const waterHeightVariable = gpuCompute.addVariable(
-        'waterHeight',
-        getD8WaterFlowFragmentShader(),
-        waterTexture
-    );
-
-    // Make variable depend on itself (for ping-pong buffering), cloud shadow, and water sources
-    gpuCompute.setVariableDependencies(waterHeightVariable, [cloudShadowVariable, waterSourcesVariable, waterHeightVariable]);
-
-    // Add uniforms for terrain heightmap and simulation parameters
-    waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
-    
-    // Add simulation speed and drainage rate uniforms
-    waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
-    waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 };   // Default: slow drainage
-    
-    // Add cloud shadow uniforms to the cloud shadow variable
-    const cloudUniforms: THREE.Vector4[] = [];
-    for (let i = 0; i < 16; i++) {
-        cloudUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
-    }
-    cloudShadowVariable.material.uniforms.uClouds = { value: cloudUniforms };
-    cloudShadowVariable.material.uniforms.uCloudCount = { value: 0 }; // Initially no clouds
-    
+    waterSourcesVariable.material.uniforms.uWaterSourceCount = { value: 0 };
     // Add water sources uniforms (array of vec4: x, y, radius, amount)
     const waterSourceUniforms: THREE.Vector4[] = [];
     for (let i = 0; i < 16; i++) {
         waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
     }
     waterSourcesVariable.material.uniforms.uWaterSourcePoints = { value: waterSourceUniforms };
-    waterSourcesVariable.material.uniforms.uWaterSourceCount = { value: 0 }; // Initially no sources
+
+    const { texture: waterTexture } = createInitialWaterTexture(width);
+    const waterHeightVariable = gpuCompute.addVariable(
+        'waterHeight',
+        getD8WaterFlowFragmentShader(),
+        waterTexture
+    );
+    gpuCompute.setVariableDependencies(waterHeightVariable, [cloudShadowVariable, waterSourcesVariable, waterHeightVariable]);
+    waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
+    waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
+    waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 };   // Default: slow drainage
+    waterHeightVariable.material.uniforms.waterSourcesMap = { value: null };
+    waterHeightVariable.material.uniforms.cloudShadowMap = { value: null };
 
     const error = gpuCompute.init();
     if (error !== null) {
         console.error('D8 GPU computation initialization error:', error);
     }
-
-    // Set cloud shadow map uniform AFTER init (render targets are created during init)
-    waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
-    
-    // Set water sources map uniform AFTER init (render targets are created during init)
-    waterHeightVariable.material.uniforms.waterSourcesMap = { value: gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture };
 
     return {
         compute: (cloudUniforms?: THREE.Vector4[], cloudCount: number = 0) => {
@@ -524,12 +499,10 @@ export const createD8WaterFlowSimulation = (
             
             console.log('Water source count:', waterSourcesVariable.material.uniforms.uWaterSourceCount.value);
 
-            // First pass: compute water sources, then cloud shadows, then water flow
             gpuCompute.compute();
 
-            // Set cloud shadow map uniform AFTER init (render targets are created during init)
+            // Update uniforms with the results of the computation?
             waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
-            // Set water sources map uniform AFTER init (render targets are created during init)
             waterHeightVariable.material.uniforms.waterSourcesMap = { value: gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture };
 
             // Clear water sources for next frame (they've been consumed by the simulation)
