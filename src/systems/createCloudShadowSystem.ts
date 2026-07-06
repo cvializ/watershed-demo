@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { GPUComputationRenderer } from 'three/examples/jsm/Addons.js';
+import type { GPUComputationRenderer, Variable } from 'three/examples/jsm/Addons.js';
 
 const createInitialCloudShadowTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
     const data = new Float32Array(size * size * 4);
@@ -56,7 +56,7 @@ const getCloudShadowFragmentShader = (): string => /* glsl */`
 `;
 
 export type CloudShadowSystem = {
-    cloudShadowVariable: any;
+    cloudShadowVariable: Variable;
     updateClouds: (deltaTime: number) => void;
 };
 
