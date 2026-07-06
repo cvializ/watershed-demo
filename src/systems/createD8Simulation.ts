@@ -3,7 +3,24 @@
 import * as THREE from 'three';
 // Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
-import type { WaterFlowVisualization } from '../types/water-flow.js';
+
+export type WaterFlowVisualization = {
+    /**
+     * Executes one step of the water flow simulation.
+     * @param cloudUniforms - Optional array of cloud data for shadow deposition
+     * @param cloudCount - Number of active clouds (up to 16)
+     */
+    compute: (cloudUniforms?: THREE.Vector4[], cloudCount?: number) => THREE.Texture;
+
+    /**
+     * Adds water at a specific location on the terrain.
+     * @param x - X coordinate in world space (0 to terrainSize)
+     * @param y - Y coordinate in world space (0 to terrainSize)
+     * @param amount - Amount of water to add
+     * @param radius - Radius of the water circle in world units
+     */
+    addWater: (x: number, y: number, amount: number, radius: number) => void;
+};
 
 /**
  * Creates the fragment shader for computing cloud shadow intensity.
@@ -294,7 +311,6 @@ const getWaterSourcesFragmentShader = (): string => {
     return /* glsl */`
         #include <common>
 
-        uniform sampler2D terrainHeightmap;
         uniform vec4 uWaterSourcePoints[16]; // Array of water source data: (x, y, radius, amount), max 16 sources
         uniform int uWaterSourceCount;       // Number of active water sources
         uniform float uTerrainSize;
@@ -437,7 +453,6 @@ export const createD8WaterFlowSimulation = (
     gpuCompute.setVariableDependencies(cloudShadowVariable, [cloudShadowVariable]);
     
     // Add terrain heightmap uniform to cloud shadow variable
-    cloudShadowVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
     cloudShadowVariable.material.uniforms.uTerrainSize = { value: terrainSize };
     
     // Add water sources variable - stores water source amounts per pixel
@@ -507,19 +522,28 @@ export const createD8WaterFlowSimulation = (
                 cloudShadowVariable.material.uniforms.uCloudCount.value = cloudCount;
             }
             
+            console.log('Water source count:', waterSourcesVariable.material.uniforms.uWaterSourceCount.value);
+
             // First pass: compute water sources, then cloud shadows, then water flow
             gpuCompute.compute();
-            
+
+            // Set cloud shadow map uniform AFTER init (render targets are created during init)
+            waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
+            // Set water sources map uniform AFTER init (render targets are created during init)
+            waterHeightVariable.material.uniforms.waterSourcesMap = { value: gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture };
+
             // Clear water sources for next frame (they've been consumed by the simulation)
             const sourceArray = waterSourcesVariable.material.uniforms.uWaterSourcePoints.value;
             for (let i = 0; i < sourceArray.length; i++) {
                 sourceArray[i].set(0.0, 0.0, 0.0, 0.0);
             }
             waterSourcesVariable.material.uniforms.uWaterSourceCount.value = 0;
+
+            return gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
         },
-        getWaterTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
-        addWater: (x: number, y: number, amount: number, radius: number) => 
-            addWater(waterSourcesVariable, x, y, amount, radius)
+        addWater: (x: number, y: number, amount: number, radius: number) => {
+            addWater(waterSourcesVariable, x, y, amount, radius);
+        }
     };
 };
 

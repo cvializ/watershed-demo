@@ -225,24 +225,9 @@ function animate() {
     const cloudData = cloudShadowSystem.update(deltaTime);
     
     // Run the GPU computation - single pass calculates both outflow and inflow
-    waterSimulation.compute(cloudData.cloudUniforms, cloudData.cloudUniforms.length); 
+    const texture = waterSimulation.compute(cloudData.cloudUniforms, cloudData.cloudUniforms.length); 
     
-    // Update terrain shader with current water texture
-    const waterTexture = waterSimulation.getWaterTexture();
-    
-    // Debug: check if water texture has changed
-    if (frameCount % 120 === 0) {
-      console.log('Water simulation update - cloud count:', cloudData.cloudUniforms.length);
-      // Check if water texture is valid
-      console.log('Water texture:', {
-        width: waterTexture.width,
-        height: waterTexture.height,
-        format: waterTexture.format,
-        type: waterTexture.type
-      });
-    }
-    
-    waterVisualizationMaterial.uniforms.uWaterHeightmap.value = waterTexture;
+    waterVisualizationMaterial.uniforms.uWaterHeightmap.value = texture;
   }
   
   renderer.render(scene, camera);
