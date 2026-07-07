@@ -1,8 +1,0 @@
-{
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "module": "esnext",
-    "types": ["vite/client", "@playwright/test", "node"]
-  },
-  "include": ["."]
-}
