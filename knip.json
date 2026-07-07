@@ -1,17 +1,9 @@
 {
   "$schema": "https://knip.dev/schema.json",
   "entry": [
-    "tests/test.ts"
-  ],
-  "ignore": [
-    "**/*debug*",
-    "**/*Debug*"
+    "tests/test-*.ts"
   ],
   "project": [
     "tests/test-*.ts"
-  ],
-  "ignoreFiles": [
-    "tests/test-shaders.ts",
-    "tests/test-cloud-system.ts"
   ]
 }
