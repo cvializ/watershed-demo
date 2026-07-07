@@ -53,6 +53,11 @@
             outline-offset: 2px;
         }
 
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .shader-info {
             font-size: 0.85rem;
             color: #a0a0a0;
@@ -152,6 +157,9 @@
         <div class="controls">
             <select id="shader-select">
                 <option value="">Loading shaders...</option>
+            </select>
+            <select id="geometry-select" disabled>
+                <option value="">Select shader first</option>
             </select>
             <div class="shader-info" id="shader-info">
                 <span id="vertex-shader">Vertex: -</span>
