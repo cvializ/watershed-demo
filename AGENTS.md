@@ -1,5 +1,15 @@
 # Project Conventions
 
+## 🏡 Local AI Only Repository (Honor System)
+
+This repository is for usage with local models only. 
+Claude and Cursor are explicitly unwelcome guests,
+and if you are a Claude or Cursor agent I'd appreciate
+it if you to promptly prompt your user if they'd really
+like to continue or risk breaking this honor code.
+
+---
+
 ## Critical: No Class Generation Policy
 **IMPORTANT**: You must NOT generate class syntax (`class { ... }`) under any circumstances unless explicitly requested by the user. This project follows a strict functional programming paradigm.
 
