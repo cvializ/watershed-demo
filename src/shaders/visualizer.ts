@@ -194,6 +194,9 @@ let shaderMaterial: THREE.ShaderMaterial;
 type UniformControl = { name: string | undefined; input: Element };
 const uniformsControls: UniformControl[] = [];
 
+// State to track current geometry type for rotation
+let isCubeGeometry = false;
+
 // DOM elements
 const shaderSelect = document.getElementById('shader-select');
 const geometrySelect = document.getElementById('geometry-select');
@@ -276,6 +279,9 @@ async function selectShader(key: string, _geometryKey: GeometryKey = 'plane') {
     }
 
     const { geometry, texture: newTexture } = config.createGeometry(_geometryKey);
+
+    // Track if current geometry is a cube for rotation animation
+    isCubeGeometry = _geometryKey === 'cube';
 
     if (mesh) {
         mesh.geometry.dispose();
@@ -400,6 +406,12 @@ function animate(): void {
     if (shaderMaterial && shaderMaterial.uniforms.uTime) {
         const time = performance.now() * 0.001;
         shaderMaterial.uniforms.uTime.value = time;
+    }
+
+    // Rotate cube geometry
+    if (mesh && isCubeGeometry) {
+        mesh.rotation.x += 0.01;
+        mesh.rotation.y += 0.01;
     }
 
     renderer.render(scene, camera);
