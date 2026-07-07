@@ -15,6 +15,7 @@ This is the event sequence.
 5. The HTML file's only job is calling the corresponding `test-foo-bar.ts` file.
 6. The code in `test-foo-bar.ts` runs and imports a client-side `test` utility and `chai` for `expect`
 7. Any failed `expect` calls will fail the test.
+8. GPU compute tests need to call `gpuCompute.compute();` at the end to run the logic
 
 And ALL of this is because:
 
