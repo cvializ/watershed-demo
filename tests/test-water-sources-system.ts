@@ -132,7 +132,6 @@ await test('addWater 16x (but not 17x)', () => {
     clearWater();
 });
 
-
 await test('addWater with different radius sizes', () => {
     addWater(50, 50, 1, 1);
     addWater(50, 60, 1, 10);
