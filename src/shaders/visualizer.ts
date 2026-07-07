@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 // Shader configuration - loads from the shaders directory
@@ -20,6 +19,9 @@ const shaderConfig = {
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get 2d context');
+            }
 
             const gradient = ctx.createLinearGradient(0, 0, size, size);
             gradient.addColorStop(0, 'rgba(10, 50, 100, 1)');
@@ -57,6 +59,9 @@ const shaderConfig = {
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get 2d context');
+            }
 
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
@@ -91,12 +96,14 @@ const shaderConfig = {
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get 2d context');
+            }
 
             ctx.fillStyle = '#0a3d8c';
             ctx.fillRect(0, 0, size, size);
 
             for (let y = 0; y < size; y++) {
-                const noise = Math.sin(y * 0.05) * 20;
                 ctx.fillStyle = `rgba(10, 80, 150, ${0.3 + Math.random() * 0.2})`;
                 ctx.fillRect(0, y, size, 1);
             }
@@ -124,11 +131,13 @@ const shaderConfig = {
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get 2d context');
+            }
 
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
-                    const noise = Math.random();
-                    const value = Math.floor(noise * 255);
+                    const value = Math.floor(Math.random() * 255);
                     ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
                     ctx.fillRect(x, y, 1, 1);
                 }
@@ -141,12 +150,14 @@ const shaderConfig = {
 };
 
 // State
-let currentShaderKey = 'height-visualization';
-let scene, camera, renderer, controls;
-let mesh;
-let texture;
-let shaderMaterial;
-const uniformsControls = [];
+let scene: THREE.Scene;
+let camera: THREE.OrthographicCamera;
+let renderer: THREE.WebGLRenderer;
+let mesh: THREE.Mesh;
+let texture: THREE.Texture;
+let shaderMaterial: THREE.ShaderMaterial;
+type UniformControl = { name: string | undefined; input: Element };
+const uniformsControls: UniformControl[] = [];
 
 // DOM elements
 const shaderSelect = document.getElementById('shader-select');
@@ -170,10 +181,14 @@ async function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(256, 256);
     renderer.setPixelRatio(window.devicePixelRatio);
-    canvasContainer.appendChild(renderer.domElement);
+    if (canvasContainer) {
+        canvasContainer.appendChild(renderer.domElement);
+    }
 
     await loadShaders();
-    loader.style.display = 'none';
+    if (loader) {
+        loader.style.display = 'none';
+    }
     await selectShader('height-visualization');
 
     animate();
@@ -182,6 +197,10 @@ async function init() {
 }
 
 async function loadShaders() {
+    if (!shaderSelect) {
+        return;
+    }
+
     shaderSelect.innerHTML = '';
 
     const keys = Object.keys(shaderConfig);
@@ -193,12 +212,15 @@ async function loadShaders() {
     }
 }
 
-async function selectShader(key) {
-    currentShaderKey = key;
-    const config = shaderConfig[key];
+async function selectShader(key: string) {
+    const config = shaderConfig[key as keyof typeof shaderConfig];
 
-    shaderInfo.vertex.textContent = `Vertex: ${config.vertexUrl.pathname.split('/').pop()}`;
-    shaderInfo.fragment.textContent = `Fragment: ${config.fragmentUrl.pathname.split('/').pop()}`;
+    if (shaderInfo.vertex) {
+        shaderInfo.vertex.textContent = `Vertex: ${config.vertexUrl.pathname.split('/').pop()}`;
+    }
+    if (shaderInfo.fragment) {
+        shaderInfo.fragment.textContent = `Fragment: ${config.vertexUrl.pathname.split('/').pop()}`;
+    }
 
     const { geometry, texture: newTexture } = config.createGeometry();
 
@@ -216,7 +238,8 @@ async function selectShader(key) {
         fetch(config.fragmentUrl).then(res => res.text())
     ]);
 
-    const uniforms = { ...config.uniforms };
+    // Create uniforms with proper typing including optional uHeightMap
+    const uniforms: Record<string, { value: any }> = { ...config.uniforms };
 
     if (newTexture) {
         uniforms.uHeightMap = { value: newTexture };
@@ -243,15 +266,24 @@ async function selectShader(key) {
     });
 
     uniformsControls.length = 0;
-    const inputs = controlsPanel.querySelectorAll('input[type="range"]');
-    inputs.forEach(input => {
-        input.addEventListener('input', onUniformChange);
-        uniformsControls.push({ name: input.dataset.uniform, input });
-    });
+    const inputs = controlsPanel?.querySelectorAll('input[type="range"]');
+    if (inputs) {
+        inputs.forEach(input => {
+            input.addEventListener('input', onUniformChange);
+            const control = { name: (input as HTMLElement).dataset.uniform, input };
+            if (control.name) {
+                uniformsControls.push(control);
+            }
+        });
+    }
 }
 
-function createControlsPanel(key) {
-    const config = shaderConfig[key];
+function createControlsPanel(key: string) {
+    const config = shaderConfig[key as keyof typeof shaderConfig];
+
+    if (!controlsPanel) {
+        return;
+    }
 
     controlsPanel.innerHTML = '';
     controlsPanel.style.display = 'block';
@@ -266,11 +298,16 @@ function createControlsPanel(key) {
 
         const input = document.createElement('input');
         input.type = 'range';
-        input.min = uniform.min;
-        input.max = uniform.max;
-        input.step = uniform.step;
-        input.value = uniform.value;
-        input.dataset.uniform = name;
+        if ('min' in uniform) {
+            input.min = uniform.min.toString();
+        }
+        if ('max' in uniform) {
+            input.max = uniform.max.toString();
+        }
+        if ('step' in uniform) {
+            input.step = uniform.step.toString();
+        }
+        input.value = uniform.value.toString();
 
         const valueDisplay = document.createElement('span');
         valueDisplay.textContent = uniform.value.toFixed(2);
@@ -285,21 +322,25 @@ function createControlsPanel(key) {
     }
 }
 
-function onUniformChange(event) {
-    const uniformName = event.target.dataset.uniform;
-    const value = parseFloat(event.target.value);
+function onUniformChange(event: Event) {
+    const target = event.target as HTMLElement;
+    const uniformName = (target as HTMLElement).dataset.uniform;
+    if (!uniformName) {
+        return;
+    }
+    const value = parseFloat((target as HTMLInputElement).value);
 
     if (shaderMaterial && shaderMaterial.uniforms[uniformName]) {
         shaderMaterial.uniforms[uniformName].value = value;
     }
 }
 
-function onWindowResize() {
+function onWindowResize(): void {
     // Canvas has fixed 512x512 size, so no resize handling needed
     // The renderer just renders to the fixed canvas size
 }
 
-function animate() {
+function animate(): void {
     requestAnimationFrame(animate);
 
     // Update time for shaders that support animation
@@ -312,7 +353,9 @@ function animate() {
 }
 
 init().catch(error => {
-    loader.style.display = 'none';
+    if (loader) {
+        loader.style.display = 'none';
+    }
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error';
     errorDiv.innerHTML = `<strong>Error loading shaders:</strong><br>${error.message}`;
@@ -320,6 +363,9 @@ init().catch(error => {
     console.error('Init error:', error);
 });
 
-shaderSelect.addEventListener('change', (e) => {
-    selectShader(e.target.value);
-});
+if (shaderSelect) {
+    shaderSelect.addEventListener('change', (e: Event) => {
+        const target = e.target as HTMLSelectElement;
+        selectShader(target.value);
+    });
+}
