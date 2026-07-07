@@ -21,9 +21,11 @@ This directory contains a standalone shader visualizer that allows you to test a
   - Height Visualization
   - Slope Visualization  
   - Water Visualization
+  - Animated Noise (NEW!)
 
 - **Uniform Controls**: Adjust shader uniforms in real-time:
   - Sliders for min/max height, slope values
+  - Time-based animation speed, scale, and amplitude controls
   - Immediate feedback as you adjust
 
 - **Orbit Controls**: Click and drag to rotate the view, scroll to zoom
@@ -75,3 +77,4 @@ To add a new shader for visualization:
 | `height-visualization.*` | Visualizes terrain height using color palette |
 | `slope-visualization.*` | Visualizes slope angles with gradient colors |
 | `water-visualization.*` | Visualizes water flow on terrain |
+| `animated-noise.*` | Animates procedural noise over time with controls for speed, scale, and amplitude |
