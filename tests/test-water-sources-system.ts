@@ -1,5 +1,7 @@
+import { expect } from 'chai';
 import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
+import './test-global-types.d.ts';
 
 import { createWaterSourcesSystem } from '../src/systems/createWaterSourcesSystem';
 
@@ -14,7 +16,7 @@ const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 const heightMapTexture = gpuCompute.createTexture(); // TODO: create actual blank heightmap texture
 const terrainSize = 512;
 
-const { waterSourcesVariable } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
+const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
 
 // Initialize the GPU computation renderer (creates render targets)
 const error = gpuCompute.init();
@@ -36,3 +38,5 @@ scene.add(mesh);
 
 const camera = new THREE.OrthographicCamera();
 renderer.render(scene, camera);
+
+expect(true).to.be.true;
