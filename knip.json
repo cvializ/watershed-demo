@@ -6,5 +6,12 @@
   "ignore": [
     "**/*debug*",
     "**/*Debug*"
+  ],
+  "project": [
+    "tests/test-*.ts"
+  ],
+  "ignoreFiles": [
+    "tests/test-shaders.ts",
+    "tests/test-cloud-system.ts"
   ]
 }
