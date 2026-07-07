@@ -1,4 +1,4 @@
-// import { expect } from 'chai';
+import { expect } from 'chai';
 import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import './test-global-types.d.ts';
