@@ -164,6 +164,6 @@ const addWater = (
         countUniform.value = currentCount + 1;
         console.log('Water source added:', { x, y, radius, amount, count: countUniform.value });
     } else {
-        console.warn('Maximum water sources (16) reached, ignoring additional source');
+        throw new Error('TOO MANY COUNT');
     }
 };
