@@ -168,7 +168,6 @@
 
     <script type="module">
         import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         // Shader configuration - loads from the shaders directory
         const shaderConfig = {
@@ -332,18 +331,14 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a1a2e);
 
-            camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 1000);
-            camera.position.set(0, 12, 0);
+            camera = new THREE.OrthographicCamera(-6, 6, 6, -6, 0.1, 1000);
+            camera.position.set(0, 7, 0);
             camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             canvasContainer.appendChild(renderer.domElement);
-
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
 
             await loadShaders();
             loader.style.display = 'none';
@@ -473,7 +468,6 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
             
             // Update time for shaders that support animation
             if (shaderMaterial && shaderMaterial.uniforms.uTime) {
