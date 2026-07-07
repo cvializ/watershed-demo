@@ -1,7 +1,22 @@
 import * as THREE from 'three';
 
+// Geometry options configuration
+const geometryOptions: Record<string, { name: string }> = {
+    plane: { name: 'Plane' },
+    cube: { name: 'Cube' }
+};
+
+type GeometryKey = keyof typeof geometryOptions;
+
+interface ShaderConfig {
+    vertexUrl: URL;
+    fragmentUrl: URL;
+    uniforms: Record<string, { value: number; min?: number; max?: number; step?: number }>;
+    createGeometry: (geometryKey?: GeometryKey) => { geometry: THREE.BufferGeometry; texture: THREE.Texture };
+}
+
 // Shader configuration - loads from the shaders directory
-const shaderConfig = {
+const shaderConfig: Record<string, ShaderConfig> = {
     'height-visualization': {
         vertexUrl: new URL('./height-visualization.vert', import.meta.url),
         fragmentUrl: new URL('./height-visualization.frag', import.meta.url),
@@ -9,9 +24,14 @@ const shaderConfig = {
             uMinHeight: { value: -1.5, min: -5, max: 5, step: 0.1 },
             uMaxHeight: { value: 2.0, min: -5, max: 5, step: 0.1 }
         },
-        createGeometry: () => {
-            const geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
-            geometry.rotateX(-Math.PI / 2);
+        createGeometry: (geometryKey: GeometryKey = 'plane') => {
+            let geometry: THREE.BufferGeometry;
+            if (geometryKey === 'cube') {
+                geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else {
+                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
+                geometry.rotateX(-Math.PI / 2);
+            }
 
             // Create a simple gradient texture for height visualization
             const size = 512;
@@ -50,9 +70,14 @@ const shaderConfig = {
             uMinSlope: { value: 0.0, min: 0, max: 2, step: 0.01 },
             uMaxSlope: { value: 2.0, min: 0, max: 4, step: 0.01 }
         },
-        createGeometry: () => {
-            const geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
-            geometry.rotateX(-Math.PI / 2);
+        createGeometry: (geometryKey: GeometryKey = 'plane') => {
+            let geometry: THREE.BufferGeometry;
+            if (geometryKey === 'cube') {
+                geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else {
+                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
+                geometry.rotateX(-Math.PI / 2);
+            }
 
             const size = 64;
             const canvas = document.createElement('canvas');
@@ -87,9 +112,14 @@ const shaderConfig = {
             uMinHeight: { value: -1.5, min: -5, max: 5, step: 0.1 },
             uMaxHeight: { value: 2.0, min: -5, max: 5, step: 0.1 }
         },
-        createGeometry: () => {
-            const geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
-            geometry.rotateX(-Math.PI / 2);
+        createGeometry: (geometryKey: GeometryKey = 'plane') => {
+            let geometry: THREE.BufferGeometry;
+            if (geometryKey === 'cube') {
+                geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else {
+                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
+                geometry.rotateX(-Math.PI / 2);
+            }
 
             const size = 512;
             const canvas = document.createElement('canvas');
@@ -121,9 +151,14 @@ const shaderConfig = {
             uScale: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
             uAmplitude: { value: 1.0, min: 0.1, max: 2, step: 0.1 }
         },
-        createGeometry: () => {
-            const geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
-            geometry.rotateX(-Math.PI / 2);
+        createGeometry: (geometryKey: GeometryKey = 'plane') => {
+            let geometry: THREE.BufferGeometry;
+            if (geometryKey === 'cube') {
+                geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else {
+                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
+                geometry.rotateX(-Math.PI / 2);
+            }
 
             // Create a simple noise texture as base
             const size = 256;
@@ -161,6 +196,7 @@ const uniformsControls: UniformControl[] = [];
 
 // DOM elements
 const shaderSelect = document.getElementById('shader-select');
+const geometrySelect = document.getElementById('geometry-select');
 const shaderInfo = {
     vertex: document.getElementById('vertex-shader'),
     fragment: document.getElementById('fragment-shader')
@@ -189,7 +225,7 @@ async function init() {
     if (loader) {
         loader.style.display = 'none';
     }
-    await selectShader('height-visualization');
+    await selectShader('height-visualization', 'plane');
 
     animate();
 
@@ -197,7 +233,7 @@ async function init() {
 }
 
 async function loadShaders() {
-    if (!shaderSelect) {
+    if (!shaderSelect || !geometrySelect) {
         return;
     }
 
@@ -210,10 +246,27 @@ async function loadShaders() {
         option.textContent = key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         shaderSelect.appendChild(option);
     }
+
+    // Populate geometry options
+    const geometryKeys = Object.keys(geometryOptions) as GeometryKey[];
+    for (const key of geometryKeys) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = geometryOptions[key].name;
+        geometrySelect.appendChild(option);
+    }
+
+    // Enable geometry select after shader is selected
+    (geometrySelect as HTMLSelectElement).disabled = true;
 }
 
-async function selectShader(key: string) {
+async function selectShader(key: string, _geometryKey: GeometryKey = 'plane') {
     const config = shaderConfig[key as keyof typeof shaderConfig];
+
+    // Enable geometry select when a shader is selected
+    if (geometrySelect) {
+        (geometrySelect as HTMLSelectElement).disabled = false;
+    }
 
     if (shaderInfo.vertex) {
         shaderInfo.vertex.textContent = `Vertex: ${config.vertexUrl.pathname.split('/').pop()}`;
@@ -222,7 +275,7 @@ async function selectShader(key: string) {
         shaderInfo.fragment.textContent = `Fragment: ${config.vertexUrl.pathname.split('/').pop()}`;
     }
 
-    const { geometry, texture: newTexture } = config.createGeometry();
+    const { geometry, texture: newTexture } = config.createGeometry(_geometryKey);
 
     if (mesh) {
         mesh.geometry.dispose();
@@ -298,13 +351,13 @@ function createControlsPanel(key: string) {
 
         const input = document.createElement('input');
         input.type = 'range';
-        if ('min' in uniform) {
+        if ('min' in uniform && uniform.min !== undefined) {
             input.min = uniform.min.toString();
         }
-        if ('max' in uniform) {
+        if ('max' in uniform && uniform.max !== undefined) {
             input.max = uniform.max.toString();
         }
-        if ('step' in uniform) {
+        if ('step' in uniform && uniform.step !== undefined) {
             input.step = uniform.step.toString();
         }
         input.value = uniform.value.toString();
@@ -363,9 +416,16 @@ init().catch(error => {
     console.error('Init error:', error);
 });
 
-if (shaderSelect) {
+if (shaderSelect && geometrySelect) {
     shaderSelect.addEventListener('change', (e: Event) => {
         const target = e.target as HTMLSelectElement;
-        selectShader(target.value);
+        selectShader(target.value, 'plane' as GeometryKey);
+    });
+
+    geometrySelect.addEventListener('change', () => {
+        if (shaderSelect && geometrySelect) {
+            const geometryKey = (geometrySelect as HTMLSelectElement).value;
+            selectShader((shaderSelect as HTMLSelectElement).value, geometryKey as GeometryKey);
+        }
     });
 }
