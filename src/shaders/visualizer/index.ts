@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { createTerrainGeometry } from '../nodes/geometry/createTerrainGeometry.js';
+import { createTerrainGeometry } from '../../nodes/geometry/createTerrainGeometry.js';
 
 // Geometry options configuration
 const geometryOptions: Record<string, { name: string }> = {
@@ -21,8 +21,8 @@ interface ShaderConfig {
 // Shader configuration - loads from the shaders directory
 const shaderConfig: Record<string, ShaderConfig> = {
     'height-visualization': {
-        vertexUrl: new URL('./height-visualization.vert', import.meta.url),
-        fragmentUrl: new URL('./height-visualization.frag', import.meta.url),
+        vertexUrl: new URL('../height-visualization.vert', import.meta.url),
+        fragmentUrl: new URL('../height-visualization.frag', import.meta.url),
         uniforms: {
             uMinHeight: { value: -1.5, min: -5, max: 5, step: 0.1 },
             uMaxHeight: { value: 2.0, min: -5, max: 5, step: 0.1 }
@@ -70,8 +70,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
         }
     },
     'slope-visualization': {
-        vertexUrl: new URL('./slope-visualization.vert', import.meta.url),
-        fragmentUrl: new URL('./slope-visualization.frag', import.meta.url),
+        vertexUrl: new URL('../slope-visualization.vert', import.meta.url),
+        fragmentUrl: new URL('../slope-visualization.frag', import.meta.url),
         uniforms: {
             uMinSlope: { value: 0.0, min: 0, max: 2, step: 0.01 },
             uMaxSlope: { value: 2.0, min: 0, max: 4, step: 0.01 }
@@ -115,8 +115,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
         }
     },
     'water-visualization': {
-        vertexUrl: new URL('./water-visualization.vert', import.meta.url),
-        fragmentUrl: new URL('./water-visualization.frag', import.meta.url),
+        vertexUrl: new URL('../water-visualization.vert', import.meta.url),
+        fragmentUrl: new URL('../water-visualization.frag', import.meta.url),
         uniforms: {
             uMinHeight: { value: -1.5, min: -5, max: 5, step: 0.1 },
             uMaxHeight: { value: 2.0, min: -5, max: 5, step: 0.1 }
@@ -155,8 +155,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
         }
     },
     'animated-noise': {
-        vertexUrl: new URL('./animated-noise.vert', import.meta.url),
-        fragmentUrl: new URL('./animated-noise.frag', import.meta.url),
+        vertexUrl: new URL('../animated-noise.vert', import.meta.url),
+        fragmentUrl: new URL('../animated-noise.frag', import.meta.url),
         uniforms: {
             uTime: { value: 0.0 }, // Will be updated in animate loop
             uSpeed: { value: 1.0, min: 0.1, max: 5, step: 0.1 },
@@ -198,8 +198,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
         }
     },
     'animated-cloud': {
-        vertexUrl: new URL('./animated-cloud.vert', import.meta.url),
-        fragmentUrl: new URL('./animated-cloud.frag', import.meta.url),
+        vertexUrl: new URL('../animated-cloud.vert', import.meta.url),
+        fragmentUrl: new URL('../animated-cloud.frag', import.meta.url),
         uniforms: {
             uTime: { value: 0.0 }, // Will be updated in animate loop
             uSpeed: { value: 0.5, min: 0.1, max: 2, step: 0.1 },
