@@ -461,7 +461,8 @@ init().catch(error => {
 if (shaderSelect && geometrySelect) {
     shaderSelect.addEventListener('change', (e: Event) => {
         const target = e.target as HTMLSelectElement;
-        selectShader(target.value, 'plane' as GeometryKey);
+        const geometryKey = (geometrySelect as HTMLSelectElement).value;
+        selectShader(target.value, geometryKey as GeometryKey);
     });
 
     geometrySelect.addEventListener('change', () => {
