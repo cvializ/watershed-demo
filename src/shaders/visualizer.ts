@@ -287,7 +287,7 @@ async function selectShader(key: string, _geometryKey: GeometryKey = 'plane') {
         shaderInfo.vertex.textContent = `Vertex: ${config.vertexUrl.pathname.split('/').pop()}`;
     }
     if (shaderInfo.fragment) {
-        shaderInfo.fragment.textContent = `Fragment: ${config.vertexUrl.pathname.split('/').pop()}`;
+        shaderInfo.fragment.textContent = `Fragment: ${config.fragmentUrl.pathname.split('/').pop()}`;
     }
 
     const { geometry, texture: newTexture } = config.createGeometry(_geometryKey);
