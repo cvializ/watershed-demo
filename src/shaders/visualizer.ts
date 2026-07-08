@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 
+import { createTerrainGeometry } from '../nodes/geometry/createTerrainGeometry.js';
+
 // Geometry options configuration
 const geometryOptions: Record<string, { name: string }> = {
     plane: { name: 'Plane' },
-    cube: { name: 'Cube' }
+    cube: { name: 'Cube' },
+    terrain: { name: 'Terrain' }
 };
 
 type GeometryKey = keyof typeof geometryOptions;
@@ -28,6 +31,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
             let geometry: THREE.BufferGeometry;
             if (geometryKey === 'cube') {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else if (geometryKey === 'terrain') {
+                geometry = createTerrainGeometry();
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -74,6 +79,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
             let geometry: THREE.BufferGeometry;
             if (geometryKey === 'cube') {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else if (geometryKey === 'terrain') {
+                geometry = createTerrainGeometry();
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -116,6 +123,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
             let geometry: THREE.BufferGeometry;
             if (geometryKey === 'cube') {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else if (geometryKey === 'terrain') {
+                geometry = createTerrainGeometry();
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -155,6 +164,8 @@ const shaderConfig: Record<string, ShaderConfig> = {
             let geometry: THREE.BufferGeometry;
             if (geometryKey === 'cube') {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else if (geometryKey === 'terrain') {
+                geometry = createTerrainGeometry();
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -196,6 +207,7 @@ const uniformsControls: UniformControl[] = [];
 
 // State to track current geometry type for rotation
 let isCubeGeometry = false;
+let isTerrainGeometry = false;
 
 // DOM elements
 const shaderSelect = document.getElementById('shader-select');
@@ -282,6 +294,7 @@ async function selectShader(key: string, _geometryKey: GeometryKey = 'plane') {
 
     // Track if current geometry is a cube for rotation animation
     isCubeGeometry = _geometryKey === 'cube';
+    isTerrainGeometry = _geometryKey === 'terrain';
 
     // Compute vertex normals for proper lighting on cube geometry
     if (isCubeGeometry) {
@@ -419,6 +432,11 @@ function animate(): void {
         mesh.rotation.y += 0.01;
         
         // Update normals as the cube rotates for proper lighting
+        mesh.geometry.computeVertexNormals();
+    }
+
+    // Update terrain geometry normals if they need updating
+    if (mesh && isTerrainGeometry) {
         mesh.geometry.computeVertexNormals();
     }
 
