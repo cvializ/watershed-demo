@@ -4,8 +4,8 @@ import * as THREE from 'three';
 // Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import { createWaterSourcesSystem } from './createWaterSourcesSystem';
-import { createCloudShadowSystem } from './createCloudShadowSystem';
 import { createWaterHeightSystem } from './createWaterHeightSystem';
+import { createAnimatedCloudSystem } from './createAnimatedCloudSystem';
 
 export type WaterFlowVisualization = {
     /**
@@ -66,9 +66,10 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    const { cloudShadowVariable, updateClouds } = createCloudShadowSystem(gpuCompute, width, terrainSize);
+    const { cloudVariable, updateClouds } = createAnimatedCloudSystem(gpuCompute, width);
+
     const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
-    const { waterHeightVariable, updateWaterHeight } = createWaterHeightSystem(gpuCompute, width, heightMapTexture, cloudShadowVariable, waterSourcesVariable);
+    const { waterHeightVariable, updateWaterHeight } = createWaterHeightSystem(gpuCompute, width, heightMapTexture, cloudVariable, waterSourcesVariable);
 
     const error = gpuCompute.init();
     if (error !== null) {
