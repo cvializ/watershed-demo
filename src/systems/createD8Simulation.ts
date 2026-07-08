@@ -3,9 +3,9 @@
 import * as THREE from 'three';
 // Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
-import { createWaterSourcesSystem } from './createWaterSourcesSystem';
-import { createWaterHeightSystem } from './createWaterHeightSystem';
-import { createAnimatedCloudSystem } from './createAnimatedCloudSystem';
+import { createWaterSourcesSystem } from '@/systems/createWaterSourcesSystem';
+import { createWaterHeightSystem } from '@/systems/createWaterHeightSystem';
+import { createAnimatedCloudSystem } from '@/systems/createAnimatedCloudSystem';
 
 export type WaterFlowVisualization = {
     /**

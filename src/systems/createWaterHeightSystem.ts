@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GPUComputationRenderer, Variable } from 'three/examples/jsm/Addons.js';
-import waterHeightFragmentShader from '../shaders/compute/water-height.frag?raw';
+import waterHeightFragmentShader from '@/shaders/compute/water-height.frag?raw';
 
 /**
  * Creates the fragment shader for D8 water surface flow simulation.

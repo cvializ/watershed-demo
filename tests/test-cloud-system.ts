@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import './test-global-types.d.ts';
 
-import { createAnimatedCloudSystem } from '../src/systems/createAnimatedCloudSystem';
+import { createAnimatedCloudSystem } from '@/systems/createAnimatedCloudSystem';
 import { test } from './testUtils.ts';
 
 const renderer = new THREE.WebGLRenderer();

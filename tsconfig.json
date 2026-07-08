@@ -2,6 +2,11 @@
   "compilerOptions": {
     "target": "es2023",
     "module": "esnext",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "ignoreDeprecations": "6.0",
     "lib": ["ES2023", "DOM"],
     "types": [
       "vite/client",

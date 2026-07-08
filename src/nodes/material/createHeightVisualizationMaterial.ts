@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-import heightVisualizationVert from '../../shaders/height-visualization.vert?raw';
-import heightVisualizationFrag from '../../shaders/height-visualization.frag?raw';
+import heightVisualizationVert from '@/shaders/height-visualization.vert?raw';
+import heightVisualizationFrag from '@/shaders/height-visualization.frag?raw';
 
 /**
  * Create a shader material that visualizes terrain height using a color palette

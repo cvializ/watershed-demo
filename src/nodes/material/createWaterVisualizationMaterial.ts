@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-import waterVisualizationVert from '../../shaders/water-visualization.vert?raw';
-import waterVisualizationFrag from '../../shaders/water-visualization.frag?raw';
+import waterVisualizationVert from '@/shaders/water-visualization.vert?raw';
+import waterVisualizationFrag from '@/shaders/water-visualization.frag?raw';
 
 /**
  * Create a shader material that visualizes water flowing on terrain

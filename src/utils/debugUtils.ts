@@ -8,12 +8,12 @@
 import * as THREE from 'three';
 
 // Import debug materials from their new location
-import { createDebugPositionMaterial } from '../nodes/material/createDebugPositionMaterial.js';
-import { createDebugFaceNormalMaterial } from '../nodes/material/createDebugFaceNormalMaterial.js';
-import { createDebugDepthMaterial } from '../nodes/material/createDebugDepthMaterial.js';
-import { createDebugDisplacementMaterial } from '../nodes/material/createDebugDisplacementMaterial.js';
-import { createDebugTimeMaterial } from '../nodes/material/createDebugTimeMaterial.js';
-import { createDebugHeightRangeMaterial } from '../nodes/material/createDebugHeightRangeMaterial.js';
+import { createDebugPositionMaterial } from '@/nodes/material/createDebugPositionMaterial.js';
+import { createDebugFaceNormalMaterial } from '@/nodes/material/createDebugFaceNormalMaterial.js';
+import { createDebugDepthMaterial } from '@/nodes/material/createDebugDepthMaterial.js';
+import { createDebugDisplacementMaterial } from '@/nodes/material/createDebugDisplacementMaterial.js';
+import { createDebugTimeMaterial } from '@/nodes/material/createDebugTimeMaterial.js';
+import { createDebugHeightRangeMaterial } from '@/nodes/material/createDebugHeightRangeMaterial.js';
 
 const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 

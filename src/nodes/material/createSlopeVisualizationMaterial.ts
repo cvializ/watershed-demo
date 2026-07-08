@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-import slopeVisualizationVert from '../../shaders/slope-visualization.vert?raw';
-import slopeVisualizationFrag from '../../shaders/slope-visualization.frag?raw';
+import slopeVisualizationVert from '@/shaders/slope-visualization.vert?raw';
+import slopeVisualizationFrag from '@/shaders/slope-visualization.frag?raw';
 
 /**
  * Create a shader material for slope-based visualization (normal map)
