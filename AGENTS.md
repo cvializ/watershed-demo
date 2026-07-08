@@ -55,6 +55,8 @@ const getCount = (counter: Counter): number => counter.count;
 ## TypeScript Import Conventions
 - **Use ES Module syntax**: When writing TypeScript code in a `src/` directory, use ES Module syntax (`import`/`export`) by default. Only use CommonJS (`require`/`module.exports`) when absolutely necessary (e.g., for runtime dynamic imports or Node.js APIs that require it). Node.js has solid ES Module support, and modern tooling handles ESM well.
 - **Use absolute imports from `src/`**: Import modules using absolute paths starting with `src/`, e.g., `import { function } from 'src/utils/helpers'` instead of relative paths like `../../../utils/helpers`
+- **Prefer top-level imports**: Place all import statements at the top of the file, outside of any functions or blocks. This improves code readability and makes dependencies explicit.
+- **Avoid inline dynamic imports**: Do not use `import()` expressions inside functions or conditionals unless absolutely necessary (e.g., for code splitting in browser environments or conditional loading of optional dependencies). Inline dynamic imports make code harder to read, test, and analyze.
 - This improves code readability and makes refactoring easier
 - Configure your editor/IDE to resolve absolute imports correctly
 
@@ -88,6 +90,52 @@ processI = (...); // processItem
 // DON'T do this - cryptic single letters
 data.forEach(x => { ... });  // Use 'item', 'element', etc.
 arr.map(e => e * 2);         // Use descriptive names
+```
+
+### Import Style Examples
+**Top-level imports (PREFERRED)**:
+```ts
+// All imports at the top of the file
+import { useCallback, useState } from 'react';
+import { processItems, validateData } from 'src/utils/helpers';
+
+const MyComponent = () => {
+  const [count, setCount] = useState(0);
+  // ...
+};
+```
+
+**Avoid inline dynamic imports (DON'T do this)**:
+```ts
+// DON'T do this - inline import inside function
+const loadData = async () => {
+  const module = await import('src/utils/helpers');
+  module.processItems(data);
+};
+
+// DON'T do this - conditional dynamic import
+if (condition) {
+  const { expensiveFeature } = await import('src/features/expensive');
+  expensiveFeature();
+}
+```
+
+**When inline dynamic imports are acceptable**:
+```ts
+// OK - code splitting in browser (lazy loading)
+const loadEditor = async () => {
+  const { Editor } = await import('./editor');
+  return new Editor();
+};
+
+// OK - optional dependency with fallback
+let formatter: Formatter;
+try {
+  const { AdvancedFormatter } = await import('optional-formatter');
+  formatter = new AdvancedFormatter();
+} catch {
+  formatter = new BasicFormatter();
+}
 ```
 
 ### TypeScript Type Safety Policy
