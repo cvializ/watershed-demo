@@ -42,7 +42,7 @@ void main() {
     if (cloudShadow > 0.001) {
         // Small amount of water added per frame where cloud shadows fall
         // This simulates condensation from cooling air under clouds
-        cloudDeposition = cloudShadow * 0.015; // Deposition rate
+        cloudDeposition = cloudShadow * 0.005; // Deposition rate
     }
 
     // Add water sources from the pre-computed texture (already computed on GPU)
