@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { createTerrainGeometry } from '../../nodes/geometry/createTerrainGeometry.js';
+import { createTerrainGeometry } from '@/nodes/geometry/createTerrainGeometry.js';
 
 // Geometry options configuration
 const geometryOptions: Record<string, { name: string }> = {

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import './test-global-types.d.ts';
 
-import { createWaterSourcesSystem } from '../src/systems/createWaterSourcesSystem';
+import { createWaterSourcesSystem } from '@/systems/createWaterSourcesSystem';
 import { test } from './testUtils.ts';
 
 const renderer = new THREE.WebGLRenderer();

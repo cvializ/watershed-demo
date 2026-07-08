@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GPUComputationRenderer, Variable } from 'three/examples/jsm/Addons.js';
-import waterSourcesFragmentShader from '../shaders/compute/water-sources.frag?raw';
+import waterSourcesFragmentShader from '@/shaders/compute/water-sources.frag?raw';
 
 /**
  * Creates the fragment shader for computing water sources.

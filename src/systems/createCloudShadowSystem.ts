@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GPUComputationRenderer, Variable } from 'three/examples/jsm/Addons.js';
-import cloudShadowFragmentShader from '../shaders/compute/cloud-shadow.frag?raw';
+import cloudShadowFragmentShader from '@/shaders/compute/cloud-shadow.frag?raw';
 
 const createInitialCloudShadowTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
     const data = new Float32Array(size * size * 4);

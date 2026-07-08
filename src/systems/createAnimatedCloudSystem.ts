@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GPUComputationRenderer, Variable } from 'three/examples/jsm/Addons.js';
-import animatedCloudFragmentShader from '../shaders/compute/animated-cloud.frag?raw';
+import animatedCloudFragmentShader from '@/shaders/compute/animated-cloud.frag?raw';
 
 /**
  * Creates the fragment shader for animated cloud computation.
