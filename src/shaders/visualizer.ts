@@ -433,6 +433,7 @@ function createControlsPanel(key: string) {
             const colorValue = uniform.value as THREE.Color;
             const hexColor = colorValue.getHexString();
             colorInput.value = `#${hexColor}`;
+            colorInput.dataset.uniform = name;
             
             const valueSpan = document.createElement('span');
             valueSpan.textContent = `#${hexColor}`;
@@ -464,6 +465,7 @@ function createControlsPanel(key: string) {
             }
             const numericValue = uniform.value as number;
             rangeInput.value = numericValue.toString();
+            rangeInput.dataset.uniform = name;
 
             const valueSpan = document.createElement('span');
             valueSpan.textContent = numericValue.toFixed(2);
