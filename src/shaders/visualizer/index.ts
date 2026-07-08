@@ -14,7 +14,7 @@ type GeometryKey = keyof typeof geometryOptions;
 interface ShaderConfig {
     vertexUrl: URL;
     fragmentUrl: URL;
-    uniforms: Record<string, { value: number | THREE.Color; min?: number; max?: number; step?: number }>;
+    uniforms: Record<string, { value: number | THREE.Color | THREE.Vector2; min?: number; max?: number; step?: number }>;    
     createGeometry: (geometryKey?: GeometryKey) => { geometry: THREE.BufferGeometry; texture: THREE.Texture };
 }
 
@@ -197,6 +197,51 @@ const shaderConfig: Record<string, ShaderConfig> = {
             return { geometry, texture };
         }
     },
+    'drifting-cloud': {
+        vertexUrl: new URL('../drifting-cloud.vert', import.meta.url),
+        fragmentUrl: new URL('../drifting-cloud.frag', import.meta.url),
+        uniforms: {
+            uTime: { value: 0.0 }, // Will be updated in animate loop
+            uDriftSpeed: { value: new THREE.Vector2(0.5, 0.3), min: -2, max: 2, step: 0.1 },
+            uSpeed: { value: 1.0, min: 0.1, max: 3, step: 0.1 },
+            uScale: { value: 4.0, min: 1.0, max: 10, step: 0.5 },
+            uDensity: { value: 0.6, min: 0.1, max: 0.9, step: 0.05 },
+            uColor: { value: new THREE.Color(0xffffff) }
+        },
+        createGeometry: (geometryKey: GeometryKey = 'plane') => {
+            let geometry: THREE.BufferGeometry;
+            if (geometryKey === 'cube') {
+                geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else if (geometryKey === 'terrain') {
+                geometry = createTerrainGeometry();
+                geometry.rotateX(-Math.PI / 2);
+            } else {
+                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
+                geometry.rotateX(-Math.PI / 2);
+            }
+
+            // Create a simple noise texture as base
+            const size = 256;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get 2d context');
+            }
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const value = Math.floor(Math.random() * 255);
+                    ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            return { geometry, texture };
+        }
+    },
     'animated-cloud': {
         vertexUrl: new URL('../animated-cloud.vert', import.meta.url),
         fragmentUrl: new URL('../animated-cloud.frag', import.meta.url),
@@ -242,8 +287,6 @@ const shaderConfig: Record<string, ShaderConfig> = {
         }
     }
 };
-
-// State
 let scene: THREE.Scene;
 let camera: THREE.OrthographicCamera;
 let renderer: THREE.WebGLRenderer;
@@ -421,12 +464,94 @@ function createControlsPanel(key: string) {
         label.textContent = name.replace('u', '').replace(/[A-Z]/g, l => ' ' + l.toLowerCase());
         controlGroup.appendChild(label);
 
-        let input: HTMLElement;
-        let valueDisplay: HTMLElement;
-
-        // Handle color uniform - check using type property
+        // Check if this is a Vector2 uniform (like uDriftSpeed)
+        const isVector2 = (uniform.value as THREE.Vector2).isVector2;
+        
+        // Check if this is a Color uniform
         const isColor = (uniform.value as THREE.Color).isColor;
-        if (isColor) {
+
+        if (isVector2) {
+            // Handle Vector2 uniform with two sliders for x and y components
+            const vectorValue = uniform.value as THREE.Vector2;
+            
+            // Create container for the two sliders
+            const vectorContainer = document.createElement('div');
+            vectorContainer.className = 'vector-container';
+            
+            const valueSpanX = document.createElement('span');
+            valueSpanX.textContent = vectorValue.x.toFixed(2);
+            
+            const rangeInputX = document.createElement('input');
+            rangeInputX.type = 'range';
+            if ('min' in uniform && uniform.min !== undefined) {
+                rangeInputX.min = uniform.min.toString();
+            }
+            if ('max' in uniform && uniform.max !== undefined) {
+                rangeInputX.max = uniform.max.toString();
+            }
+            if ('step' in uniform && uniform.step !== undefined) {
+                rangeInputX.step = uniform.step.toString();
+            }
+            rangeInputX.value = vectorValue.x.toString();
+            rangeInputX.dataset.uniform = name;
+            rangeInputX.dataset.component = 'x';
+
+            const valueSpanY = document.createElement('span');
+            valueSpanY.textContent = vectorValue.y.toFixed(2);
+            
+            const rangeInputY = document.createElement('input');
+            rangeInputY.type = 'range';
+            if ('min' in uniform && uniform.min !== undefined) {
+                rangeInputY.min = uniform.min.toString();
+            }
+            if ('max' in uniform && uniform.max !== undefined) {
+                rangeInputY.max = uniform.max.toString();
+            }
+            if ('step' in uniform && uniform.step !== undefined) {
+                rangeInputY.step = uniform.step.toString();
+            }
+            rangeInputY.value = vectorValue.y.toString();
+            rangeInputY.dataset.uniform = name;
+            rangeInputY.dataset.component = 'y';
+
+            // Create slider for X component (horizontal drift)
+            const sliderContainerX = document.createElement('div');
+            sliderContainerX.className = 'slider-container';
+            const labelX = document.createElement('label');
+            labelX.textContent = 'Horizontal';
+            sliderContainerX.appendChild(labelX);
+            sliderContainerX.appendChild(rangeInputX);
+            sliderContainerX.appendChild(valueSpanX);
+            
+            // Create slider for Y component (vertical drift)
+            const sliderContainerY = document.createElement('div');
+            sliderContainerY.className = 'slider-container';
+            const labelY = document.createElement('label');
+            labelY.textContent = 'Vertical';
+            sliderContainerY.appendChild(labelY);
+            sliderContainerY.appendChild(rangeInputY);
+            sliderContainerY.appendChild(valueSpanY);
+            
+            vectorContainer.appendChild(sliderContainerX);
+            vectorContainer.appendChild(sliderContainerY);
+            
+            const updateVectorUniform = () => {
+                const newX = parseFloat(rangeInputX.value);
+                const newY = parseFloat(rangeInputY.value);
+                valueSpanX.textContent = newX.toFixed(2);
+                valueSpanY.textContent = newY.toFixed(2);
+                
+                if (shaderMaterial && shaderMaterial.uniforms[name]) {
+                    shaderMaterial.uniforms[name].value.set(newX, newY);
+                }
+            };
+            
+            rangeInputX.addEventListener('input', updateVectorUniform);
+            rangeInputY.addEventListener('input', updateVectorUniform);
+            
+            // Append the vector container for Vector2
+            controlGroup.appendChild(vectorContainer);
+        } else if (isColor) {
             const colorInput = document.createElement('input');
             colorInput.type = 'color';
             // Convert RGB to hex string for color picker
@@ -448,8 +573,8 @@ function createControlsPanel(key: string) {
                 }
             });
             
-            input = colorInput;
-            valueDisplay = valueSpan;
+            controlGroup.appendChild(colorInput);
+            controlGroup.appendChild(valueSpan);
         } else {
             // Handle numeric uniform
             const rangeInput = document.createElement('input');
@@ -474,12 +599,9 @@ function createControlsPanel(key: string) {
                 valueSpan.textContent = parseFloat(rangeInput.value).toFixed(2);
             });
 
-            input = rangeInput;
-            valueDisplay = valueSpan;
+            controlGroup.appendChild(rangeInput);
+            controlGroup.appendChild(valueSpan);
         }
-
-        controlGroup.appendChild(input);
-        controlGroup.appendChild(valueDisplay);
         controlsPanel.appendChild(controlGroup);
     }
 }
@@ -490,10 +612,25 @@ function onUniformChange(event: Event) {
     if (!uniformName) {
         return;
     }
-    const value = parseFloat((target as HTMLInputElement).value);
-
+    const component = (target as HTMLElement).dataset.component;
+    
     if (shaderMaterial && shaderMaterial.uniforms[uniformName]) {
-        shaderMaterial.uniforms[uniformName].value = value;
+        // Handle Vector2 uniforms
+        if (component === 'x') {
+            const vectorValue = shaderMaterial.uniforms[uniformName].value as THREE.Vector2;
+            const newValue = parseFloat((target as HTMLInputElement).value);
+            vectorValue.x = newValue;
+            shaderMaterial.uniforms[uniformName].value = vectorValue;
+        } else if (component === 'y') {
+            const vectorValue = shaderMaterial.uniforms[uniformName].value as THREE.Vector2;
+            const newValue = parseFloat((target as HTMLInputElement).value);
+            vectorValue.y = newValue;
+            shaderMaterial.uniforms[uniformName].value = vectorValue;
+        } else {
+            // Handle regular numeric uniforms
+            const value = parseFloat((target as HTMLInputElement).value);
+            shaderMaterial.uniforms[uniformName].value = value;
+        }
     }
 }
 
