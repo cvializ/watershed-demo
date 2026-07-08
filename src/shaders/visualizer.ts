@@ -14,7 +14,7 @@ type GeometryKey = keyof typeof geometryOptions;
 interface ShaderConfig {
     vertexUrl: URL;
     fragmentUrl: URL;
-    uniforms: Record<string, { value: number; min?: number; max?: number; step?: number }>;
+    uniforms: Record<string, { value: number | THREE.Color; min?: number; max?: number; step?: number }>;
     createGeometry: (geometryKey?: GeometryKey) => { geometry: THREE.BufferGeometry; texture: THREE.Texture };
 }
 
@@ -162,6 +162,50 @@ const shaderConfig: Record<string, ShaderConfig> = {
             uSpeed: { value: 1.0, min: 0.1, max: 5, step: 0.1 },
             uScale: { value: 3.0, min: 0.5, max: 10, step: 0.1 },
             uAmplitude: { value: 1.0, min: 0.1, max: 2, step: 0.1 }
+        },
+        createGeometry: (geometryKey: GeometryKey = 'plane') => {
+            let geometry: THREE.BufferGeometry;
+            if (geometryKey === 'cube') {
+                geometry = new THREE.BoxGeometry(5, 5, 5);
+            } else if (geometryKey === 'terrain') {
+                geometry = createTerrainGeometry();
+                geometry.rotateX(-Math.PI / 2);
+            } else {
+                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
+                geometry.rotateX(-Math.PI / 2);
+            }
+
+            // Create a simple noise texture as base
+            const size = 256;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                throw new Error('Failed to get 2d context');
+            }
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const value = Math.floor(Math.random() * 255);
+                    ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            return { geometry, texture };
+        }
+    },
+    'animated-cloud': {
+        vertexUrl: new URL('./animated-cloud.vert', import.meta.url),
+        fragmentUrl: new URL('./animated-cloud.frag', import.meta.url),
+        uniforms: {
+            uTime: { value: 0.0 }, // Will be updated in animate loop
+            uSpeed: { value: 0.5, min: 0.1, max: 2, step: 0.1 },
+            uScale: { value: 4.0, min: 1.0, max: 10, step: 0.5 },
+            uDensity: { value: 0.6, min: 0.1, max: 0.9, step: 0.05 },
+            uColor: { value: new THREE.Color(0xffffff) }
         },
         createGeometry: (geometryKey: GeometryKey = 'plane') => {
             let geometry: THREE.BufferGeometry;
@@ -377,25 +421,60 @@ function createControlsPanel(key: string) {
         label.textContent = name.replace('u', '').replace(/[A-Z]/g, l => ' ' + l.toLowerCase());
         controlGroup.appendChild(label);
 
-        const input = document.createElement('input');
-        input.type = 'range';
-        if ('min' in uniform && uniform.min !== undefined) {
-            input.min = uniform.min.toString();
-        }
-        if ('max' in uniform && uniform.max !== undefined) {
-            input.max = uniform.max.toString();
-        }
-        if ('step' in uniform && uniform.step !== undefined) {
-            input.step = uniform.step.toString();
-        }
-        input.value = uniform.value.toString();
+        let input: HTMLElement;
+        let valueDisplay: HTMLElement;
 
-        const valueDisplay = document.createElement('span');
-        valueDisplay.textContent = uniform.value.toFixed(2);
+        // Handle color uniform - check using type property
+        const isColor = (uniform.value as THREE.Color).isColor;
+        if (isColor) {
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            // Convert RGB to hex string for color picker
+            const colorValue = uniform.value as THREE.Color;
+            const hexColor = colorValue.getHexString();
+            colorInput.value = `#${hexColor}`;
+            
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = `#${hexColor}`;
+            
+            colorInput.addEventListener('input', () => {
+                const hex = colorInput.value.replace('#', '');
+                valueSpan.textContent = `#${hex}`;
+                
+                // Update the shader material uniform
+                if (shaderMaterial && shaderMaterial.uniforms[name]) {
+                    shaderMaterial.uniforms[name].value.set(`#${hex}`);
+                }
+            });
+            
+            input = colorInput;
+            valueDisplay = valueSpan;
+        } else {
+            // Handle numeric uniform
+            const rangeInput = document.createElement('input');
+            rangeInput.type = 'range';
+            if ('min' in uniform && uniform.min !== undefined) {
+                rangeInput.min = uniform.min.toString();
+            }
+            if ('max' in uniform && uniform.max !== undefined) {
+                rangeInput.max = uniform.max.toString();
+            }
+            if ('step' in uniform && uniform.step !== undefined) {
+                rangeInput.step = uniform.step.toString();
+            }
+            const numericValue = uniform.value as number;
+            rangeInput.value = numericValue.toString();
 
-        input.addEventListener('input', () => {
-            valueDisplay.textContent = parseFloat(input.value).toFixed(2);
-        });
+            const valueSpan = document.createElement('span');
+            valueSpan.textContent = numericValue.toFixed(2);
+
+            rangeInput.addEventListener('input', () => {
+                valueSpan.textContent = parseFloat(rangeInput.value).toFixed(2);
+            });
+
+            input = rangeInput;
+            valueDisplay = valueSpan;
+        }
 
         controlGroup.appendChild(input);
         controlGroup.appendChild(valueDisplay);
