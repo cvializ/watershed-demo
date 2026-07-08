@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { calculateHeight } from '@/terrainUtils.js';
+import { calculateHeight } from '@/terrainUtils';
 
 /**
  * Create a displacement map texture from the terrain height function

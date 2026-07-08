@@ -3,25 +3,25 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
-import { createDownslopeArrowGeometry } from '@/nodes/geometry/createDownslopeArrowGeometry.js';
-import { createSlopeVisualizationMaterial } from '@/nodes/material/createSlopeVisualizationMaterial.js';
-import { createDownslopeArrowMaterial } from '@/nodes/material/createDownslopeArrowMaterial.js';
-import { createHeightVisualizationMaterial } from '@/nodes/material/createHeightVisualizationMaterial.js';
-import { createDisplacementTexture } from '@/nodes/texture/createDisplacementTexture.js';
-import { createTerrainGeometry } from '@/nodes/geometry/createTerrainGeometry.js';
-import { createWaterVisualizationMaterial } from '@/nodes/material/createWaterVisualizationMaterial.js';
+import { createDownslopeArrowGeometry } from '@/nodes/geometry/createDownslopeArrowGeometry';
+import { createSlopeVisualizationMaterial } from '@/nodes/material/createSlopeVisualizationMaterial';
+import { createDownslopeArrowMaterial } from '@/nodes/material/createDownslopeArrowMaterial';
+import { createHeightVisualizationMaterial } from '@/nodes/material/createHeightVisualizationMaterial';
+import { createDisplacementTexture } from '@/nodes/texture/createDisplacementTexture';
+import { createTerrainGeometry } from '@/nodes/geometry/createTerrainGeometry';
+import { createWaterVisualizationMaterial } from '@/nodes/material/createWaterVisualizationMaterial';
 
 // Import DOM manipulation utilities
-import { createTabBar, updateTabActiveState } from '@/dom/ui/createTabBar.js';
-import { createUIContainer } from '@/dom/ui/createUIContainer.js';
+import { createTabBar, updateTabActiveState } from '@/dom/ui/createTabBar';
+import { createUIContainer } from '@/dom/ui/createUIContainer';
 import {
   createVisualizationLegend,
   createSlopeLegend,
   showLegend,
   hideLegend,
 } from '@/dom/legend/createLegend.js';
-import { createOverlay } from '@/dom/createOverlay.js';
-import { createD8WaterFlowSimulation } from '@/systems/createD8Simulation.js';
+import { createOverlay } from '@/dom/createOverlay';
+import { createD8WaterFlowSimulation } from '@/systems/createD8Simulation';
 
 const SIM_SIZE = 512;
 
