@@ -84,9 +84,6 @@ export const createD8WaterFlowSimulation = (
     return {
         compute: (deltaTime: number) => {
             updateClouds(deltaTime);
-            
-            console.log('Water source count:', waterSourcesVariable.material.uniforms.uWaterSourceCount.value);
-
             updateWaterHeight();
 
             gpuCompute.compute();
