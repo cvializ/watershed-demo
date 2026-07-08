@@ -158,6 +158,12 @@ const createInitialCloudTexture = (size: number): { texture: THREE.DataTexture; 
 export type AnimatedCloudSystem = {
     cloudVariable: Variable;
     updateClouds: (deltaTime: number) => void;
+    
+    /**
+     * Get the cloud texture from GPU computation render target.
+     * This texture can be used as a shadow map on terrain materials.
+     */
+    getCloudTexture: () => THREE.Texture;
 };
 
 /**
@@ -220,6 +226,11 @@ export const createAnimatedCloudSystem = (
     // Set initial uniforms
     updateClouds(0);
 
+    // Get the cloud texture from GPU computation render target
+    const getCloudTexture = (): THREE.Texture => {
+        return gpuCompute.getCurrentRenderTarget(cloudVariable).texture;
+    };
+
     return {
         cloudVariable,
         updateClouds: (deltaTime: number) => {
@@ -228,5 +239,6 @@ export const createAnimatedCloudSystem = (
             // Trigger computation
             gpuCompute.compute();
         },
+        getCloudTexture,
     };
 };

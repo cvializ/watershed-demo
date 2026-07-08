@@ -23,6 +23,11 @@ export type WaterFlowVisualization = {
      * @param radius - Radius of the water circle in world units
      */
     addWater: (x: number, y: number, amount: number, radius: number) => void;
+    
+    /**
+     * Get the cloud shadow texture for use with terrain materials.
+     */
+    getCloudShadowTexture: () => THREE.Texture;
 };
 
 /**
@@ -66,7 +71,7 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    const { cloudVariable, updateClouds } = createAnimatedCloudSystem(gpuCompute, width);
+    const { cloudVariable, updateClouds, getCloudTexture } = createAnimatedCloudSystem(gpuCompute, width);
 
     const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
     const { waterHeightVariable, updateWaterHeight } = createWaterHeightSystem(gpuCompute, width, heightMapTexture, cloudVariable, waterSourcesVariable);
@@ -91,5 +96,6 @@ export const createD8WaterFlowSimulation = (
             return gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
         },
         addWater,
+        getCloudShadowTexture: () => getCloudTexture(),
     };
 };
