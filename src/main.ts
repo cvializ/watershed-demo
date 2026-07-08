@@ -93,7 +93,7 @@ const normalMaterial = new THREE.MeshNormalMaterial({
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);
 const wireframeMaterial = new THREE.LineBasicMaterial({
   color: 0xffaa00,
-  opacity: 0.6,
+  opacity: 0.1,
   transparent: true,
 });
 const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
