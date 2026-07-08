@@ -5,6 +5,7 @@ uniform float uMinHeight;
 uniform float uMaxHeight;
 
 varying vec2 vUv;
+varying vec3 vNormal;
 
 vec3 getColorPalette(float normalizedHeight) {
     float h = clamp(normalizedHeight, 0.0, 1.0);

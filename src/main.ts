@@ -79,7 +79,7 @@ arrows.name = 'downslope-arrows';
 arrows.rotation.x = -Math.PI / 2;
 scene.add(arrows);
 
-const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial() as THREE.Material);
+const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial());
 terrain.name = 'terrain';
 terrain.rotation.x = -Math.PI / 2;
 scene.add(terrain);

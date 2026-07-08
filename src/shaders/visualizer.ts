@@ -283,6 +283,11 @@ async function selectShader(key: string, _geometryKey: GeometryKey = 'plane') {
     // Track if current geometry is a cube for rotation animation
     isCubeGeometry = _geometryKey === 'cube';
 
+    // Compute vertex normals for proper lighting on cube geometry
+    if (isCubeGeometry) {
+        geometry.computeVertexNormals();
+    }
+
     if (mesh) {
         mesh.geometry.dispose();
         if (texture) texture.dispose();
@@ -412,6 +417,9 @@ function animate(): void {
     if (mesh && isCubeGeometry) {
         mesh.rotation.x += 0.01;
         mesh.rotation.y += 0.01;
+        
+        // Update normals as the cube rotates for proper lighting
+        mesh.geometry.computeVertexNormals();
     }
 
     renderer.render(scene, camera);

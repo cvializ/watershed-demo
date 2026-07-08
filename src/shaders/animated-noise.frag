@@ -7,6 +7,7 @@ uniform float uScale;
 uniform float uAmplitude;
 
 varying vec2 vUv;
+varying vec3 vNormal;
 
 // Simplex noise implementation (simplified)
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }

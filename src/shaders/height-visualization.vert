@@ -1,7 +1,11 @@
 varying vec2 vUv;
-uniform sampler2D uHeightMap;
+varying vec3 vNormal;
 
 void main() {
     vUv = uv;
+    
+    // Transform normals with modelViewMatrix for rotated cube
+    vNormal = normalize((modelViewMatrix * vec4(normal, 0.0)).xyz);
+    
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }

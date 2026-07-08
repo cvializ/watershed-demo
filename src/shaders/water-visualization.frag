@@ -6,6 +6,7 @@ uniform float uMinHeight;
 uniform float uMaxHeight;
 
 varying vec2 vUv;
+varying vec3 vNormal;
 
 // Simple water visualization - blue overlay based on water height
 void main() {
