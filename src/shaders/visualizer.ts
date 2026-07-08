@@ -33,6 +33,7 @@ const shaderConfig: Record<string, ShaderConfig> = {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
             } else if (geometryKey === 'terrain') {
                 geometry = createTerrainGeometry();
+                geometry.rotateX(-Math.PI / 2);
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -81,6 +82,7 @@ const shaderConfig: Record<string, ShaderConfig> = {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
             } else if (geometryKey === 'terrain') {
                 geometry = createTerrainGeometry();
+                geometry.rotateX(-Math.PI / 2);
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -125,6 +127,7 @@ const shaderConfig: Record<string, ShaderConfig> = {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
             } else if (geometryKey === 'terrain') {
                 geometry = createTerrainGeometry();
+                geometry.rotateX(-Math.PI / 2);
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
@@ -166,6 +169,7 @@ const shaderConfig: Record<string, ShaderConfig> = {
                 geometry = new THREE.BoxGeometry(5, 5, 5);
             } else if (geometryKey === 'terrain') {
                 geometry = createTerrainGeometry();
+                geometry.rotateX(-Math.PI / 2);
             } else {
                 geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
                 geometry.rotateX(-Math.PI / 2);
