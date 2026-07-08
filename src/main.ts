@@ -214,6 +214,11 @@ function animate() {
     // Run the GPU computation - single pass calculates both outflow and inflow
     const texture = waterSimulation.compute(1/60.0); 
     waterVisualizationMaterial.uniforms.uWaterHeightmap.value = texture;
+    
+    // Update cloud shadow texture on water material
+    if (waterVisualizationMaterial.uniforms.uCloudShadowMap) {
+      waterVisualizationMaterial.uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+    }
   }
   
   renderer.render(scene, camera);

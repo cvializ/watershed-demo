@@ -2,6 +2,7 @@ precision highp float;
 
 uniform sampler2D uHeightMap;
 uniform sampler2D uWaterHeightmap;
+uniform sampler2D uCloudShadowMap;
 uniform float uMinHeight;
 uniform float uMaxHeight;
 
@@ -16,6 +17,9 @@ void main() {
     // Sample water height
     float waterHeight = texture2D(uWaterHeightmap, vUv).r;
     
+    // Sample cloud shadow intensity
+    float cloudShadow = texture2D(uCloudShadowMap, vUv).r;
+    
     // Visualize water if present
     vec3 finalColor = terrainColor;
     
@@ -26,6 +30,12 @@ void main() {
         
         // Blend terrain and water (water overlays terrain)
         finalColor = mix(terrainColor, waterColor, waterIntensity * 0.6);
+    } else {
+        // Apply cloud shadow to terrain where there's no water
+        if (cloudShadow > 0.01) {
+            float shadowDarkening = clamp(cloudShadow * 0.5, 0.0, 0.4);
+            finalColor *= (1.0 - shadowDarkening);
+        }
     }
     
     gl_FragColor = vec4(finalColor, 1.0);
