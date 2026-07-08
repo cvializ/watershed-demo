@@ -5,7 +5,7 @@ import './test-global-types.d.ts';
 import { createWaterSourcesSystem } from '../src/systems/createWaterSourcesSystem';
 import { test } from './testUtils.ts';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
