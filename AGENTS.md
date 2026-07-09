@@ -359,6 +359,64 @@ This is required for all code-changing tasks. The task is not complete until val
 - Write clear commit messages with conventional commits
 - Prefer small, focused change sets that implement one verifiable chunk
 
+## Shader Organization Convention
+
+**All shaders must be in separate files**: GPU computation shaders (for GPUComputationRenderer) and rendering shaders must be stored as `.frag` or `.vert` files in the `src/shaders/` directory structure, never embedded as template literals in TypeScript code.
+
+**Directory Structure**:
+- `src/shaders/compute/` - GPU computation shaders (GPUComputationRenderer)
+- `src/shaders/visualizer/` - Rendering shaders for visualization pass
+- Standalone shaders in `src/shaders/` root for shared shaders
+
+**Import Pattern**:
+```ts
+// Correct - import from separate shader file
+import waterVelocityFragmentShader from '@/shaders/compute/water-velocity.frag?raw';
+
+const variable = gpuCompute.addVariable(
+    'waterVelocity',
+    waterVelocityFragmentShader,
+    texture
+);
+```
+
+**Example - DON'T do this** (inline template literal):
+```ts
+// DON'T embed shader code in TypeScript
+const variable = gpuCompute.addVariable(
+    'waterVelocity',
+    `
+uniform sampler2D uHeightMap;
+void main() {
+    // shader code here
+}
+    `,
+    texture
+);
+```
+
+**Example - DO this** (separate shader file):
+```ts
+// In src/shaders/compute/water-velocity.frag:
+uniform sampler2D uHeightMap;
+void main() {
+    // shader code here
+}
+
+// In TypeScript:
+import waterVelocityFragmentShader from '@/shaders/compute/water-velocity.frag?raw';
+
+const variable = gpuCompute.addVariable('waterVelocity', waterVelocityFragmentShader, texture);
+```
+
+**Reasons for this policy**:
+- **Separation of concerns**: GLSL is a separate language, should be in its own files
+- **Syntax highlighting**: Proper editor support for GLSL code with appropriate language modes
+- **Reusability**: Shaders can be shared between systems without duplication
+- **Maintainability**: Easier to test and modify shaders independently
+- **Version control**: Changes to shaders are clearer in diffs without TypeScript boilerplate
+- **Tooling support**: GLSL-specific linting and formatting tools can be applied
+
 ## Three.js Geometry and Shader Integration Warnings
 
 ### Rotated PlaneGeometry and Normal Calculation
