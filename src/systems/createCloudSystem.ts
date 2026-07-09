@@ -48,7 +48,7 @@ export type AnimatedCloudSystem = {
  * @param width - Width of the computation texture (height will be same for square grid)
  * @returns Animated cloud system with variable and update function
  */
-export const createAnimatedCloudSystem = (
+export const createCloudSystem = (
     gpuCompute: GPUComputationRenderer,
     width: number
 ): AnimatedCloudSystem => {

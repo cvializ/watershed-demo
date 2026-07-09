@@ -82,7 +82,6 @@ scene.add(arrows);
 const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial() as THREE.Material);
 terrain.name = 'terrain';
 terrain.rotation.x = -Math.PI / 2;
-scene.add(terrain);
 
 // Store original material for toggling
 const originalMaterial = terrain.material;
@@ -100,6 +99,7 @@ const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
 wireframe.name = 'terrain-wireframe';
 wireframe.rotation.x = -Math.PI / 2;
 scene.add(wireframe);
+scene.add(terrain);
 
 // Visualization mode state
 let visualizationMode = 4; // Start on Water Flow tab (mode 0=Height, 1=Slope, 2=Verify, 3=Downslope Arrows, 4=Water Flow)
