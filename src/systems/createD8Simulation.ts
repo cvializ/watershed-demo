@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 import { createWaterSourcesSystem } from '@/systems/createWaterSourcesSystem';
 import { createWaterHeightSystem } from '@/systems/createWaterHeightSystem';
-import { createAnimatedCloudSystem } from '@/systems/createAnimatedCloudSystem';
+import { createCloudSystem } from '@/systems/createCloudSystem';
 
 export type WaterFlowVisualization = {
     /**
@@ -71,10 +71,11 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    const { cloudVariable, updateClouds, getCloudTexture } = createAnimatedCloudSystem(gpuCompute, width);
+    const { cloudVariable, updateClouds, getCloudTexture } = createCloudSystem(gpuCompute, width);
 
     const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
     const { waterHeightVariable, updateWaterHeight } = createWaterHeightSystem(gpuCompute, width, heightMapTexture, cloudVariable, waterSourcesVariable);
+
 
     const error = gpuCompute.init();
     if (error !== null) {
