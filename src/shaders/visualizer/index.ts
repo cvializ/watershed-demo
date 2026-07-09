@@ -241,50 +241,6 @@ const shaderConfig: Record<string, ShaderConfig> = {
             const texture = new THREE.CanvasTexture(canvas);
             return { geometry, texture };
         }
-    },
-    'animated-cloud': {
-        vertexUrl: new URL('../animated-cloud.vert', import.meta.url),
-        fragmentUrl: new URL('../animated-cloud.frag', import.meta.url),
-        uniforms: {
-            uTime: { value: 0.0 }, // Will be updated in animate loop
-            uSpeed: { value: 0.5, min: 0.1, max: 2, step: 0.1 },
-            uScale: { value: 4.0, min: 1.0, max: 10, step: 0.5 },
-            uDensity: { value: 0.6, min: 0.1, max: 0.9, step: 0.05 },
-            uColor: { value: new THREE.Color(0xffffff) }
-        },
-        createGeometry: (geometryKey: GeometryKey = 'plane') => {
-            let geometry: THREE.BufferGeometry;
-            if (geometryKey === 'cube') {
-                geometry = new THREE.BoxGeometry(5, 5, 5);
-            } else if (geometryKey === 'terrain') {
-                geometry = createTerrainGeometry();
-                geometry.rotateX(-Math.PI / 2);
-            } else {
-                geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
-                geometry.rotateX(-Math.PI / 2);
-            }
-
-            // Create a simple noise texture as base
-            const size = 256;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                throw new Error('Failed to get 2d context');
-            }
-
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    const value = Math.floor(Math.random() * 255);
-                    ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
-                    ctx.fillRect(x, y, 1, 1);
-                }
-            }
-
-            const texture = new THREE.CanvasTexture(canvas);
-            return { geometry, texture };
-        }
     }
 };
 let scene: THREE.Scene;
