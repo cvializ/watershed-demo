@@ -79,9 +79,9 @@ export const createWaterHeightSystem = (
     return {
         waterHeightVariable,
         updateWaterHeight: () => {
-            // Update uniforms with the results of the computation?
-            waterHeightVariable.material.uniforms.cloudShadowMap = { value: gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture };
-            waterHeightVariable.material.uniforms.waterSourcesMap = { value: gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture };
+            // Update uniforms with the results of the computation
+            waterHeightVariable.material.uniforms.cloudShadowMap.value = gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture;
+            waterHeightVariable.material.uniforms.waterSourcesMap.value = gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
         }
     };
 }
