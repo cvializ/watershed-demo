@@ -108,24 +108,41 @@ let visualizationMode = 4; // Start on Water Flow tab (mode 0=Height, 1=Slope, 2
 const legend = createVisualizationLegend();
 const slopeLegend = createSlopeLegend();
 
-// Create tab bar
+// Create tab bar first (need it for UI container)
 let activeTabButtons: HTMLButtonElement[] = [];
 const tabContainer = createTabBar((mode: number) => {
   setVisualizationMode(mode);
-  // Visibility updated after mode change in setVisualizationMode
 });
 activeTabButtons = tabContainer.buttons;
 updateTabActiveState(activeTabButtons, visualizationMode);
 
-// UI Container
-const uiContainer = createUIContainer({
+// Create UI container with tab bar
+const { container: uiContainer, wireframeControl } = createUIContainer({
   tabContainer: tabContainer.container,
 });
 document.body.appendChild(uiContainer);
 
+// Get wireframe checkbox reference
+const wireframeCheckbox = document.getElementById('wireframe-toggle') as HTMLInputElement;
+
+// Wireframe toggle event listener
+if (wireframeCheckbox) {
+  wireframeCheckbox.addEventListener('change', (event) => {
+    const target = event.target as HTMLInputElement;
+    wireframe.visible = target.checked;
+  });
+}
+
 function setVisualizationMode(mode: number) {
   visualizationMode = mode;
   updateTabActiveState(activeTabButtons, visualizationMode);
+
+  // Show/hide wireframe control based on Water Flow mode (mode 4)
+  if (visualizationMode === 4) {
+    wireframeControl.style.display = 'flex';
+  } else {
+    wireframeControl.style.display = 'none';
+  }
 
   if (visualizationMode === 0) {
     // Height-based visualization
@@ -157,6 +174,10 @@ function setVisualizationMode(mode: number) {
     hideLegend(legend);
     hideLegend(slopeLegend);
     arrows.visible = false;
+
+    // Show wireframe if checkbox is checked
+    const showWireframe = wireframeCheckbox ? wireframeCheckbox.checked : true;
+    wireframe.visible = showWireframe;
 
     // Update terrain shader with water heightmap uniform if material supports it
     if (terrain.material) {
