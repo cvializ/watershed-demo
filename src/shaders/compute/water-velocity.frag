@@ -2,7 +2,6 @@
 
 uniform sampler2D uHeightMap;
 uniform sampler2D uWaterHeightmap;
-uniform vec2 uTexelSize;
 
 void main() {
     // Get texture coordinates from GPU computation renderer
@@ -18,21 +17,69 @@ void main() {
         return;
     }
 
-    // Compute height gradient using finite differences
-    float hX = texture2D(uHeightMap, uv + vec2(uTexelSize.x, 0.0)).r -
-               texture2D(uHeightMap, uv - vec2(uTexelSize.x, 0.0)).r;
-    float hY = texture2D(uHeightMap, uv + vec2(0.0, uTexelSize.y)).r -
-               texture2D(uHeightMap, uv - vec2(0.0, uTexelSize.y)).r;
-
-    // Gradient points uphill, so negative gradient is downslope
-    vec2 gradient = normalize(vec2(-hX, -hY));
-
-    // Velocity is proportional to water height (simplified shallow water approximation)
-    // and directed downslope
-    float speed = h * 5.0; // Scale factor for visibility
-    vec2 velocity = gradient * speed;
+    // Get current terrain height
+    float terrainHeight = texture2D(uHeightMap, uv).r;
+    
+    // Find the downslope neighbor and calculate elevation drop
+    const vec2 directions[8] = vec2[](
+        vec2(0.0, 1.0),    // North
+        vec2(1.0, 1.0),    // Northeast
+        vec2(1.0, 0.0),    // East
+        vec2(1.0, -1.0),   // Southeast
+        vec2(0.0, -1.0),   // South
+        vec2(-1.0, -1.0),  // Southwest
+        vec2(-1.0, 0.0),   // West
+        vec2(-1.0, 1.0)    // Northwest
+    );
+    
+    float centerTotalHeight = terrainHeight + h;
+    float lowestTotal = centerTotalHeight;
+    int flowDirIndex = -1;
+    
+    // Find the lowest neighbor (same logic as water-height.frag)
+    for (int i = 0; i < 8; i++) {
+        vec2 offset = directions[i] * cellSize;
+        
+        // Check if neighbor is within bounds
+        vec2 neighborUV = uv + offset;
+        
+        if (neighborUV.x >= 0.0 && neighborUV.x <= 1.0 &&
+            neighborUV.y >= 0.0 && neighborUV.y <= 1.0) {
+            
+            float neighborTerrainHeight = texture2D(uHeightMap, neighborUV).r;
+            float neighborWaterHeight = texture2D(uWaterHeightmap, neighborUV).r;
+            float neighborTotalHeight = neighborTerrainHeight + neighborWaterHeight;
+            
+            if (neighborTotalHeight < lowestTotal) {
+                lowestTotal = neighborTotalHeight;
+                flowDirIndex = i;
+            }
+        }
+    }
+    
+    // Calculate elevation drop (potential energy available for acceleration)
+    float elevationDrop = centerTotalHeight - lowestTotal;
+    
+    // Velocity calculation based on physics:
+    // Water that has fallen further (higher elevation drop) should move faster
+    // Velocity = sqrt(2 * g * elevationDrop) + pressure term
+    
+    float velocityMagnitude = sqrt(elevationDrop * 10.0) + (h * 2.0);
+    
+    // Get downslope direction from the neighbor index
+    vec2 actualDownslopeDir = vec2(0.0);
+    if (flowDirIndex >= 0) {
+        actualDownslopeDir = directions[flowDirIndex];
+    }
+    
+    // Normalize the downslope direction
+    if (length(actualDownslopeDir) > 0.001) {
+        actualDownslopeDir = normalize(actualDownslopeDir);
+    }
+    
+    vec2 velocity = actualDownslopeDir * velocityMagnitude;
 
     // Store velocity in RGB (R=velocityX, G=velocityY, B=magnitude)
     float magnitude = length(velocity);
-    gl_FragColor = vec4(velocity.x, velocity.y, magnitude * 0.5, 1.0);
+    gl_FragColor = vec4(velocity.x, velocity.y, magnitude, 1.0);
 }
