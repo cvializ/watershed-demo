@@ -7,14 +7,6 @@
  */
 import * as THREE from 'three';
 
-// Import debug materials from their new location
-import { createDebugPositionMaterial } from '@/nodes/material/createDebugPositionMaterial';
-import { createDebugFaceNormalMaterial } from '@/nodes/material/createDebugFaceNormalMaterial';
-import { createDebugDepthMaterial } from '@/nodes/material/createDebugDepthMaterial';
-import { createDebugDisplacementMaterial } from '@/nodes/material/createDebugDisplacementMaterial';
-import { createDebugTimeMaterial } from '@/nodes/material/createDebugTimeMaterial';
-import { createDebugHeightRangeMaterial } from '@/nodes/material/createDebugHeightRangeMaterial';
-
 const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
 
 /**
@@ -307,15 +299,5 @@ export async function exampleInlineShader(): Promise<void> {
  */
 export async function exampleDebugMaterials(): Promise<void> {
   console.log('%c--- Debug Materials Preview ---', 'color: #00ff88; font-weight: bold; font-size: 14px;');
-  
-  const materials = [
-    { name: 'Debug Position', material: createDebugPositionMaterial() },
-    { name: 'Debug Face Normal', material: createDebugFaceNormalMaterial() },
-    { name: 'Debug Depth', material: createDebugDepthMaterial() },
-    { name: 'Debug Displacement', material: createDebugDisplacementMaterial() },
-    { name: 'Debug Time', material: createDebugTimeMaterial() },
-    { name: 'Debug Height Range', material: createDebugHeightRangeMaterial() }
-  ];
-  
-  await renderMultipleToConsole(materials, { width: 256, height: 256 });
+  console.log('%c(Debug materials not yet implemented)', 'color: #666; font-style: italic;');
 }

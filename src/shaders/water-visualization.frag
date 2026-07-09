@@ -3,8 +3,10 @@ precision highp float;
 uniform sampler2D uHeightMap;
 uniform sampler2D uWaterHeightmap;
 uniform sampler2D uCloudShadowMap;
+uniform sampler2D uVelocityMap;
 uniform float uMinHeight;
 uniform float uMaxHeight;
+uniform int uShowVelocity; // 0 = show height, 1 = show velocity
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -53,34 +55,62 @@ float getBlurredShadow(vec2 uv, sampler2D shadowMap) {
     return shadow / totalWeight;
 }
 
-// Simple water visualization - blue overlay based on water height
+// Visualize water based on height or velocity
 void main() {
     // Base terrain color
     vec3 terrainColor = vec3(0.4, 0.3, 0.2); // Brownish terrain
     
-    // Sample water height
-    float waterHeight = texture2D(uWaterHeightmap, vUv).r;
-    
     // Sample cloud shadow intensity with blur and expansion
     float cloudShadow = getBlurredShadow(vUv, uCloudShadowMap);
-    
-    // Visualize water if present
+
+    // Apply cloud shadow to terrain where there's no water
+    float finalAlpha = 1.0;
     vec3 finalColor = terrainColor;
     
+    if (cloudShadow > 0.01) {
+        float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
+        finalColor *= (1.0 - shadowDarkening);
+    }
+
+    // Sample water height and velocity
+    float waterHeight = texture2D(uWaterHeightmap, vUv).r;
+    vec4 velocityData = texture2D(uVelocityMap, vUv);
+    
+    // Visualize water if present
     if (waterHeight > 0.01) {
-        // Simple water color - lighter blue for shallow, darker for deeper
-        float waterIntensity = clamp(waterHeight * 3.0, 0.2, 1.0);
-        vec3 waterColor = mix(vec3(0.4, 0.7, 1.0), vec3(0.1, 0.3, 0.7), waterIntensity);
-        
-        // Blend terrain and water (water overlays terrain)
-        finalColor = mix(terrainColor, waterColor, waterIntensity * 0.6);
-    } else {
-        // Apply cloud shadow to terrain where there's no water
-        if (cloudShadow > 0.01) {
-            float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
-            finalColor *= (1.0 - shadowDarkening);
+        if (uShowVelocity == 1) {
+            // Visualize velocity
+            // Blue: positive X velocity, Red: negative X velocity (inverted for display)
+            // Green: positive Y velocity, Yellow: negative Y velocity
+            float velX = velocityData.r;  // X component of velocity
+            float velY = velocityData.g;  // Y component of velocity
+            float velMag = velocityData.b; // Magnitude (stored in blue channel)
+            
+            // Map velocity to colors:
+            // Red = low velocity, Green = medium velocity, Blue = high velocity
+            vec3 velocityColor;
+            if (velMag < 0.1) {
+                // Low velocity - blue
+                velocityColor = vec3(0.2, 0.4, 1.0);
+            } else if (velMag < 0.5) {
+                // Medium velocity - green
+                velocityColor = vec3(0.2, 1.0, 0.4);
+            } else {
+                // High velocity - red
+                velocityColor = vec3(1.0, 0.4, 0.2);
+            }
+            
+            // Blend with terrain
+            finalColor = mix(terrainColor, velocityColor, clamp(velMag * 0.5, 0.2, 1.0));
+        } else {
+            // Visualize water height (original behavior)
+            float waterIntensity = clamp(waterHeight * 3.0, 0.2, 1.0);
+            vec3 waterColor = mix(vec3(0.4, 0.7, 1.0), vec3(0.1, 0.3, 0.7), waterIntensity);
+            
+            // Blend terrain and water (water overlays terrain)
+            finalColor = mix(terrainColor, waterColor, waterIntensity * 0.6);
         }
     }
     
-    gl_FragColor = vec4(finalColor, 1.0);
+    gl_FragColor = vec4(finalColor, finalAlpha);
 }
