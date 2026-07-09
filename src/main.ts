@@ -17,8 +17,10 @@ import { createUIContainer } from '@/dom/ui/createUIContainer';
 import {
   createVisualizationLegend,
   createSlopeLegend,
+  createVelocityLegend,
   showLegend,
   hideLegend,
+  showVelocityLegend,
 } from '@/dom/legend/createLegend.js';
 import { createOverlay } from '@/dom/createOverlay';
 import { createD8WaterFlowSimulation } from '@/systems/createD8Simulation';
@@ -107,6 +109,7 @@ let visualizationMode = 4; // Start on Water Flow tab (mode 0=Height, 1=Slope, 2
 // Create legends
 const legend = createVisualizationLegend();
 const slopeLegend = createSlopeLegend();
+const velocityLegend = createVelocityLegend();
 
 // Create tab bar first (need it for UI container)
 let activeTabButtons: HTMLButtonElement[] = [];
@@ -140,6 +143,13 @@ if (velocityCheckbox) {
     const target = event.target as HTMLInputElement;
     if (waterVisualizationMaterial.uniforms?.uShowVelocity) {
       waterVisualizationMaterial.uniforms.uShowVelocity.value = target.checked ? 1 : 0;
+      
+      // Show/hide velocity legend based on checkbox
+      if (target.checked && visualizationMode === 4) {
+        showVelocityLegend(velocityLegend);
+      } else {
+        hideLegend(velocityLegend);
+      }
     }
   });
 }
@@ -189,6 +199,14 @@ function setVisualizationMode(mode: number) {
     // Show wireframe if checkbox is checked
     const showWireframe = wireframeCheckbox ? wireframeCheckbox.checked : true;
     wireframe.visible = showWireframe;
+
+    // Show velocity legend if checkbox is checked, otherwise hide it
+    const showVelocity = velocityCheckbox ? velocityCheckbox.checked : false;
+    if (showVelocity) {
+      showVelocityLegend(velocityLegend);
+    } else {
+      hideLegend(velocityLegend);
+    }
 
     // Update terrain shader with water heightmap uniform if material supports it
     if (terrain.material) {
