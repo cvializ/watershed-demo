@@ -1,18 +1,6 @@
 import * as THREE from 'three';
 import type { GPUComputationRenderer, Variable } from 'three/addons/misc/GPUComputationRenderer.js';
-import animatedCloudFragmentShader from '@/shaders/compute/animated-cloud.frag?raw';
-
-/**
- * Creates the fragment shader for animated cloud computation.
- * 
- * This shader renders animated procedural clouds to a texture using the GPUComputationRenderer.
- * The cloud animation is driven by time and generates moving cloud patterns that can be
- * used for various purposes such as:
- * - Cloud shadow calculation (already implemented in createCloudShadowSystem)
- * - Volumetric cloud effects
- * - Background sky elements
- * - Terrain occlusion
- */
+import driftingCloudFragmentShader from '@/shaders/compute/drifting-cloud.frag?raw';
 
 /**
  * Creates an initial cloud texture with no clouds (all zeros).
@@ -45,15 +33,16 @@ export type AnimatedCloudSystem = {
 };
 
 /**
- * Creates a GPU-based animated cloud computation system.
+ * Creates a GPU-based animated cloud computation system using the drifting cloud shader.
  * 
  * This system renders procedural animated clouds to a texture using the GPUComputationRenderer.
- * The cloud patterns move over time and can be sampled by other systems for various effects.
+ * The cloud patterns drift over time and can be sampled by other systems for various effects.
  * 
  * Cloud configuration:
  * - Speed: How fast clouds move through the animation
  * - Scale: Size of cloud features
  * - Density: Controls cloud coverage and opacity
+ * - DriftSpeed: Directional drift speed (x=horizontal, y=vertical)
  * 
  * @param gpuCompute - The GPUComputationRenderer instance
  * @param width - Width of the computation texture (height will be same for square grid)
@@ -67,7 +56,7 @@ export const createAnimatedCloudSystem = (
     
     const cloudVariable = gpuCompute.addVariable(
         'cloudDensity',
-        animatedCloudFragmentShader,
+        driftingCloudFragmentShader,
         cloudTexture
     );
     
@@ -76,13 +65,15 @@ export const createAnimatedCloudSystem = (
     // Initialize uniforms (must be set before updateClouds is called)
     cloudVariable.material.uniforms = {
         uTime: { value: 0.0 },
-        uSpeed: { value: 0.1 },
-        uScale: { value: 1.5 },
+        uDriftSpeed: { value: new THREE.Vector2(0.05, 0.05) },
+        uSpeed: { value: .1 },
+        uScale: { value: 4.0 },
         uDensity: { value: 0.6 },
     };
     
     // Cloud configuration
     const config = {
+        driftSpeed: new THREE.Vector2(0.1, 0.05),
         speed: 0.1,
         scale: 1.5,
         density: 0.7,
@@ -96,6 +87,7 @@ export const createAnimatedCloudSystem = (
         
         // Update uniforms for cloud animation
         cloudVariable.material.uniforms.uTime.value = currentTime;
+        cloudVariable.material.uniforms.uDriftSpeed.value.copy(config.driftSpeed);
         cloudVariable.material.uniforms.uSpeed.value = config.speed;
         cloudVariable.material.uniforms.uScale.value = config.scale;
         cloudVariable.material.uniforms.uDensity.value = config.density;
