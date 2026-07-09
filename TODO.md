@@ -37,6 +37,16 @@
 - [ ] Volumetric fog and ambient occlusion
 - [ ] Post-processing effects (bloom, color grading)
 
+## Architecture & Refactoring
+- [ ] Entity Component System (ECS) refactor for better organization and scalability:
+  - [ ] Define core entities: Terrain, Water, Clouds, Vegetation, Lighting
+  - [ ] Create component types: TransformComponent, MeshComponent, MaterialComponent, SimulationComponent
+  - [ ] Implement systems for processing: RenderingSystem, WaterSimulationSystem, CloudSystem, PhysicsSystem
+  - [ ] Migrate existing terrain, water flow, and cloud systems to ECS pattern
+  - [ ] Design entity factory functions for creating complex objects (e.g., `createTerrainEntity()`, `createWaterEntity()`)
+  - [ ] Implement entity serialization/deserialization for save/load functionality
+  - [ ] Performance optimization with signature-based system scheduling
+
 ## Performance & Optimization
 - [ ] Object culling and frustum clipping optimization
 - [ ] Texture streaming for large environments
