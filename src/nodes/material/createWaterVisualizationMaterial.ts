@@ -12,15 +12,18 @@ export function createWaterVisualizationMaterial(
     maxHeight: number = 2.0,
     heightMap?: THREE.Texture,
     waterHeightMap?: THREE.Texture,
-    cloudShadowMap?: THREE.Texture
+    cloudShadowMap?: THREE.Texture,
+    velocityMap?: THREE.Texture
 ): THREE.ShaderMaterial {
     return new THREE.ShaderMaterial({
         uniforms: {
             uHeightMap: { value: heightMap || new THREE.Texture() },
             uWaterHeightmap: { value: waterHeightMap || new THREE.Texture() },
             uCloudShadowMap: { value: cloudShadowMap || new THREE.Texture() },
+            uVelocityMap: { value: velocityMap || new THREE.Texture() },
             uMinHeight: { value: minHeight },
-            uMaxHeight: { value: maxHeight }
+            uMaxHeight: { value: maxHeight },
+            uShowVelocity: { value: 0 }
         },
         vertexShader: waterVisualizationVert,
         fragmentShader: waterVisualizationFrag,

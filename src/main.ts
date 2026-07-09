@@ -50,7 +50,7 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.autoRotate = false;
+controls.autoRotate = true;
 
 // Terrain size (must be defined before creating terrain)
 const terrainSize = 12;
@@ -66,7 +66,7 @@ const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0,
 const waterSimulation = createD8WaterFlowSimulation(SIM_SIZE, terrainSize, renderer, heightMapTexture);
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
-const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture);
+const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture, undefined, undefined, waterSimulation.getVelocityTexture());
 
 // Create shader material for slope visualization
 const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);
@@ -122,14 +122,25 @@ const { container: uiContainer, wireframeControl } = createUIContainer({
 });
 document.body.appendChild(uiContainer);
 
-// Get wireframe checkbox reference
+// Get checkbox references
 const wireframeCheckbox = document.getElementById('wireframe-toggle') as HTMLInputElement;
+const velocityCheckbox = document.getElementById('velocity-toggle') as HTMLInputElement;
 
 // Wireframe toggle event listener
 if (wireframeCheckbox) {
   wireframeCheckbox.addEventListener('change', (event) => {
     const target = event.target as HTMLInputElement;
     wireframe.visible = target.checked;
+  });
+}
+
+// Velocity toggle event listener
+if (velocityCheckbox) {
+  velocityCheckbox.addEventListener('change', (event) => {
+    const target = event.target as HTMLInputElement;
+    if (waterVisualizationMaterial.uniforms?.uShowVelocity) {
+      waterVisualizationMaterial.uniforms.uShowVelocity.value = target.checked ? 1 : 0;
+    }
   });
 }
 
