@@ -332,7 +332,7 @@ window.addEventListener('click', (event) => {
     const centerY = Math.floor((1.0 - uvY) * width);  // Y is flipped for texture coordinates
     console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
 
-    waterSimulation.addWater(x, y, 2.0, 3);
+    waterSimulation.addWater(x, y, .1, 3);
     console.log('Water added at world coords:', { x, y });
   }
 });
