@@ -79,20 +79,15 @@ void main() {
     // Visualize water if present
     if (waterHeight > 0.01) {
         if (uShowVelocity == 1) {
-            // Visualize velocity
-            // Blue: positive X velocity, Red: negative X velocity (inverted for display)
-            // Green: positive Y velocity, Yellow: negative Y velocity
-            float velX = velocityData.r;  // X component of velocity
-            float velY = velocityData.g;  // Y component of velocity
-            float velMag = velocityData.b; // Magnitude (stored in blue channel)
+            // Visualize velocity magnitude (not direction)
+            float velMag = velocityData.b; // Magnitude is stored in blue channel
             
-            // Map velocity to colors:
-            // Red = low velocity, Green = medium velocity, Blue = high velocity
+            // Color gradient: Blue (low) -> Green (medium) -> Red (high)
             vec3 velocityColor;
-            if (velMag < 0.1) {
+            if (velMag < 0.5) {
                 // Low velocity - blue
                 velocityColor = vec3(0.2, 0.4, 1.0);
-            } else if (velMag < 0.5) {
+            } else if (velMag < 2.0) {
                 // Medium velocity - green
                 velocityColor = vec3(0.2, 1.0, 0.4);
             } else {
@@ -100,8 +95,9 @@ void main() {
                 velocityColor = vec3(1.0, 0.4, 0.2);
             }
             
-            // Blend with terrain
-            finalColor = mix(terrainColor, velocityColor, clamp(velMag * 0.5, 0.2, 1.0));
+            // Blend with terrain - make velocity more visible
+            float blendAmount = clamp(velMag * 0.5 + 0.3, 0.3, 1.0);
+            finalColor = mix(terrainColor, velocityColor, blendAmount);
         } else {
             // Visualize water height (original behavior)
             float waterIntensity = clamp(waterHeight * 3.0, 0.2, 1.0);

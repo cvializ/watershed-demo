@@ -103,10 +103,8 @@ export const createD8WaterFlowSimulation = (
     gpuCompute.setVariableDependencies(waterVelocityVariable, [waterHeightVariable]);
     
     // Set uniforms for velocity computation
-    const texelSize = 1.0 / width;
     waterVelocityVariable.material.uniforms.uHeightMap = { value: heightMapTexture };
     waterVelocityVariable.material.uniforms.uWaterHeightmap = { value: null };
-    waterVelocityVariable.material.uniforms.uTexelSize = { value: new THREE.Vector2(texelSize, texelSize) };
 
     const error = gpuCompute.init();
     if (error !== null) {
