@@ -25,7 +25,7 @@ export const createUIContainer = (config: UIContainerConfig): { container: HTMLD
   const wireframeControl = document.createElement('div');
   wireframeControl.style.cssText =
     'margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);' +
-    'display: none; align-items: center; gap: 8px; flex-direction: column; align-items: flex-start;';
+    'display: none; align-items: center; gap: 8px;';
 
   const wireframeCheckbox = document.createElement('input');
   wireframeCheckbox.type = 'checkbox';
