@@ -390,7 +390,7 @@ async function selectShader(key: string, _geometryKey: GeometryKey = 'plane') {
     });
 
     uniformsControls.length = 0;
-    const inputs = controlsPanel?.querySelectorAll('input[type="range"]');
+    const inputs = controlsPanel ? controlsPanel.querySelectorAll('input[type="range"]') : null;
     if (inputs) {
         inputs.forEach(input => {
             input.addEventListener('input', onUniformChange);

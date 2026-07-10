@@ -141,7 +141,7 @@ if (wireframeCheckbox) {
 if (velocityCheckbox) {
   velocityCheckbox.addEventListener('change', (event) => {
     const target = event.target as HTMLInputElement;
-    if (waterVisualizationMaterial.uniforms?.uShowVelocity) {
+    if (waterVisualizationMaterial.uniforms && waterVisualizationMaterial.uniforms.uShowVelocity) {
       waterVisualizationMaterial.uniforms.uShowVelocity.value = target.checked ? 1 : 0;
       
       // Show/hide velocity legend based on checkbox
@@ -211,7 +211,7 @@ function setVisualizationMode(mode: number) {
     // Update terrain shader with water heightmap uniform if material supports it
     if (terrain.material) {
       const mat = terrain.material as any;
-      if (!mat.uniforms?.uWaterHeightmap) {
+      if (!mat.uniforms || !mat.uniforms.uWaterHeightmap) {
         // Add the uniform for water heightmap if not already present
         mat.uniforms = mat.uniforms || {};
         mat.uniforms.uWaterHeightmap = { value: null };

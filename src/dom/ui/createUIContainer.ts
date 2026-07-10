@@ -4,15 +4,6 @@ export interface UIContainerConfig {
   tabContainer: HTMLDivElement;
 }
 
-// Material options for the terrain in Water Flow mode
-export const terrainMaterials = {
-  default: 'default',
-  downslope: 'downslope',
-  slope: 'slope',
-} as const;
-
-export type TerrainMaterial = keyof typeof terrainMaterials;
-
 export const createUIContainer = (config: UIContainerConfig): { container: HTMLDivElement; wireframeControl: HTMLDivElement; materialControls: HTMLDivElement; velocityToggle: HTMLDivElement } => {
   const uiContainer = document.createElement('div');
   uiContainer.style.cssText =
