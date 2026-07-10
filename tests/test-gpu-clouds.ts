@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 
 import { createGpuClouds } from '@/gpu/createGpuClouds.ts';
-import { test } from './testUtils.ts';
+import { test } from './clientTestUtils.ts';
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
