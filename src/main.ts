@@ -23,7 +23,7 @@ import {
   showVelocityLegend,
 } from '@/dom/legend/createLegend.js';
 import { createOverlay } from '@/dom/createOverlay';
-import { createD8WaterFlowSimulation } from '@/systems/createD8Simulation';
+import { createGpuWaterFlowSimulation } from '@/gpu/createGpuWaterFlowSimulation';
 
 const SIM_SIZE = 512;
 
@@ -65,7 +65,7 @@ const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create water flow simulation
-const waterSimulation = createD8WaterFlowSimulation(SIM_SIZE, terrainSize, renderer, heightMapTexture);
+const waterSimulation = createGpuWaterFlowSimulation(SIM_SIZE, terrainSize, renderer, heightMapTexture);
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
 const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture, undefined, undefined, waterSimulation.getVelocityTexture());

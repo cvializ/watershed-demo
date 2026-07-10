@@ -54,7 +54,7 @@ const createInitialWaterTexture = (size: number): { texture: THREE.DataTexture; 
     return { texture, data };
 };
 
-export const createWaterHeightSystem = (
+export const createGpuWaterHeight = (
     gpuCompute: GPUComputationRenderer,
     width: number,
     heightMapTexture: THREE.Texture,
