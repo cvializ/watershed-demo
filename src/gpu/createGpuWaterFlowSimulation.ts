@@ -3,9 +3,9 @@
 import * as THREE from 'three';
 // Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
-import { createWaterSourcesSystem } from '@/systems/createWaterSourcesSystem';
-import { createWaterHeightSystem } from '@/systems/createWaterHeightSystem';
-import { createCloudSystem } from '@/systems/createCloudSystem';
+import { createGpuWaterSources } from '@/gpu/createGpuWaterSources';
+import { createGpuWaterHeight } from '@/gpu/createGpuWaterHeight';
+import { createGpuClouds } from '@/gpu/createGpuClouds';
 import waterVelocityFragmentShader from '@/shaders/compute/water-velocity.frag?raw';
 
 export type WaterFlowVisualization = {
@@ -75,7 +75,7 @@ export type WaterFlowVisualization = {
  * @param renderer - WebGLRenderer instance
  * @param heightMapTexture - Texture containing terrain height data
  */
-export const createD8WaterFlowSimulation = (
+export const createGpuWaterFlowSimulation = (
     width: number,
     terrainSize: number,
     renderer: THREE.WebGLRenderer,
@@ -83,10 +83,10 @@ export const createD8WaterFlowSimulation = (
 ): WaterFlowVisualization => {
     const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-    const { cloudVariable, updateClouds, getCloudTexture } = createCloudSystem(gpuCompute, width);
+    const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(gpuCompute, width);
 
-    const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
-    const { waterHeightVariable, updateWaterHeight } = createWaterHeightSystem(gpuCompute, width, heightMapTexture, cloudVariable, waterSourcesVariable);
+    const { waterSourcesVariable, addWater, clearWater } = createGpuWaterSources(gpuCompute, width, heightMapTexture, terrainSize);
+    const { waterHeightVariable, updateWaterHeight } = createGpuWaterHeight(gpuCompute, width, heightMapTexture, cloudVariable, waterSourcesVariable);
 
     // Create velocity texture with initial zero values
     const data = new Float32Array(width * width * 4);

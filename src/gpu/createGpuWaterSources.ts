@@ -35,7 +35,7 @@ const createInitialWaterSourcesTexture = (size: number): { texture: THREE.DataTe
     return { texture, data };
 };
 
-export const createWaterSourcesSystem = (
+export const createGpuWaterSources = (
     gpuCompute: GPUComputationRenderer,
     width: number,
     heightMapTexture: THREE.Texture,

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 
-import { createWaterSourcesSystem } from '@/systems/createWaterSourcesSystem';
+import { createGpuWaterSources } from '@/gpu/createGpuWaterSources';
 import { test } from './testUtils.ts';
 
 const renderer = new THREE.WebGLRenderer();
@@ -15,7 +15,7 @@ const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 const heightMapTexture = gpuCompute.createTexture(); // TODO: create actual blank heightmap texture
 const terrainSize = 512;
 
-const { waterSourcesVariable, addWater, clearWater } = createWaterSourcesSystem(gpuCompute, width, heightMapTexture, terrainSize);
+const { waterSourcesVariable, addWater, clearWater } = createGpuWaterSources(gpuCompute, width, heightMapTexture, terrainSize);
 
 // Initialize the GPU computation renderer (creates render targets)
 const error = gpuCompute.init();

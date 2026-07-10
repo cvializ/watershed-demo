@@ -21,7 +21,7 @@ const createInitialCloudTexture = (size: number): { texture: THREE.DataTexture; 
     return { texture, data };
 };
 
-export type AnimatedCloudSystem = {
+export type GpuClouds = {
     cloudVariable: Variable;
     updateClouds: (deltaTime: number) => void;
     
@@ -46,12 +46,12 @@ export type AnimatedCloudSystem = {
  * 
  * @param gpuCompute - The GPUComputationRenderer instance
  * @param width - Width of the computation texture (height will be same for square grid)
- * @returns Animated cloud system with variable and update function
+ * @returns GPU clouds system with variable and update function
  */
-export const createCloudSystem = (
+export const createGpuClouds = (
     gpuCompute: GPUComputationRenderer,
     width: number
-): AnimatedCloudSystem => {
+): GpuClouds => {
     const { texture: cloudTexture } = createInitialCloudTexture(width);
     
     const cloudVariable = gpuCompute.addVariable(
