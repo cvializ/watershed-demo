@@ -1,9 +1,9 @@
-import { test } from './playwrightUtils';
+import { test } from './testUtils';
 
-test('test-shaders page should load without errors', async ({ page }) => {
+test('cloud-system page should load without errors', async ({ page }) => {
   
   // Navigate to the test page
-  await page.goto('/tests/test-water-sources-system.html');
+  await page.goto('/tests/test-gpu-clouds.html');
   
   // Wait for the page to finish loading and executing
   await page.waitForLoadState('networkidle');
