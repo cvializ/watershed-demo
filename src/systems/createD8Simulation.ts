@@ -14,7 +14,7 @@ export type WaterFlowVisualization = {
      * @param cloudUniforms - Optional array of cloud data for shadow deposition
      * @param cloudCount - Number of active clouds (up to 16)
      */
-    compute: (deltaTime: number) => THREE.Texture;
+    compute: (deltaTime: number) => void;
 
     /**
      * Adds water at a specific location on the terrain.
@@ -34,6 +34,12 @@ export type WaterFlowVisualization = {
      * Get the velocity texture for visualization.
      */
     getVelocityTexture: () => THREE.Texture;
+
+    /**
+     * Get the velocity texture for the full simulation.
+     */
+    getSimulationShader: () => THREE.Texture;
+
 };
 
 /**
@@ -122,11 +128,10 @@ export const createD8WaterFlowSimulation = (
             gpuCompute.compute();
 
             clearWater();
-
-            return gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
         },
         addWater,
         getCloudShadowTexture: () => getCloudTexture(),
+        getSimulationShader: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
         getVelocityTexture: () => gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
     };
 };

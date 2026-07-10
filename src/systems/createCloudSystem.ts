@@ -105,9 +105,6 @@ export const createCloudSystem = (
         cloudVariable,
         updateClouds: (deltaTime: number) => {
             updateClouds(deltaTime);
-            
-            // Trigger computation
-            gpuCompute.compute();
         },
         getCloudTexture,
     };
