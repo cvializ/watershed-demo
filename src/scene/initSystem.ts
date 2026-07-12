@@ -1,8 +1,8 @@
-import { addComponent, addEntity, observe, onAdd, type World } from "bitecs";
+import { observe, onAdd, type World } from "bitecs";
 import { query } from "bitecs";
 import * as THREE from "three";
 
-import type { SceneInitSystem, SceneSystem } from "@/scene/types";
+import type { SceneInitSystem } from "@/scene/types";
 
 import { Camera, Default, MaterialRef, MeshRef, Terrain } from "@/components/components";
 import { createCameraResource } from "@/scene/resources/camera";
