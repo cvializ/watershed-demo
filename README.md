@@ -32,6 +32,7 @@ npm run validate
 ```
 
 This runs:
+
 - `lint`: Code style checks (oxlint)
 - `knip`: Dead code detection
 - `typecheck`: TypeScript type checking

@@ -1,5 +1,3 @@
 {
-  "packages": [
-    "npm:pi-playwright"
-  ]
+  "packages": ["npm:pi-playwright"]
 }

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Creates a debug material that visualizes height ranges with colors.
@@ -51,9 +51,9 @@ export function createDebugHeightRangeMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uMinY: { value: -10.0 },
-      uMaxY: { value: 10.0 }
+      uMaxY: { value: 10.0 },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 }

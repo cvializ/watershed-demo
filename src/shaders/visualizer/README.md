@@ -7,10 +7,11 @@ This directory contains a standalone shader visualizer that allows you to test a
 ### Starting the Visualizer
 
 1. Start a local web server from this directory:
+
    ```bash
    npx serve .
    ```
-   
+
    Or use any static file server. The visualizer is at `index.html`.
 
 2. Open the provided URL (typically http://localhost:3000 or http://127.0.0.1:3000)
@@ -19,7 +20,7 @@ This directory contains a standalone shader visualizer that allows you to test a
 
 - **Shader Selection**: Use the dropdown to switch between available shaders:
   - Height Visualization
-  - Slope Visualization  
+  - Slope Visualization
   - Water Visualization
   - Animated Noise (NEW!)
 
@@ -33,6 +34,7 @@ This directory contains a standalone shader visualizer that allows you to test a
 ### How It Works
 
 The visualizer:
+
 1. Loads shader files from the current directory
 2. Creates a test geometry (plane with rotation)
 3. Generates procedural textures for testing
@@ -56,7 +58,7 @@ To add a new shader for visualization:
     createGeometry: () => {
         const geometry = new THREE.PlaneGeometry(10, 10, 64, 64);
         geometry.rotateX(-Math.PI / 2);
-        
+
         // Create test texture here
         const texture = new THREE.CanvasTexture(canvas);
         return { geometry, texture };
@@ -72,9 +74,9 @@ To add a new shader for visualization:
 
 ## Shader Files
 
-| Shader | Description |
-|--------|-------------|
-| `height-visualization.*` | Visualizes terrain height using color palette |
-| `slope-visualization.*` | Visualizes slope angles with gradient colors |
-| `water-visualization.*` | Visualizes water flow on terrain |
-| `animated-noise.*` | Animates procedural noise over time with controls for speed, scale, and amplitude |
+| Shader                   | Description                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `height-visualization.*` | Visualizes terrain height using color palette                                     |
+| `slope-visualization.*`  | Visualizes slope angles with gradient colors                                      |
+| `water-visualization.*`  | Visualizes water flow on terrain                                                  |
+| `animated-noise.*`       | Animates procedural noise over time with controls for speed, scale, and amplitude |

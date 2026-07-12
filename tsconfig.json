@@ -8,11 +8,7 @@
     },
     "ignoreDeprecations": "6.0",
     "lib": ["ES2023", "DOM"],
-    "types": [
-      "vite/client",
-      "@playwright/test",
-      "node"
-    ],
+    "types": ["vite/client", "@playwright/test", "node"],
     "skipLibCheck": true,
 
     "moduleResolution": "bundler",

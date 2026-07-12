@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Creates a debug material that visualizes depth as colors.
@@ -33,9 +33,9 @@ export function createDebugDepthMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uNear: { value: 0.1 },
-      uFar: { value: 100.0 }
+      uFar: { value: 100.0 },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 }

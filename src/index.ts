@@ -1,19 +1,8 @@
-import './style.css';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import "./style.css";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-// Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
-import { createDownslopeArrowGeometry } from '@/nodes/geometry/createDownslopeArrowGeometry';
-import { createSlopeVisualizationMaterial } from '@/nodes/material/createSlopeVisualizationMaterial';
-import { createDownslopeArrowMaterial } from '@/nodes/material/createDownslopeArrowMaterial';
-import { createHeightVisualizationMaterial } from '@/nodes/material/createHeightVisualizationMaterial';
-import { createDisplacementTexture } from '@/nodes/texture/createDisplacementTexture';
-import { createTerrainGeometry } from '@/nodes/geometry/createTerrainGeometry';
-import { createWaterVisualizationMaterial } from '@/nodes/material/createWaterVisualizationMaterial';
-
-// Import DOM manipulation utilities
-import { createTabBar, updateTabActiveState } from '@/dom/ui/createTabBar';
-import { createUIContainer } from '@/dom/ui/createUIContainer';
+import { createOverlay } from "@/dom/createOverlay";
 import {
   createVisualizationLegend,
   createSlopeLegend,
@@ -21,9 +10,19 @@ import {
   showLegend,
   hideLegend,
   showVelocityLegend,
-} from '@/dom/legend/createLegend.js';
-import { createOverlay } from '@/dom/createOverlay';
-import { createGpuWaterFlowSimulation } from '@/gpu/createGpuWaterFlowSimulation';
+} from "@/dom/legend/createLegend.js";
+// Import DOM manipulation utilities
+import { createTabBar, updateTabActiveState } from "@/dom/ui/createTabBar";
+import { createUIContainer } from "@/dom/ui/createUIContainer";
+import { createGpuWaterFlowSimulation } from "@/gpu/createGpuWaterFlowSimulation";
+// Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
+import { createDownslopeArrowGeometry } from "@/nodes/geometry/createDownslopeArrowGeometry";
+import { createTerrainGeometry } from "@/nodes/geometry/createTerrainGeometry";
+import { createDownslopeArrowMaterial } from "@/nodes/material/createDownslopeArrowMaterial";
+import { createHeightVisualizationMaterial } from "@/nodes/material/createHeightVisualizationMaterial";
+import { createSlopeVisualizationMaterial } from "@/nodes/material/createSlopeVisualizationMaterial";
+import { createWaterVisualizationMaterial } from "@/nodes/material/createWaterVisualizationMaterial";
+import { createDisplacementTexture } from "@/nodes/texture/createDisplacementTexture";
 
 const SIM_SIZE = 512;
 
@@ -39,7 +38,7 @@ const camera = new THREE.OrthographicCamera(
   frustumSize / 2,
   frustumSize / -2,
   0.1,
-  1000
+  1000,
 );
 camera.position.set(15, 12, 15);
 camera.zoom = 2.5;
@@ -65,10 +64,22 @@ const heightMapTexture = createDisplacementTexture(512, terrainSize);
 const heightVisualizationMaterial = createHeightVisualizationMaterial(-1.5, 2.0, heightMapTexture);
 
 // Create water flow simulation
-const waterSimulation = createGpuWaterFlowSimulation(SIM_SIZE, terrainSize, renderer, heightMapTexture);
+const waterSimulation = createGpuWaterFlowSimulation(
+  SIM_SIZE,
+  terrainSize,
+  renderer,
+  heightMapTexture,
+);
 
 // Create water visualization material (pass heightMapTexture for terrain reference)
-const waterVisualizationMaterial = createWaterVisualizationMaterial(-1.5, 2.0, heightMapTexture, undefined, undefined, waterSimulation.getVelocityTexture());
+const waterVisualizationMaterial = createWaterVisualizationMaterial(
+  -1.5,
+  2.0,
+  heightMapTexture,
+  undefined,
+  undefined,
+  waterSimulation.getVelocityTexture(),
+);
 
 // Create shader material for slope visualization
 const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);
@@ -77,18 +88,17 @@ const slopeMaterial = createSlopeVisualizationMaterial(0.0, 2.0);
 const arrowGeometry = createDownslopeArrowGeometry(geometry, 0.3);
 const arrowMaterial = createDownslopeArrowMaterial();
 const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
-arrows.name = 'downslope-arrows';
+arrows.name = "downslope-arrows";
 arrows.rotation.x = -Math.PI / 2;
 scene.add(arrows);
 
 const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial() as THREE.Material);
-terrain.name = 'terrain';
+terrain.name = "terrain";
 terrain.rotation.x = -Math.PI / 2;
 
 // Store original material for toggling
 const originalMaterial = terrain.material;
-const normalMaterial = new THREE.MeshNormalMaterial({
-});
+const normalMaterial = new THREE.MeshNormalMaterial({});
 
 // Add wireframe overlay to emphasize triangular mesh structure
 const wireframeGeometry = new THREE.WireframeGeometry(geometry);
@@ -98,7 +108,7 @@ const wireframeMaterial = new THREE.LineBasicMaterial({
   transparent: true,
 });
 const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-wireframe.name = 'terrain-wireframe';
+wireframe.name = "terrain-wireframe";
 wireframe.rotation.x = -Math.PI / 2;
 scene.add(wireframe);
 scene.add(terrain);
@@ -126,12 +136,12 @@ const { container: uiContainer, wireframeControl } = createUIContainer({
 document.body.appendChild(uiContainer);
 
 // Get checkbox references
-const wireframeCheckbox = document.getElementById('wireframe-toggle') as HTMLInputElement;
-const velocityCheckbox = document.getElementById('velocity-toggle') as HTMLInputElement;
+const wireframeCheckbox = document.getElementById("wireframe-toggle") as HTMLInputElement;
+const velocityCheckbox = document.getElementById("velocity-toggle") as HTMLInputElement;
 
 // Wireframe toggle event listener
 if (wireframeCheckbox) {
-  wireframeCheckbox.addEventListener('change', (event) => {
+  wireframeCheckbox.addEventListener("change", (event) => {
     const target = event.target as HTMLInputElement;
     wireframe.visible = target.checked;
   });
@@ -139,11 +149,11 @@ if (wireframeCheckbox) {
 
 // Velocity toggle event listener
 if (velocityCheckbox) {
-  velocityCheckbox.addEventListener('change', (event) => {
+  velocityCheckbox.addEventListener("change", (event) => {
     const target = event.target as HTMLInputElement;
     if (waterVisualizationMaterial.uniforms && waterVisualizationMaterial.uniforms.uShowVelocity) {
       waterVisualizationMaterial.uniforms.uShowVelocity.value = target.checked ? 1 : 0;
-      
+
       // Show/hide velocity legend based on checkbox
       if (target.checked && visualizationMode === 4) {
         showVelocityLegend(velocityLegend);
@@ -160,9 +170,9 @@ function setVisualizationMode(mode: number) {
 
   // Show/hide wireframe control based on Water Flow mode (mode 4)
   if (visualizationMode === 4) {
-    wireframeControl.style.display = 'flex';
+    wireframeControl.style.display = "flex";
   } else {
-    wireframeControl.style.display = 'none';
+    wireframeControl.style.display = "none";
   }
 
   if (visualizationMode === 0) {
@@ -225,11 +235,11 @@ setVisualizationMode(visualizationMode);
 
 // Add lighting
 const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-ambientLight.name = 'ambient-light';
+ambientLight.name = "ambient-light";
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.name = 'directional-light';
+directionalLight.name = "directional-light";
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
@@ -242,11 +252,11 @@ let lastTime = performance.now();
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
-  
+
   // Calculate FPS
   frameCount++;
   const now = performance.now();
-  
+
   // Update FPS display every second
   if (now - lastTime >= 1000) {
     const fps = frameCount;
@@ -262,21 +272,23 @@ function animate() {
   // Run water simulation in Water Flow mode
   if (visualizationMode === 4) {
     // Run the GPU computation - single pass calculates both outflow and inflow
-    waterSimulation.compute(1/60.0); 
-    waterVisualizationMaterial.uniforms.uWaterHeightmap.value = waterSimulation.getSimulationShader();
-    
+    waterSimulation.compute(1 / 60.0);
+    waterVisualizationMaterial.uniforms.uWaterHeightmap.value =
+      waterSimulation.getSimulationShader();
+
     // Update cloud shadow texture on water material
     if (waterVisualizationMaterial.uniforms.uCloudShadowMap) {
-      waterVisualizationMaterial.uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+      waterVisualizationMaterial.uniforms.uCloudShadowMap.value =
+        waterSimulation.getCloudShadowTexture();
     }
   }
-  
+
   renderer.render(scene, camera);
 }
 animate();
 
 // Handle window resize
-window.addEventListener('resize', () => {
+window.addEventListener("resize", () => {
   const aspect = window.innerWidth / window.innerHeight;
   camera.left = (frustumSize * aspect) / -2;
   camera.right = (frustumSize * aspect) / 2;
@@ -287,7 +299,7 @@ window.addEventListener('resize', () => {
 });
 
 // Handle click to add water
-window.addEventListener('click', (event) => {
+window.addEventListener("click", (event) => {
   // Only handle clicks when in Water Flow mode
   if (visualizationMode !== 4) {
     return;
@@ -309,31 +321,31 @@ window.addEventListener('click', (event) => {
     const point = intersect.point;
 
     // Debug: log world coordinates
-    console.log('World point:', { x: point.x, y: point.y, z: point.z });
+    console.log("World point:", { x: point.x, y: point.y, z: point.z });
 
     // Convert world coordinates to terrain-local coordinates for water simulation
     // Terrain is rotated -π/2 around X-axis:
     // - World X corresponds to terrain's width direction (original plane X)
     // - World Z corresponds to terrain's height direction (original plane Y, inverted)
     // The displacement texture maps: column→X (-6 to +6), row→Z (-6 to +6)
-    
+
     // Map world coordinates to [0, terrainSize] for the water simulation
     const x = point.x + terrainSize / 2;
-    const y = point.z + terrainSize / 2;  // Removed the negative sign
+    const y = point.z + terrainSize / 2; // Removed the negative sign
 
     // Debug: log converted coordinates
-    console.log('Converted terrain coords:', { x, y });
-    
+    console.log("Converted terrain coords:", { x, y });
+
     // Debug: log texture texel coordinates
     const uvX = x / terrainSize;
     const uvY = y / terrainSize;
     const width = SIM_SIZE; // simulation grid size
     const texelX = Math.floor(uvX * width);
-    const centerY = Math.floor((1.0 - uvY) * width);  // Y is flipped for texture coordinates
-    console.log('Texture texel coords:', { uvX, uvY, texelX, centerY });
+    const centerY = Math.floor((1.0 - uvY) * width); // Y is flipped for texture coordinates
+    console.log("Texture texel coords:", { uvX, uvY, texelX, centerY });
 
-    waterSimulation.addWater(x, y, .1, 3);
-    console.log('Water added at world coords:', { x, y });
+    waterSimulation.addWater(x, y, 0.1, 3);
+    console.log("Water added at world coords:", { x, y });
   }
 });
 

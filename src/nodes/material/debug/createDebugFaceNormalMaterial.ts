@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Creates a debug material that visualizes face normals as colors.
@@ -27,6 +27,6 @@ export function createDebugFaceNormalMaterial(): THREE.ShaderMaterial {
 
   return new THREE.ShaderMaterial({
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 }

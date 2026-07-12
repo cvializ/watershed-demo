@@ -1,5 +1,5 @@
-import { test as baseTest } from '@playwright/test';
-import { basename } from 'path';
+import { test as baseTest } from "@playwright/test";
+import { basename } from "path";
 
 interface BrowserConsoleOptions {
   failOnPageError: boolean;
@@ -22,7 +22,7 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
   },
   page: async ({ page, _pageErrorState }, use, testInfo) => {
     const errors: Error[] = [];
-    page.on('pageerror', err => {
+    page.on("pageerror", (err) => {
       const where = `${basename(testInfo.file)}:${testInfo.line}`;
       // eslint-disable-next-line no-console
       console.log(`BROWSER ERROR: ${where} ${err.message}`);
@@ -31,8 +31,8 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
     await use(page);
     if (!_pageErrorState.allowed && errors.length > 0) {
       throw new Error(
-        `Browser raised ${errors.length} error(s):\n${errors.map(e => e.stack ?? e.message).join('\n\n')}`
+        `Browser raised ${errors.length} error(s):\n${errors.map((e) => e.stack ?? e.message).join("\n\n")}`,
       );
     }
-  }
+  },
 });
