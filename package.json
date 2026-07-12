@@ -16,7 +16,8 @@
     "pre-commit": "npm run validate && npm run format && npm run knip"
   },
   "dependencies": {
-    "three": "^0.185.0"
+    "three": "^0.185.0",
+    "bitecs": "^0.4.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
