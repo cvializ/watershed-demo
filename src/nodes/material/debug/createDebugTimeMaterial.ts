@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Creates a debug material that visualizes time-based animation.
@@ -35,9 +35,9 @@ export function createDebugTimeMaterial(): THREE.ShaderMaterial {
 
   return new THREE.ShaderMaterial({
     uniforms: {
-      uTime: { value: 0.0 }
+      uTime: { value: 0.0 },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 }

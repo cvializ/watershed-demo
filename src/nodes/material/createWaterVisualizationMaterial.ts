@@ -1,32 +1,32 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
-import waterVisualizationVert from '@/shaders/water-visualization.vert?raw';
-import waterVisualizationFrag from '@/shaders/water-visualization.frag?raw';
+import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
+import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 
 /**
  * Create a shader material that visualizes water flowing on terrain
  * The water heightmap should be updated via GPU computation simulation
  */
 export function createWaterVisualizationMaterial(
-    minHeight: number = -1.5,
-    maxHeight: number = 2.0,
-    heightMap?: THREE.Texture,
-    waterHeightMap?: THREE.Texture,
-    cloudShadowMap?: THREE.Texture,
-    velocityMap?: THREE.Texture
+  minHeight: number = -1.5,
+  maxHeight: number = 2.0,
+  heightMap?: THREE.Texture,
+  waterHeightMap?: THREE.Texture,
+  cloudShadowMap?: THREE.Texture,
+  velocityMap?: THREE.Texture,
 ): THREE.ShaderMaterial {
-    return new THREE.ShaderMaterial({
-        uniforms: {
-            uHeightMap: { value: heightMap || new THREE.Texture() },
-            uWaterHeightmap: { value: waterHeightMap || new THREE.Texture() },
-            uCloudShadowMap: { value: cloudShadowMap || new THREE.Texture() },
-            uVelocityMap: { value: velocityMap || new THREE.Texture() },
-            uMinHeight: { value: minHeight },
-            uMaxHeight: { value: maxHeight },
-            uShowVelocity: { value: 0 }
-        },
-        vertexShader: waterVisualizationVert,
-        fragmentShader: waterVisualizationFrag,
-        side: THREE.DoubleSide
-    });
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uHeightMap: { value: heightMap || new THREE.Texture() },
+      uWaterHeightmap: { value: waterHeightMap || new THREE.Texture() },
+      uCloudShadowMap: { value: cloudShadowMap || new THREE.Texture() },
+      uVelocityMap: { value: velocityMap || new THREE.Texture() },
+      uMinHeight: { value: minHeight },
+      uMaxHeight: { value: maxHeight },
+      uShowVelocity: { value: 0 },
+    },
+    vertexShader: waterVisualizationVert,
+    fragmentShader: waterVisualizationFrag,
+    side: THREE.DoubleSide,
+  });
 }

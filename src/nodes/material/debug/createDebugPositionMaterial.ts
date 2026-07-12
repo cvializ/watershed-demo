@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Creates a debug material that visualizes vertex positions as colors.
@@ -48,9 +48,9 @@ export function createDebugPositionMaterial(): THREE.ShaderMaterial {
       uMinY: { value: -1.0 },
       uMaxY: { value: 1.0 },
       uMinZ: { value: -1.0 },
-      uMaxZ: { value: 1.0 }
+      uMaxZ: { value: 1.0 },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 }

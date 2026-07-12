@@ -1,7 +1,7 @@
 {
   "name": "myapp",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "lint": "oxlint .",
+    "format": "oxfmt --check",
     "validate": "CI=1 npm run lint && npm run knip && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "@types/node": "^26.1.0",
     "@types/three": "^0.185.0",
     "knip": "^6.23.0",
+    "oxfmt": "^0.58.0",
     "oxlint": "^0.15.0",
     "playwright": "^1.61.1",
     "typescript": "~6.0.2",

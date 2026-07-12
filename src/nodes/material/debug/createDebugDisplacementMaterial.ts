@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Creates a debug material that visualizes displacement as colors.
@@ -50,9 +50,9 @@ export function createDebugDisplacementMaterial(): THREE.ShaderMaterial {
     uniforms: {
       uDisplacementMap: { value: null },
       uDisplacementScale: { value: 1.0 },
-      uDisplacementBias: { value: 0.0 }
+      uDisplacementBias: { value: 0.0 },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 }

@@ -1,13 +1,13 @@
 /**
  * Console Image Renderer Utility
- * 
+ *
  * Helper function that renders a ThreeJS material or shader into the browser console.
  * Uses HTML5 Canvas to render the image and logs it using console.log with
  * CSS styling for proper display.
  */
-import * as THREE from 'three';
+import * as THREE from "three";
 
-const isSafari = navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+const isSafari = navigator.userAgent.includes("Safari") && !navigator.userAgent.includes("Chrome");
 
 /**
  * Configuration options for rendering to console
@@ -28,22 +28,17 @@ export interface ConsoleRenderOptions {
  */
 export async function renderToConsole(
   material: THREE.Material,
-  options: ConsoleRenderOptions = {}
+  options: ConsoleRenderOptions = {},
 ): Promise<void> {
-  const {
-    width = 256,
-    height = 256,
-    format = 'image/png',
-    quality = 0.9,
-  } = options;
+  const { width = 256, height = 256, format = "image/png", quality = 0.9 } = options;
 
   try {
     // Create a scene and renderer for off-screen rendering
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const renderer = new THREE.WebGLRenderer({ 
+    const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
-      alpha: true
+      alpha: true,
     });
 
     // Configure renderer
@@ -61,7 +56,7 @@ export async function renderToConsole(
 
     // Get the data URL from the renderer
     const dataURL = renderer.domElement.toDataURL(format, quality);
-    
+
     // Clean up
     renderer.dispose();
     scene.remove(mesh);
@@ -71,7 +66,7 @@ export async function renderToConsole(
     img.onload = () => {
       // Log the image to console with styling
       const fontSize = height;
-      
+
       // Create CSS for console image display
       const styles = [
         `padding: 4px 8px`,
@@ -85,9 +80,9 @@ export async function renderToConsole(
         `min-height: ${height}px`,
         `font-size: ${fontSize}px`,
         `display: inline-block`,
-        `line-height: ${height}px`
-      ].join('; ');
-      
+        `line-height: ${height}px`,
+      ].join("; ");
+
       if (isSafari) {
         console.log(img);
       } else {
@@ -96,13 +91,12 @@ export async function renderToConsole(
     };
 
     img.onerror = (error) => {
-      console.error('Failed to render image to console:', error);
+      console.error("Failed to render image to console:", error);
     };
 
     img.src = dataURL;
-
   } catch (error) {
-    console.error('Error rendering to console:', error);
+    console.error("Error rendering to console:", error);
     throw error;
   }
 }
@@ -115,15 +109,15 @@ export async function renderToConsole(
  */
 export async function getRenderedDataURL(
   material: THREE.Material,
-  options: ConsoleRenderOptions = {}
+  options: ConsoleRenderOptions = {},
 ): Promise<string> {
-  const { width = 256, height = 256, format = 'image/png', quality = 0.9 } = options;
+  const { width = 256, height = 256, format = "image/png", quality = 0.9 } = options;
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const renderer = new THREE.WebGLRenderer({ 
+  const renderer = new THREE.WebGLRenderer({
     preserveDrawingBuffer: true,
-    alpha: true
+    alpha: true,
   });
 
   renderer.setSize(width, height);
@@ -136,7 +130,7 @@ export async function getRenderedDataURL(
   renderer.render(scene, camera);
 
   const dataURL = renderer.domElement.toDataURL(format, quality);
-  
+
   renderer.dispose();
   scene.remove(mesh);
 
@@ -150,14 +144,17 @@ export async function getRenderedDataURL(
  */
 export async function renderMultipleToConsole(
   items: Array<{ name: string; material: THREE.Material }>,
-  options: ConsoleRenderOptions = {}
+  options: ConsoleRenderOptions = {},
 ): Promise<void> {
   const { width = 128, height = 128 } = options;
 
-  console.log('%c--- Multiple Material Preview ---', 'color: #00ff88; font-weight: bold; font-size: 14px;');
+  console.log(
+    "%c--- Multiple Material Preview ---",
+    "color: #00ff88; font-weight: bold; font-size: 14px;",
+  );
 
   for (const item of items) {
-    console.log(`%c${item.name}`, 'font-weight: bold; font-size: 12px; color: #666;');
+    console.log(`%c${item.name}`, "font-weight: bold; font-size: 12px; color: #666;");
     try {
       await renderToConsole(item.material, { width, height, ...options });
     } catch (error) {
@@ -165,12 +162,15 @@ export async function renderMultipleToConsole(
     }
   }
 
-  console.log('%c---------------------------------', 'color: #00ff88; font-weight: bold; font-size: 14px;');
+  console.log(
+    "%c---------------------------------",
+    "color: #00ff88; font-weight: bold; font-size: 14px;",
+  );
 }
 
 /**
  * Example usage with an inline static shader
- * 
+ *
  * This function demonstrates how to use the console image renderer
  * with an inline shader that generates a colorful gradient pattern.
  */
@@ -208,30 +208,33 @@ export async function exampleWithInlineShader(): Promise<void> {
   const shaderMaterial = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0.0 },
-      uResolution: { value: new THREE.Vector2(256, 256) }
+      uResolution: { value: new THREE.Vector2(256, 256) },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 
   // Render to console (note: need to set uniforms before rendering)
   shaderMaterial.uniforms.uTime.value = 1.0;
-  
-  console.log('%c--- Inline Shader Example ---', 'color: #00ff88; font-weight: bold; font-size: 14px;');
+
+  console.log(
+    "%c--- Inline Shader Example ---",
+    "color: #00ff88; font-weight: bold; font-size: 14px;",
+  );
   await renderToConsole(shaderMaterial, {
     width: 256,
     height: 256,
-    showSize: true
+    showSize: true,
   });
 }
 
 /**
  * Quick example: Render a simple colorful shader to console
- * 
+ *
  * Usage:
  * ```typescript
  * import { exampleInlineShader } from './utils/console-image-renderer';
- * 
+ *
  * // Just call it to see the result in console
  * exampleInlineShader();
  * ```
@@ -267,37 +270,43 @@ export async function exampleInlineShader(): Promise<void> {
 
   const shaderMaterial = new THREE.ShaderMaterial({
     uniforms: {
-      uResolution: { value: new THREE.Vector2(256, 256) }
+      uResolution: { value: new THREE.Vector2(256, 256) },
     },
     vertexShader,
-    fragmentShader
+    fragmentShader,
   });
 
-  console.log('%c==============================', 'color: #00ff88; font-weight: bold;');
-  console.log('%cThree.js Shader in Console', 'color: #00ff88; font-weight: bold; font-size: 16px;');
-  console.log('%c------------------------------', 'color: #00ff88; font-weight: bold;');
-  
+  console.log("%c==============================", "color: #00ff88; font-weight: bold;");
+  console.log(
+    "%cThree.js Shader in Console",
+    "color: #00ff88; font-weight: bold; font-size: 16px;",
+  );
+  console.log("%c------------------------------", "color: #00ff88; font-weight: bold;");
+
   await renderToConsole(shaderMaterial, {
     width: 256,
     height: 256,
-    showSize: true
+    showSize: true,
   });
-  
-  console.log('%c==============================', 'color: #00ff88; font-weight: bold;');
+
+  console.log("%c==============================", "color: #00ff88; font-weight: bold;");
 }
 
 /**
  * Example: Render all debug materials to console
- * 
+ *
  * Usage:
  * ```typescript
  * import { exampleDebugMaterials } from './utils/console-image-renderer';
- * 
+ *
  * // Just call it to see the results in console
  * exampleDebugMaterials();
  * ```
  */
 export async function exampleDebugMaterials(): Promise<void> {
-  console.log('%c--- Debug Materials Preview ---', 'color: #00ff88; font-weight: bold; font-size: 14px;');
-  console.log('%c(Debug materials not yet implemented)', 'color: #666; font-style: italic;');
+  console.log(
+    "%c--- Debug Materials Preview ---",
+    "color: #00ff88; font-weight: bold; font-size: 14px;",
+  );
+  console.log("%c(Debug materials not yet implemented)", "color: #666; font-style: italic;");
 }
