@@ -31,10 +31,7 @@ const createTerrainGeometry = () => {
 
 export const createTerrainResource = (scene: THREE.Scene) => {
   const geometry = createTerrainGeometry();
-  const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial() as THREE.Material);
-  terrain.position.x = 0;
-  terrain.position.y = 0;
-  terrain.position.z = 0;
+  const terrain = new THREE.Mesh(geometry);
   terrain.rotation.x = -Math.PI / 2;
   scene.add(terrain);
 

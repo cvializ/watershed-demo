@@ -13,7 +13,6 @@ export const Transform = {
 
 /** Tag components */
 export const Camera = {};
-export const Cube = {};
 export const Terrain = {};
 export const Default = {};
 export const Rotate = {};
