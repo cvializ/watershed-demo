@@ -22,19 +22,26 @@ export const createDefaultMaterialResource = () => {
  * Create a shader material that visualizes water flowing on terrain
  * The water heightmap should be updated via GPU computation simulation
  */
-export const createWaterVisualizationMaterial = (
-  heightMap?: THREE.Texture,
-  velocityMap?: THREE.Texture,
-) => {
+export const createWaterVisualizationMaterial = ({
+  heightmap,
+  waterHeightMap,
+  cloudShadowMap,
+  velocityMap,
+}: {
+  heightmap: THREE.Texture;
+  waterHeightMap: THREE.Texture;
+  cloudShadowMap: THREE.Texture;
+  velocityMap: THREE.Texture;
+}) => {
   const minHeight: number = -1.5;
   const maxHeight: number = 2.0;
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      uHeightMap: { value: heightMap || new THREE.Texture() },
-      uWaterHeightmap: { value: new THREE.Texture() },
-      uCloudShadowMap: { value: new THREE.Texture() },
-      uVelocityMap: { value: velocityMap || new THREE.Texture() },
+      uHeightMap: { value: heightmap },
+      uWaterHeightmap: { value: waterHeightMap },
+      uCloudShadowMap: { value: cloudShadowMap },
+      uVelocityMap: { value: velocityMap },
       uMinHeight: { value: minHeight },
       uMaxHeight: { value: maxHeight },
       uShowVelocity: { value: 0 },

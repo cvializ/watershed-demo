@@ -12,8 +12,6 @@ import {
   WaterHeightmapOf,
   CloudShadowMapOf,
   VelocityMapOf,
-  Terrain,
-  MeshRef,
 } from "@/components/components";
 import {
   createGpuWaterFlowSimulation,
@@ -50,15 +48,6 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
     registerTextureResource(simulationTextureId, simulationTexture);
     createTexture(world, simulationTextureId, WaterHeightmapOf(eid));
 
-    const [terrainEid] = query(world, [Terrain]);
-    const meshId = MeshRef.ref[terrainEid];
-    const mesh = scene.getObjectById(meshId) as THREE.Mesh;
-    if (!mesh) {
-      console.warn(`mesh with id ${meshId} not found in scene`);
-      return;
-    }
-    // TODO: add material
-
     console.log("render init system");
   });
 };
@@ -69,6 +58,4 @@ export const rendererSyncSystem: RendererSystem = (_world, _scene, _renderer, _d
   }
 
   waterSimulation.compute(1 / 60);
-
-  // TODO: here?
 };

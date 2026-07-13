@@ -17,8 +17,8 @@ const world = createWorld();
 const { scene } = createSceneResource();
 const { renderer, render } = createRendererResource();
 
-sceneInitSystem(world, scene);
 rendererInitSystem(world, scene, renderer);
+sceneInitSystem(world, scene);
 worldInitSystem(world);
 
 // cameraMovementInitSystem(world);
