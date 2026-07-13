@@ -43,6 +43,7 @@ const camera = new THREE.OrthographicCamera(
 camera.position.set(15, 12, 15);
 camera.zoom = 2.5;
 camera.updateProjectionMatrix();
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -76,8 +77,6 @@ const waterVisualizationMaterial = createWaterVisualizationMaterial(
   -1.5,
   2.0,
   heightMapTexture,
-  undefined,
-  undefined,
   waterSimulation.getVelocityTexture(),
 );
 
@@ -93,7 +92,6 @@ arrows.rotation.x = -Math.PI / 2;
 scene.add(arrows);
 
 const terrain = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial() as THREE.Material);
-terrain.name = "terrain";
 terrain.rotation.x = -Math.PI / 2;
 
 // Store original material for toggling
@@ -249,6 +247,9 @@ const overlay = createOverlay();
 let frameCount = 0;
 let lastTime = performance.now();
 
+const t = waterSimulation.getSimulationTexture();
+const t2 = waterSimulation.getCloudShadowTexture();
+
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
@@ -273,13 +274,11 @@ function animate() {
   if (visualizationMode === 4) {
     // Run the GPU computation - single pass calculates both outflow and inflow
     waterSimulation.compute(1 / 60.0);
-    waterVisualizationMaterial.uniforms.uWaterHeightmap.value =
-      waterSimulation.getSimulationShader();
+    waterVisualizationMaterial.uniforms.uWaterHeightmap.value = t;
 
     // Update cloud shadow texture on water material
     if (waterVisualizationMaterial.uniforms.uCloudShadowMap) {
-      waterVisualizationMaterial.uniforms.uCloudShadowMap.value =
-        waterSimulation.getCloudShadowTexture();
+      waterVisualizationMaterial.uniforms.uCloudShadowMap.value = t2;
     }
   }
 

@@ -10,3 +10,10 @@ export const createDefaultMaterial = (world: World) => {
 
   return eid;
 };
+
+export const createMaterial = (world: World) => {
+  const eid = addEntity(world);
+
+  // HMM what else
+  addComponent(world, eid, MaterialRef); // set by scene init system
+};

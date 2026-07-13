@@ -1,3 +1,4 @@
+import { createRelation, type Relation } from "bitecs";
 // --- ECS Components (Structure of Arrays) ---
 import { f32, str } from "bitecs/serialization";
 
@@ -14,8 +15,18 @@ export const Transform = {
 /** Tag components */
 export const Camera = {};
 export const Terrain = {};
-export const Default = {};
+
 export const Rotate = {};
+
+export const Default = {};
+export const HeightMap = {};
+
+// Simple relation with no data
+
+export const WaterSimulation = {};
+export const WaterHeightmapOf = createRelation();
+export const CloudShadowMapOf = createRelation();
+export const VelocityMapOf = createRelation();
 
 /** Position-only data — for entities like cameras that don't need rotation.
  *  Separate from Transform to keep concerns apart (meshes use full Transform,

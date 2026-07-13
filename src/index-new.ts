@@ -1,6 +1,7 @@
 import "@/style.css";
 import { createWorld } from "bitecs";
 
+import { rendererInitSystem, rendererSyncSystem } from "@/renderer/initSystem";
 import { createLoopResource, createRendererResource } from "@/renderer/resources";
 import { sceneInitSystem } from "@/scene/initSystem";
 import { createSceneResource } from "@/scene/resources";
@@ -14,9 +15,10 @@ import { velocitySystem } from "@/world/systems/velocity";
 const world = createWorld();
 
 const { scene } = createSceneResource();
-const { render } = createRendererResource();
+const { renderer, render } = createRendererResource();
 
 sceneInitSystem(world, scene);
+rendererInitSystem(world, scene, renderer);
 worldInitSystem(world);
 
 // cameraMovementInitSystem(world);
@@ -68,6 +70,7 @@ createLoopResource((_t, dt) => {
   rotationSystem(world, dt);
 
   sceneSyncSystem(world, scene, dt);
+  rendererSyncSystem(world, scene, renderer, dt);
 
   render(scene);
 });
