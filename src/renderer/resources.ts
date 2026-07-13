@@ -32,6 +32,7 @@ export const createRendererResource = () => {
 
   return {
     render,
+    renderer,
   };
 };
 

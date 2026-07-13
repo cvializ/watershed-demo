@@ -39,7 +39,7 @@ export type WaterFlowVisualization = {
   /**
    * Get the velocity texture for the full simulation.
    */
-  getSimulationShader: () => THREE.Texture;
+  getSimulationTexture: () => THREE.Texture;
 };
 
 /**
@@ -149,7 +149,7 @@ export const createGpuWaterFlowSimulation = (
     },
     addWater,
     getCloudShadowTexture: () => getCloudTexture(),
-    getSimulationShader: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
+    getSimulationTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
     getVelocityTexture: () => gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
   };
 };

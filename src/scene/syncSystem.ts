@@ -50,4 +50,6 @@ const materialSyncSystem: SceneSystem = (world, scene, _dt) => {
 export const sceneSyncSystem: SceneSystem = (world, scene, _dt): void => {
   motionSyncSystem(world, scene, _dt);
   materialSyncSystem(world, scene, _dt);
+
+  // HERE???
 };
