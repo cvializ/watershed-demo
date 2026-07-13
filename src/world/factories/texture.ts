@@ -1,4 +1,4 @@
-import { addComponent, addEntity, type Relation, type World } from "bitecs";
+import { addComponent, addEntity, type World } from "bitecs";
 
 import { Default, HeightMap, TextureRef } from "@/components/components";
 
