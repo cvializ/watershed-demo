@@ -6,6 +6,7 @@ import type { SceneInitSystem } from "@/scene/types";
 
 import {
   Camera,
+  CloudShadowMapOf,
   Default,
   HeightMap,
   MaterialRef,
@@ -64,13 +65,32 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
 
   // TODO: Create water visualization material?
   observe(world, onAdd(WaterSimulation), (eid) => {
+    // Query for the heightmap textures populated by the simulation
+    // to generate the visualization shader material.
+    // This doesn't need to be a sync because the texture reference updates in place
+
+    const [heightmapEid] = query(world, [Default, HeightMap, TextureRef]);
+    const heightmap = getTexture(TextureRef.ref[heightmapEid]);
+
     const [waterHeightmapEid] = query(world, [TextureRef, WaterHeightmapOf(eid)]);
-    const waterHeightmap = getTexture(TextureRef.ref[waterHeightmapEid]);
+    const waterHeightMap = getTexture(TextureRef.ref[waterHeightmapEid]);
+
+    const [cloudShadowMapEid] = query(world, [TextureRef, CloudShadowMapOf(eid)]);
+    const cloudShadowMap = getTexture(TextureRef.ref[cloudShadowMapEid]);
 
     const [velocityMapEid] = query(world, [TextureRef, VelocityMapOf(eid)]);
     const velocityMap = getTexture(TextureRef.ref[velocityMapEid]);
 
-    const { materialId } = createWaterVisualizationMaterial(waterHeightmap, velocityMap);
+    if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
+      return;
+    }
+
+    const { materialId } = createWaterVisualizationMaterial({
+      heightmap,
+      waterHeightMap,
+      cloudShadowMap,
+      velocityMap,
+    });
     MaterialRef.ref[eid] = materialId;
 
     const [terrainEid] = query(world, [MeshRef, Terrain]);
