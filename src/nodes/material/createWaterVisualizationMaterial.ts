@@ -21,7 +21,7 @@ export function createWaterVisualizationMaterial(
       uVelocityMap: { value: velocityMap || new THREE.Texture() },
       uMinHeight: { value: minHeight },
       uMaxHeight: { value: maxHeight },
-      uShowVelocity: { value: 0 },
+      uShowVelocity: { value: true },
     },
     vertexShader: waterVisualizationVert,
     fragmentShader: waterVisualizationFrag,

@@ -44,7 +44,7 @@ export const createWaterVisualizationMaterial = ({
       uVelocityMap: { value: velocityMap },
       uMinHeight: { value: minHeight },
       uMaxHeight: { value: maxHeight },
-      uShowVelocity: { value: 0 },
+      uShowVelocity: { value: 1 },
     },
     vertexShader: waterVisualizationVert,
     fragmentShader: waterVisualizationFrag,
