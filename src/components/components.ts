@@ -1,5 +1,4 @@
-import { createRelation, type Relation } from "bitecs";
-// --- ECS Components (Structure of Arrays) ---
+import { createRelation } from "bitecs";
 import { f32, str } from "bitecs/serialization";
 
 /** Position and rotation state — pure numeric data */
