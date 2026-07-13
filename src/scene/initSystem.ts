@@ -28,16 +28,16 @@ import { getCamera } from "@/scene/sceneUtils";
 
 const cameraInitSystem: SceneInitSystem = (world, scene) => {
   const [eid] = query(world, [Camera]);
-  const [terrainEid] = query(world, [Terrain, MeshRef]);
-  const camera = getCamera(scene);
-  if (!camera) {
-    console.warn("camera not found");
-    return;
-  }
   if (!eid) {
-    console.log("camera not found");
+    throw new Error("camera not found in components");
   }
 
+  const camera = getCamera(scene);
+  if (!camera) {
+    throw new Error("camera not found in scene");
+  }
+
+  const [terrainEid] = query(world, [Terrain, MeshRef]);
   const terrain = scene.getObjectById(MeshRef.ref[terrainEid]);
   camera.lookAt(terrain.position);
 };
@@ -63,12 +63,10 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     cameraInitSystem(world, scene);
   });
 
-  // TODO: Create water visualization material?
   observe(world, onAdd(WaterSimulation), (eid) => {
     // Query for the heightmap textures populated by the simulation
     // to generate the visualization shader material.
     // This doesn't need to be a sync because the texture reference updates in place
-
     const [heightmapEid] = query(world, [Default, HeightMap, TextureRef]);
     const heightmap = getTexture(TextureRef.ref[heightmapEid]);
 
