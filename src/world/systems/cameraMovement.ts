@@ -44,6 +44,6 @@ const onKeyUp = (e: KeyboardEvent, world: World): void => {
 };
 
 export const cameraMovementInitSystem: WorldInitSystem = (world) => {
-  // document.addEventListener("keydown", (event) => onKeyDown(event, world));
-  // document.addEventListener("keyup", (event) => onKeyUp(event, world));
+  document.addEventListener("keydown", (event) => onKeyDown(event, world));
+  document.addEventListener("keyup", (event) => onKeyUp(event, world));
 };

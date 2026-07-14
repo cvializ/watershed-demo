@@ -7,13 +7,14 @@ import { createLoopResource, createRendererResource } from "@/renderer/resources
 import { createSceneResource } from "@/scene/resources";
 import { sceneInitSystem } from "@/scene/sceneInitSystem";
 import { sceneSyncSystem } from "@/scene/sceneSyncSystem";
-import { rotationSystem } from "@/world/systems/rotation";
-import { velocitySystem } from "@/world/systems/velocity";
 // import { loadFromWorldStorage, saveToWorldStorage } from "@/storage";
 // import { cameraMovementInitSystem } from "@/world/systems/cameraMovement";
 import { worldInitSystem } from "@/world/systems/worldInitSystem";
+import { worldSyncSystem } from "@/world/systems/worldSyncSystem";
 
-const world = createWorld();
+const world = createWorld({
+  time: 0,
+});
 
 const { scene } = createSceneResource();
 const { renderer, render } = createRendererResource();
@@ -67,9 +68,7 @@ worldInitSystem(world);
 // createEcsControls();
 
 createLoopResource((_t, dt) => {
-  velocitySystem(world, dt);
-  rotationSystem(world, dt);
-
+  worldSyncSystem(world, dt);
   sceneSyncSystem(world, scene, dt);
   rendererSyncSystem(world, scene, renderer, dt);
 
