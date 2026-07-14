@@ -1,7 +1,6 @@
 import { createRelation } from "bitecs";
 import { f32, str } from "bitecs/serialization";
 
-/** Position and rotation state — pure numeric data */
 export const Transform = {
   x: f32([]),
   y: f32([]),
@@ -20,8 +19,6 @@ export const Rotate = {};
 export const Default = {};
 export const HeightMap = {};
 
-export const WaterClick = {};
-
 // Simple relation with no data
 
 export const WaterSimulation = {};
@@ -29,9 +26,6 @@ export const WaterHeightmapOf = createRelation();
 export const CloudShadowMapOf = createRelation();
 export const VelocityMapOf = createRelation();
 
-/** Position-only data — for entities like cameras that don't need rotation.
- *  Separate from Transform to keep concerns apart (meshes use full Transform,
- *  cameras only need position). */
 export const Position = {
   x: f32([]),
   y: f32([]),
@@ -48,7 +42,6 @@ export const MaterialRef = {
   ref: str([]),
 };
 
-/** Per-entity velocity vector in world units / second. Read by physics/movement systems and applied to Position via dt. Arrow keys set this on the camera entity; WASD+QE bindings are removed. */
 export const Velocity = {
   x: f32([]),
   y: f32([]),
