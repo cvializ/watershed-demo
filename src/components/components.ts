@@ -22,9 +22,9 @@ export const HeightMap = {};
 // Simple relation with no data
 
 export const WaterSimulation = {};
-export const WaterHeightmapOf = createRelation();
-export const CloudShadowMapOf = createRelation();
-export const VelocityMapOf = createRelation();
+export const WaterHeightmapOf = createRelation({ exclusive: true });
+export const CloudShadowMapOf = createRelation({ exclusive: true });
+export const VelocityMapOf = createRelation({ exclusive: true });
 
 export const Position = {
   x: f32([]),
