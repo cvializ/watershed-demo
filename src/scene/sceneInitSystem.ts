@@ -43,6 +43,8 @@ const cameraInitSystem: SceneInitSystem = (world, scene) => {
 };
 
 export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
+  // TODO: constructors directory?
+
   observe(world, onAdd(Default, MaterialRef), (eid) => {
     const { materialId: defaultMaterialId } = createDefaultMaterialResource();
     MaterialRef.ref[eid] = defaultMaterialId;
@@ -67,6 +69,9 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     // Query for the heightmap textures populated by the simulation
     // to generate the visualization shader material.
     // This doesn't need to be a sync because the texture reference updates in place
+
+    // TODO: queries directory
+
     const [heightmapEid] = query(world, [Default, HeightMap, TextureRef]);
     const heightmap = getTexture(TextureRef.ref[heightmapEid]);
 
@@ -80,6 +85,7 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     const velocityMap = getTexture(TextureRef.ref[velocityMapEid]);
 
     if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
+      console.error("missing simulation textures");
       return;
     }
 

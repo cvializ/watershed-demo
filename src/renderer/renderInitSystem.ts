@@ -1,8 +1,7 @@
 import { observe, onAdd, query } from "bitecs";
-// Create water flow simulation
 import * as THREE from "three";
 
-import type { RendererInitSystem, RendererSystem } from "@/renderer/types";
+import type { RendererInitSystem } from "@/renderer/types";
 
 import {
   WaterSimulation,
@@ -26,7 +25,7 @@ import { createTexture } from "@/world/factories/texture";
 const SIM_SIZE = 512;
 const terrainSize = 12;
 
-let waterSimulation: WaterFlowVisualization | null = null;
+export let waterSimulation: WaterFlowVisualization | null = null;
 
 export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
   observe(world, onAdd(WaterSimulation), (eid) => {
@@ -128,12 +127,4 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
-};
-
-export const rendererSyncSystem: RendererSystem = (_world, _scene, _renderer, _dt) => {
-  if (!waterSimulation) {
-    return;
-  }
-
-  waterSimulation.compute(1 / 60);
 };

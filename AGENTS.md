@@ -372,6 +372,38 @@ npm run build    # Build for production
 
 **Never create export barrel files**: Do not create index.ts or barrel files that re-export multiple modules. Each module should export its contents directly, and imports should use explicit paths to individual files rather than importing from a barrel file.
 
+## System Filename Convention
+
+**Avoid the word "system" in filenames**: System filenames should not include the word "system" except for the official `init` and `sync` system files.
+
+**Examples - DON'T do this**:
+
+```ts
+// DON'T use 'system' in filename
+core-system.ts
+audio-system.ts
+video-system.ts
+```
+
+**Examples - DO this instead**:
+
+```ts
+// Use descriptive names without 'system'
+core.ts
+audio.ts
+video.ts
+
+// OK - official system files
+init.ts
+sync.ts
+```
+
+**Reasons for this policy**:
+
+- **Clarity**: Descriptive names without "system" are clearer about what the module does
+- **Consistency**: The project has specific `init` and `sync` files that serve as entry points; keeping other files free of "system" avoids confusion
+- **Simplicity**: Shorter, more direct names are easier to work with
+
 ## Pre-Completion Checklist
 
 **Mandatory**: Before marking any task that changes code as complete, you MUST run the validate script using a subagent:

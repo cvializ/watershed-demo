@@ -14,17 +14,17 @@ let deserializer: (
 ) => Map<number, number> | undefined;
 
 // Initialize serializers on first use (after world is created)
-function initSerializers(world: World) {
+const initSerializers = (world: World) => {
   if (!serializer || !deserializer) {
     serializer = createSnapshotSerializer(world, components);
     deserializer = createSnapshotDeserializer(world, components);
   }
-}
+};
 
 /**
  * Serialize the ECS world state to a base64 string
  */
-function serializeWorld(world: World): string {
+const serializeWorld = (world: World): string => {
   initSerializers(world);
 
   // Serialize to ArrayBuffer (no args = serialize all entities)
@@ -35,12 +35,12 @@ function serializeWorld(world: World): string {
 
   // Convert ArrayBuffer to base64 for localStorage
   return arrayBufferToBase64(buffer);
-}
+};
 
 /**
  * Deserialize ECS state from base64 string and apply to world
  */
-function deserializeWorld(world: World, base64String: string): void {
+const deserializeWorld = (world: World, base64String: string): void => {
   if (!base64String) return;
 
   // Initialize deserializer if needed
@@ -58,12 +58,12 @@ function deserializeWorld(world: World, base64String: string): void {
 
   // Deserialize into world - this creates new entities with serialized data
   deserializer(buffer);
-}
+};
 
 /**
  * Save ECS state to localStorage
  */
-export function saveToWorldStorage(world: World, storageKey = "ecs-snapshot"): void {
+export const saveToWorldStorage = (world: World, storageKey = "ecs-snapshot"): void => {
   const serialized = serializeWorld(world);
   if (!serialized) {
     console.log("Serialization empty");
@@ -71,12 +71,12 @@ export function saveToWorldStorage(world: World, storageKey = "ecs-snapshot"): v
 
   localStorage.setItem(storageKey, serialized);
   console.log("ECS state saved to localStorage");
-}
+};
 
 /**
  * Load ECS state from localStorage
  */
-export function loadFromWorldStorage(world: World, storageKey = "ecs-snapshot"): void {
+export const loadFromWorldStorage = (world: World, storageKey = "ecs-snapshot"): void => {
   const serialized = localStorage.getItem(storageKey);
   if (!serialized) {
     console.log("No saved ECS state found in localStorage");
@@ -85,12 +85,12 @@ export function loadFromWorldStorage(world: World, storageKey = "ecs-snapshot"):
 
   deserializeWorld(world, serialized);
   console.log("ECS state loaded from localStorage");
-}
+};
 
 /**
  * Helper: Convert ArrayBuffer to base64
  */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   let binary = "";
   const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
@@ -98,12 +98,12 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
-}
+};
 
 /**
  * Helper: Convert base64 to ArrayBuffer
  */
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
+const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -111,4 +111,4 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes.buffer;
-}
+};
