@@ -12,9 +12,13 @@ import { sceneSyncSystem } from "@/scene/sceneSyncSystem";
 import { worldInitSystem } from "@/world/systems/worldInitSystem";
 import { worldSyncSystem } from "@/world/systems/worldSyncSystem";
 
-const world = createWorld({
+const gameContext = {
   time: 0,
-});
+};
+
+export type GameContext = typeof gameContext;
+
+const world = createWorld<GameContext>(gameContext);
 
 const { scene } = createSceneResource();
 const { renderer, render } = createRendererResource();

@@ -2,6 +2,7 @@ import { type World, query, removeEntity } from "bitecs";
 import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/serialization";
 
 import { Transform, Camera, Position, MeshRef, Velocity } from "@/components/components";
+import { type GameContext } from "@/index";
 
 /**
  * Create a serializer for the ECS world
@@ -14,7 +15,7 @@ let deserializer: (
 ) => Map<number, number> | undefined;
 
 // Initialize serializers on first use (after world is created)
-const initSerializers = (world: World) => {
+const initSerializers = (world: World<GameContext>) => {
   if (!serializer || !deserializer) {
     serializer = createSnapshotSerializer(world, components);
     deserializer = createSnapshotDeserializer(world, components);
@@ -22,25 +23,30 @@ const initSerializers = (world: World) => {
 };
 
 /**
- * Serialize the ECS world state to a base64 string
+ * Serialize the ECS world state and custom context to strings
  */
-const serializeWorld = (world: World): string => {
+const serializeWorld = (world: World<GameContext>): { ecs: string; context: string } => {
   initSerializers(world);
 
-  // Serialize to ArrayBuffer (no args = serialize all entities)
+  // Serialize ECS components to ArrayBuffer (no args = serialize all entities)
   const buffer = serializer();
   if (!buffer) {
     throw new Error("empty serializer");
   }
 
   // Convert ArrayBuffer to base64 for localStorage
-  return arrayBufferToBase64(buffer);
+  const ecsSerialized = arrayBufferToBase64(buffer);
+
+  // Serialize custom context to JSON string (world IS the context object)
+  const contextSerialized = JSON.stringify(world);
+
+  return { ecs: ecsSerialized, context: contextSerialized };
 };
 
 /**
  * Deserialize ECS state from base64 string and apply to world
  */
-const deserializeWorld = (world: World, base64String: string): void => {
+const deserializeWorld = (world: World<GameContext>, base64String: string): void => {
   if (!base64String) return;
 
   // Initialize deserializer if needed
@@ -61,30 +67,53 @@ const deserializeWorld = (world: World, base64String: string): void => {
 };
 
 /**
- * Save ECS state to localStorage
+ * Save ECS state and custom context to localStorage
  */
-export const saveToWorldStorage = (world: World, storageKey = "ecs-snapshot"): void => {
+export const saveToWorldStorage = (
+  world: World<GameContext>,
+  storageKey = "ecs-snapshot",
+): void => {
   const serialized = serializeWorld(world);
-  if (!serialized) {
-    console.log("Serialization empty");
+  if (!serialized.ecs) {
+    console.log("ECS serialization empty");
   }
 
-  localStorage.setItem(storageKey, serialized);
-  console.log("ECS state saved to localStorage");
+  // Store ECS state in localStorage (base64 encoded)
+  localStorage.setItem(`${storageKey}-ecs`, serialized.ecs);
+
+  // Store custom context in localStorage (JSON string)
+  localStorage.setItem(`${storageKey}-context`, serialized.context);
+  console.log("ECS state and custom context saved to localStorage");
 };
 
 /**
- * Load ECS state from localStorage
+ * Load ECS state and custom context from localStorage
  */
-export const loadFromWorldStorage = (world: World, storageKey = "ecs-snapshot"): void => {
-  const serialized = localStorage.getItem(storageKey);
-  if (!serialized) {
+export const loadFromWorldStorage = (
+  world: World<GameContext>,
+  storageKey = "ecs-snapshot",
+): void => {
+  const ecsSerialized = localStorage.getItem(`${storageKey}-ecs`);
+  const contextSerialized = localStorage.getItem(`${storageKey}-context`);
+
+  if (!ecsSerialized) {
     console.log("No saved ECS state found in localStorage");
     return;
   }
 
-  deserializeWorld(world, serialized);
-  console.log("ECS state loaded from localStorage");
+  // Deserialize custom context from JSON
+  if (contextSerialized) {
+    try {
+      const deserializedContext = JSON.parse(contextSerialized) as GameContext;
+      // Merge with existing context to preserve any runtime properties
+      Object.assign(world, deserializedContext);
+    } catch (error) {
+      console.warn("Failed to deserialize custom context:", error);
+    }
+  }
+
+  deserializeWorld(world, ecsSerialized);
+  console.log("ECS state and custom context loaded from localStorage");
 };
 
 /**
