@@ -39,7 +39,7 @@ const cameraInitSystem: SceneInitSystem = (world, scene) => {
 
   const [terrainEid] = query(world, [Terrain, MeshRef]);
   const terrain = scene.getObjectById(MeshRef.ref[terrainEid]);
-  // camera.lookAt(terrain.position);
+  camera.lookAt(terrain.position);
 };
 
 export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
@@ -90,7 +90,5 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
       velocityMap,
     });
     MaterialRef.ref[eid] = materialId;
-
-    console.log(scene.getObjectsByProperty("type", "OrthographicCamera"));
   });
 };
