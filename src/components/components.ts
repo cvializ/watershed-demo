@@ -20,6 +20,8 @@ export const Rotate = {};
 export const Default = {};
 export const HeightMap = {};
 
+export const WaterClick = {};
+
 // Simple relation with no data
 
 export const WaterSimulation = {};

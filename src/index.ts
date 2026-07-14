@@ -2,6 +2,12 @@ import "./style.css";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+declare global {
+  interface Window {
+    lastFpsUpdate?: number;
+  }
+}
+
 import { createOverlay } from "@/dom/createOverlay";
 import {
   createVisualizationLegend,
@@ -53,6 +59,8 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.autoRotate = true;
+controls.autoRotateSpeed = 2.0;
+controls.target.set(0, 0, 0);
 
 // Terrain size (must be defined before creating terrain)
 const terrainSize = 12;
@@ -252,22 +260,22 @@ const t2 = waterSimulation.getCloudShadowTexture();
 
 function animate() {
   requestAnimationFrame(animate);
-  controls.update();
+
+  const now = performance.now();
+  const deltaTime = (now - lastTime) / 1000; // Convert to seconds
+  controls.update(deltaTime);
+  lastTime = now;
 
   // Calculate FPS
   frameCount++;
-  const now = performance.now();
 
   // Update FPS display every second
-  if (now - lastTime >= 1000) {
+  if (!window.lastFpsUpdate) window.lastFpsUpdate = now;
+  if (now - window.lastFpsUpdate >= 1000) {
     const fps = frameCount;
     overlay.update(fps, scene.children.length);
     frameCount = 0;
-    lastTime = now;
-  } else {
-    // Calculate FPS based on current measurement window
-    const fps = Math.round(frameCount / ((now - lastTime) / 1000));
-    overlay.update(fps, scene.children.length);
+    window.lastFpsUpdate = now;
   }
 
   // Run water simulation in Water Flow mode
@@ -288,6 +296,7 @@ animate();
 
 // Handle window resize
 window.addEventListener("resize", () => {
+  const frustumSize = 20;
   const aspect = window.innerWidth / window.innerHeight;
   camera.left = (frustumSize * aspect) / -2;
   camera.right = (frustumSize * aspect) / 2;

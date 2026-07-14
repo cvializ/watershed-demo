@@ -1,5 +1,8 @@
+import { query } from "bitecs";
+
 import type { WorldInitSystem } from "@/world/types";
 
+import { MaterialRef, MeshRef, Terrain, WaterSimulation } from "@/components/components";
 import { createCamera } from "@/world/factories/camera";
 import { createDefaultMaterial } from "@/world/factories/material";
 import { createWaterSimulation } from "@/world/factories/simulation";
@@ -11,5 +14,15 @@ export const worldInitSystem: WorldInitSystem = (world) => {
   createTerrain(world);
   createCamera(world);
   createDefaultHeightmapTexture(world);
+
   createWaterSimulation(world);
+
+  const [terrainEid] = query(world, [MeshRef, Terrain]);
+  const [simulationEid] = query(world, [WaterSimulation]);
+
+  if (!terrainEid || !simulationEid) {
+    return;
+  }
+
+  MaterialRef.ref[terrainEid] = MaterialRef.ref[simulationEid];
 };
