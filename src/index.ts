@@ -1,16 +1,17 @@
 import "@/style.css";
 import { createWorld } from "bitecs";
 
-import { rendererInitSystem, rendererSyncSystem } from "@/renderer/initSystem";
+import { rendererInitSystem } from "@/renderer/renderInitSystem";
+import { rendererSyncSystem } from "@/renderer/renderSyncSystem";
 import { createLoopResource, createRendererResource } from "@/renderer/resources";
-import { sceneInitSystem } from "@/scene/initSystem";
 import { createSceneResource } from "@/scene/resources";
-import { sceneSyncSystem } from "@/scene/syncSystem";
-// import { loadFromWorldStorage, saveToWorldStorage } from "@/storage";
-// import { cameraMovementInitSystem } from "@/world/systems/cameraMovement";
-import { worldInitSystem } from "@/world/systems/initSystem";
+import { sceneInitSystem } from "@/scene/sceneInitSystem";
+import { sceneSyncSystem } from "@/scene/sceneSyncSystem";
 import { rotationSystem } from "@/world/systems/rotation";
 import { velocitySystem } from "@/world/systems/velocity";
+// import { loadFromWorldStorage, saveToWorldStorage } from "@/storage";
+// import { cameraMovementInitSystem } from "@/world/systems/cameraMovement";
+import { worldInitSystem } from "@/world/systems/worldInitSystem";
 
 const world = createWorld();
 
