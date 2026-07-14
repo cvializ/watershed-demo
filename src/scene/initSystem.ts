@@ -20,7 +20,7 @@ import {
 import { createCameraResource } from "@/scene/resources/camera";
 import {
   createDefaultMaterialResource,
-  createWaterVisualizationMaterial,
+  createWaterVisualizationMaterialResource,
 } from "@/scene/resources/material";
 import { createTerrainResource } from "@/scene/resources/terrain";
 import { createDefaultHeightMapTextureResource, getTexture } from "@/scene/resources/texture";
@@ -39,7 +39,7 @@ const cameraInitSystem: SceneInitSystem = (world, scene) => {
 
   const [terrainEid] = query(world, [Terrain, MeshRef]);
   const terrain = scene.getObjectById(MeshRef.ref[terrainEid]);
-  camera.lookAt(terrain.position);
+  // camera.lookAt(terrain.position);
 };
 
 export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
@@ -83,7 +83,7 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
       return;
     }
 
-    const { materialId } = createWaterVisualizationMaterial({
+    const { materialId } = createWaterVisualizationMaterialResource({
       heightmap,
       waterHeightMap,
       cloudShadowMap,
@@ -91,7 +91,6 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     });
     MaterialRef.ref[eid] = materialId;
 
-    const [terrainEid] = query(world, [MeshRef, Terrain]);
-    MaterialRef.ref[terrainEid] = materialId;
+    console.log(scene.getObjectsByProperty("type", "OrthographicCamera"));
   });
 };

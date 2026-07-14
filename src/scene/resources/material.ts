@@ -22,7 +22,7 @@ export const createDefaultMaterialResource = () => {
  * Create a shader material that visualizes water flowing on terrain
  * The water heightmap should be updated via GPU computation simulation
  */
-export const createWaterVisualizationMaterial = ({
+export const createWaterVisualizationMaterialResource = ({
   heightmap,
   waterHeightMap,
   cloudShadowMap,

@@ -18,6 +18,7 @@ import {
   type WaterFlowVisualization,
 } from "@/gpu/createGpuWaterFlowSimulation";
 import { getTexture, registerTextureResource } from "@/scene/resources/texture";
+import { getCamera } from "@/scene/sceneUtils";
 import { createTexture } from "@/world/factories/texture";
 
 const SIM_SIZE = 512;
@@ -50,6 +51,17 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
 
     console.log("render init system");
   });
+
+  // // Handle window resize
+  // window.addEventListener("resize", () => {
+  //   const aspect = window.innerWidth / window.innerHeight;
+  //   camera.left = (frustumSize * aspect) / -2;
+  //   camera.right = (frustumSize * aspect) / 2;
+  //   camera.top = frustumSize / 2;
+  //   camera.bottom = frustumSize / -2;
+  //   camera.updateProjectionMatrix();
+  //   renderer.setSize(window.innerWidth, window.innerHeight);
+  // });
 };
 
 export const rendererSyncSystem: RendererSystem = (_world, _scene, _renderer, _dt) => {

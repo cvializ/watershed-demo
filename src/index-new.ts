@@ -17,7 +17,7 @@ const world = createWorld();
 const { scene } = createSceneResource();
 const { renderer, render } = createRendererResource();
 
-rendererInitSystem(world, scene, renderer);
+rendererInitSystem(world, scene, renderer); // why does this have to be first again?
 sceneInitSystem(world, scene);
 worldInitSystem(world);
 
@@ -72,5 +72,5 @@ createLoopResource((_t, dt) => {
   sceneSyncSystem(world, scene, dt);
   rendererSyncSystem(world, scene, renderer, dt);
 
-  render(scene);
+  render(scene, dt);
 });
