@@ -1,5 +1,5 @@
-export const createGameContext = () => ({
+export const createGameWorldContext = () => ({
   time: 0,
 });
 
-export type GameContext = ReturnType<typeof createGameContext>;
+export type GameWorldContext = ReturnType<typeof createGameWorldContext>;
