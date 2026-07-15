@@ -4,11 +4,11 @@ import * as THREE from "three";
 // Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
-import { createGpuClouds } from "@/gpu/createGpuClouds";
-import { createGpuWaterHeight } from "@/gpu/createGpuWaterHeight";
-import { createGpuWaterSources } from "@/gpu/createGpuWaterSources";
-import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
+import { createGpuClouds } from "@/gpu/variables/createGpuClouds";
+import { createGpuWaterHeight } from "@/gpu/variables/createGpuWaterHeight";
+import { createGpuWaterSources } from "@/gpu/variables/createGpuWaterSources";
 import erosionFragmentShader from "@/shaders/compute/erosion.frag?raw";
+import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
 
 export type WaterFlowVisualization = {
   /**
@@ -50,7 +50,11 @@ export type WaterFlowVisualization = {
   /**
    * Set erosion parameters.
    */
-  setErosionParameters: (erosionRate: number, depositionRate: number, sedimentCapacity: number) => void;
+  setErosionParameters: (
+    erosionRate: number,
+    depositionRate: number,
+    sedimentCapacity: number,
+  ) => void;
 };
 
 /**
@@ -144,11 +148,7 @@ export const createGpuWaterFlowSimulation = (
   const erosionTexture = heightMapTexture.clone();
   erosionTexture.name = "erosionTexture";
 
-  const erosionVariable = gpuCompute.addVariable(
-    "erosion",
-    erosionFragmentShader,
-    erosionTexture,
-  );
+  const erosionVariable = gpuCompute.addVariable("erosion", erosionFragmentShader, erosionTexture);
 
   // Erosion depends on water height (for computing velocity first) and previous erosion state (for accumulation)
   // Note: velocity is computed in a separate pass and its texture needs to be passed as a uniform
@@ -175,7 +175,7 @@ export const createGpuWaterFlowSimulation = (
   return {
     compute: (deltaTime: number) => {
       updateClouds(deltaTime);
-      
+
       // Update water height uniforms before computing
       updateWaterHeight();
 
@@ -184,7 +184,8 @@ export const createGpuWaterFlowSimulation = (
         gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
 
       // Update velocity map uniform for erosion computation
-      erosionUniforms.uVelocityMap.value = gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture;
+      erosionUniforms.uVelocityMap.value =
+        gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture;
 
       // Compute all variables in order (velocity first, then erosion)
       gpuCompute.compute();
@@ -196,7 +197,11 @@ export const createGpuWaterFlowSimulation = (
     getSimulationTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
     getVelocityTexture: () => gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
     getErodedHeightmapTexture: () => gpuCompute.getCurrentRenderTarget(erosionVariable).texture,
-    setErosionParameters: (erosionRate: number, depositionRate: number, sedimentCapacity: number) => {
+    setErosionParameters: (
+      erosionRate: number,
+      depositionRate: number,
+      sedimentCapacity: number,
+    ) => {
       erosionUniforms.uErosionRate.value = erosionRate;
       erosionUniforms.uDepositionRate.value = depositionRate;
       erosionUniforms.uSedimentCapacity.value = sedimentCapacity;

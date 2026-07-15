@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
-import { createGpuClouds } from "@/gpu/createGpuClouds.ts";
+import { createGpuClouds } from "@/gpu/variables/createGpuClouds.ts";
 
 import { test } from "./clientTestUtils.ts";
 
@@ -13,7 +13,7 @@ const width = 256;
 
 const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-const { cloudVariable, updateClouds } = createGpuClouds(gpuCompute, width);
+const { variable: cloudVariable, update: updateClouds } = createGpuClouds(gpuCompute, width);
 
 // Initialize the GPU computation renderer (creates render targets)
 const error = gpuCompute.init();
