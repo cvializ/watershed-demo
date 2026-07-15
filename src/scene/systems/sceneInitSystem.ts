@@ -27,8 +27,8 @@ import { createDefaultHeightMapTextureResource, getTexture } from "@/scene/resou
 import { getCamera } from "@/scene/sceneUtils";
 
 const cameraInitSystem: SceneInitSystem = (world, scene) => {
-  const [eid] = query(world, [Camera]);
-  if (!eid) {
+  const [cameraEntity$] = query(world, [Camera]);
+  if (!cameraEntity$) {
     throw new Error("camera not found in components");
   }
 
@@ -37,27 +37,27 @@ const cameraInitSystem: SceneInitSystem = (world, scene) => {
     throw new Error("camera not found in scene");
   }
 
-  const [terrainEid] = query(world, [Terrain, MeshRef]);
-  const terrain = scene.getObjectById(MeshRef.ref[terrainEid]);
+  const [terrainEntity$] = query(world, [Terrain, MeshRef]);
+  const terrain = scene.getObjectById(MeshRef.ref[terrainEntity$]);
   camera.lookAt(terrain.position);
 };
 
 export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
   // TODO: constructors directory?
 
-  observe(world, onAdd(Default, MaterialRef), (eid) => {
+  observe(world, onAdd(Default, MaterialRef), (entity$) => {
     const { materialId: defaultMaterialId } = createDefaultMaterialResource();
-    MaterialRef.ref[eid] = defaultMaterialId;
+    MaterialRef.ref[entity$] = defaultMaterialId;
   });
 
-  observe(world, onAdd(Default, HeightMap, TextureRef), (eid) => {
+  observe(world, onAdd(Default, HeightMap, TextureRef), (entity$) => {
     const { textureId } = createDefaultHeightMapTextureResource();
-    TextureRef.ref[eid] = textureId;
+    TextureRef.ref[entity$] = textureId;
   });
 
-  observe(world, onAdd(Terrain), (eid) => {
+  observe(world, onAdd(Terrain), (entity$) => {
     const { meshId } = createTerrainResource(scene);
-    MeshRef.ref[eid] = meshId;
+    MeshRef.ref[entity$] = meshId;
   });
 
   observe(world, onAdd(Camera), () => {
@@ -65,24 +65,24 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     cameraInitSystem(world, scene);
   });
 
-  observe(world, onAdd(WaterSimulation), (eid) => {
+  observe(world, onAdd(WaterSimulation), (entity$) => {
     // Query for the heightmap textures populated by the simulation
     // to generate the visualization shader material.
     // This doesn't need to be a sync because the texture reference updates in place
 
     // TODO: queries directory
 
-    const [heightmapEid] = query(world, [Default, HeightMap, TextureRef]);
-    const heightmap = getTexture(TextureRef.ref[heightmapEid]);
+    const [heightmapEntity$] = query(world, [Default, HeightMap, TextureRef]);
+    const heightmap = getTexture(TextureRef.ref[heightmapEntity$]);
 
-    const [waterHeightmapEid] = query(world, [TextureRef, WaterHeightmapOf(eid)]);
-    const waterHeightMap = getTexture(TextureRef.ref[waterHeightmapEid]);
+    const [waterHeightmapEid$] = query(world, [TextureRef, WaterHeightmapOf(entity$)]);
+    const waterHeightMap = getTexture(TextureRef.ref[waterHeightmapEid$]);
 
-    const [cloudShadowMapEid] = query(world, [TextureRef, CloudShadowMapOf(eid)]);
-    const cloudShadowMap = getTexture(TextureRef.ref[cloudShadowMapEid]);
+    const [cloudShadowMapEid$] = query(world, [TextureRef, CloudShadowMapOf(entity$)]);
+    const cloudShadowMap = getTexture(TextureRef.ref[cloudShadowMapEid$]);
 
-    const [velocityMapEid] = query(world, [TextureRef, VelocityMapOf(eid)]);
-    const velocityMap = getTexture(TextureRef.ref[velocityMapEid]);
+    const [velocityMapEid$] = query(world, [TextureRef, VelocityMapOf(entity$)]);
+    const velocityMap = getTexture(TextureRef.ref[velocityMapEid$]);
 
     if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
       console.error("missing simulation textures");
@@ -95,6 +95,6 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
       cloudShadowMap,
       velocityMap,
     });
-    MaterialRef.ref[eid] = materialId;
+    MaterialRef.ref[entity$] = materialId;
   });
 };

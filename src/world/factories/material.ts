@@ -3,17 +3,17 @@ import { addComponent, addEntity, type World } from "bitecs";
 import { Default, MaterialRef } from "@/components/components";
 
 export const createDefaultMaterial = (world: World) => {
-  const eid = addEntity(world);
+  const entity$ = addEntity(world);
 
-  addComponent(world, eid, Default);
-  addComponent(world, eid, MaterialRef); // set by scene init system
+  addComponent(world, entity$, Default);
+  addComponent(world, entity$, MaterialRef); // set by scene init system
 
-  return eid;
+  return entity$;
 };
 
 export const createMaterial = (world: World) => {
-  const eid = addEntity(world);
+  const entity$ = addEntity(world);
 
   // HMM what else
-  addComponent(world, eid, MaterialRef); // set by scene init system
+  addComponent(world, entity$, MaterialRef); // set by scene init system
 };

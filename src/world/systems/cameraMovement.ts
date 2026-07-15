@@ -22,15 +22,15 @@ function arrowDirection(code: string): [number, number] {
 }
 
 const getCameraEntity = (world: World): number => {
-  const [cameraEid] = query(world, [Camera]);
-  return cameraEid;
+  const [cameraEntity$] = query(world, [Camera]);
+  return cameraEntity$;
 };
 
 const addVelocity = (world: World, vx: number, vy: number): void => {
-  const eid = getCameraEntity(world);
-  Velocity.x[eid] += vx;
-  Velocity.y[eid] += vy;
-  Velocity.z[eid] = 0;
+  const entity$ = getCameraEntity(world);
+  Velocity.x[entity$] += vx;
+  Velocity.y[entity$] += vy;
+  Velocity.z[entity$] = 0;
 };
 
 const onKeyDown = (e: KeyboardEvent, world: World): void => {

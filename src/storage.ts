@@ -1,4 +1,4 @@
-import { type World, query, removeEntity } from "bitecs";
+import { query, removeEntity } from "bitecs";
 import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/serialization";
 
 import type { GameWorld } from "@/types";
@@ -60,8 +60,8 @@ const deserializeWorld = (world: GameWorld, base64String: string): void => {
   // Clear all existing entities before deserializing
   // This ensures we replace old component data with new serialized data
   const allEntities = query(world, []);
-  for (const eid of allEntities) {
-    removeEntity(world, eid);
+  for (const entity$ of allEntities) {
+    removeEntity(world, entity$);
   }
 
   // Deserialize into world - this creates new entities with serialized data

@@ -6,10 +6,10 @@ import { MeshRef, Position } from "@/components/components";
 
 export const positionSystem: SceneSystem = (world, scene, _dt) => {
   const meshEntities = query(world, [Position, MeshRef]);
-  for (const eid of meshEntities) {
-    const meshId = MeshRef.ref[eid];
+  for (const entity$ of meshEntities) {
+    const meshId = MeshRef.ref[entity$];
     if (!meshId) {
-      console.warn(`entity ${eid} MeshRef not found in world`);
+      console.warn(`entity ${entity$} MeshRef not found in world`);
       continue;
     }
     const mesh = scene.getObjectById(meshId);
@@ -18,6 +18,6 @@ export const positionSystem: SceneSystem = (world, scene, _dt) => {
       continue;
     }
 
-    mesh.position.set(Position.x[eid], Position.y[eid], Position.z[eid]);
+    mesh.position.set(Position.x[entity$], Position.y[entity$], Position.z[entity$]);
   }
 };

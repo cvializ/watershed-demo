@@ -3,15 +3,15 @@ import { addEntity, addComponent, type World, query } from "bitecs";
 import { Default, MaterialRef, MeshRef, Terrain } from "@/components/components";
 
 export function createTerrain(world: World): number {
-  const eid = addEntity(world);
+  const entity$ = addEntity(world);
 
-  addComponent(world, eid, Terrain);
+  addComponent(world, entity$, Terrain);
 
-  addComponent(world, eid, MaterialRef);
-  addComponent(world, eid, MeshRef); // configured in sceneInitSystem
+  addComponent(world, entity$, MaterialRef);
+  addComponent(world, entity$, MeshRef); // configured in sceneInitSystem
 
   const [defaultMaterial] = query(world, [Default, MaterialRef]);
-  MaterialRef.ref[eid] = MaterialRef.ref[defaultMaterial];
+  MaterialRef.ref[entity$] = MaterialRef.ref[defaultMaterial];
 
-  return eid;
+  return entity$;
 }

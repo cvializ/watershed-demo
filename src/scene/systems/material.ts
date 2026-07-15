@@ -7,10 +7,10 @@ import { getMaterial } from "@/scene/resources/material";
 
 export const materialSystem: SceneSystem = (world, scene, _dt) => {
   const materialMeshEntities = query(world, [MeshRef, MaterialRef]);
-  for (const eid of materialMeshEntities) {
-    const meshId = MeshRef.ref[eid];
+  for (const entity$ of materialMeshEntities) {
+    const meshId = MeshRef.ref[entity$];
     if (!meshId) {
-      console.warn(`entity ${eid} MeshRef not found in world`);
+      console.warn(`entity ${entity$} MeshRef not found in world`);
       continue;
     }
     const mesh = scene.getObjectById(meshId);
@@ -19,7 +19,7 @@ export const materialSystem: SceneSystem = (world, scene, _dt) => {
       continue;
     }
 
-    const materialId = MaterialRef.ref[eid];
+    const materialId = MaterialRef.ref[entity$];
     mesh.material = getMaterial(materialId);
   }
 };
