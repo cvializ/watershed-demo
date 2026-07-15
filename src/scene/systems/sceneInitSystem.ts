@@ -27,6 +27,7 @@ import { createTerrainResource } from "@/scene/resources/terrain";
 import { createDefaultHeightMapTextureResource, getTexture } from "@/scene/resources/texture";
 import { createWireframeResource } from "@/scene/resources/wireframe";
 import { getCamera } from "@/scene/sceneUtils";
+import { hiddenInitSystem } from "@/scene/systems/hidden";
 
 const cameraInitSystem: SceneInitSystem = (world, scene) => {
   const [cameraEntity$] = query(world, [Camera]);
@@ -119,4 +120,6 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     });
     MaterialRef.ref[entity$] = materialId;
   });
+
+  hiddenInitSystem(world, scene);
 };
