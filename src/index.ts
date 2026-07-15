@@ -8,6 +8,7 @@ import { rendererSyncSystem } from "@/renderer/systems/renderSyncSystem";
 import { createSceneResource } from "@/scene/resources";
 import { sceneInitSystem } from "@/scene/systems/sceneInitSystem";
 import { sceneSyncSystem } from "@/scene/systems/sceneSyncSystem";
+import { initGameUI, renderGameUI } from "@/ui/ui";
 import { worldInitSystem } from "@/world/systems/worldInitSystem";
 import { worldSyncSystem } from "@/world/systems/worldSyncSystem";
 
@@ -21,10 +22,13 @@ rendererInitSystem(world, scene, renderer); // why does this have to be first ag
 sceneInitSystem(world, scene);
 worldInitSystem(world);
 
+initGameUI();
+
 createLoopResource((_t, dt) => {
   worldSyncSystem(world, dt);
   sceneSyncSystem(world, scene, dt);
   rendererSyncSystem(world, scene, renderer, dt);
 
   render(scene, dt);
+  renderGameUI(world);
 });
