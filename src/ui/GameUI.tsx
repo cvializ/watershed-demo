@@ -1,6 +1,8 @@
 import type { GameWorld } from "@/types";
-import { memo } from "react";
+import { useState } from "react";
 
+
+type MaterialId = "water" | "downslope" | "slope" | "height" | "debug-height-range" | "debug-position" | "debug-depth" | "debug-face-normal" | "debug-displacement" | "debug-time";
 
 type GameUiProps = { 
   world: GameWorld 
@@ -10,12 +12,48 @@ type GameUiProps = {
  * Main game UI component - renders on top of the canvas
  */
 export const GameUI = ({ world }: GameUiProps) => {
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialId>("water");
+
+  const materialOptions: { id: MaterialId; label: string }[] = [
+    { id: "water", label: "Water Flow" },
+    { id: "downslope", label: "Downslope Arrows" },
+    { id: "slope", label: "Slope Visualization" },
+    { id: "height", label: "Height Visualization" },
+    { id: "debug-height-range", label: "Debug Height Range" },
+    { id: "debug-position", label: "Debug Position" },
+    { id: "debug-depth", label: "Debug Depth" },
+    { id: "debug-face-normal", label: "Debug Face Normal" },
+    { id: "debug-displacement", label: "Debug Displacement" },
+    { id: "debug-time", label: "Debug Time" },
+  ];
+
+  const handleMaterialChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value as MaterialId;
+    setSelectedMaterial(value);
+    world.showVelocity = value !== 'downslope';
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.panel}>
-        <h2 style={styles.title}>Game UI</h2>
-        <p style={styles.subtitle}>React-based UI overlay</p>
-        <p>{world.fps}</p>
+        <div style={styles.fpsSection}>
+          <span>FPS: {world.fps}</span>
+        </div>
+        <div style={styles.materialSection}>
+          <label htmlFor="material-select" style={styles.materialLabel}>Material:</label>
+          <select
+            id="material-select"
+            value={selectedMaterial}
+            onChange={handleMaterialChange}
+            style={styles.materialDropdown}
+          >
+            {materialOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
@@ -41,15 +79,40 @@ const styles = {
     borderRadius: "8px",
     color: "#fff",
     pointerEvents: "auto" as const,
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: "16px",
   } satisfies React.CSSProperties,
   title: {
-    margin: "0 0 8px 0",
-    fontSize: "18px",
-    fontWeight: "bold",
+    display: "none",
   } satisfies React.CSSProperties,
   subtitle: {
-    margin: "0",
-    fontSize: "14px",
-    opacity: 0.8,
+    display: "none",
+  } satisfies React.CSSProperties,
+  fpsSection: {
+    fontFamily: "monospace",
+    fontSize: "12px",
+  } satisfies React.CSSProperties,
+  materialSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  } satisfies React.CSSProperties,
+  materialLabel: {
+    fontSize: "12px",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  } satisfies React.CSSProperties,
+  materialDropdown: {
+    padding: "4px 8px",
+    fontFamily: "monospace",
+    fontSize: "12px",
+    backgroundColor: "#333",
+    color: "#fff",
+    border: "1px solid #555",
+    borderRadius: "4px",
+    cursor: "pointer",
+    outline: "none",
   } satisfies React.CSSProperties,
 };

@@ -1,13 +1,13 @@
-import type { World } from "bitecs";
+import type { GameWorld } from "@/types";
 
 export type RendererInitSystem = (
-  world: World,
+  world: GameWorld,
   scene: THREE.Scene,
   renderer: THREE.Renderer,
 ) => void;
 
 export type RendererSystem = (
-  world: World,
+  world: GameWorld,
   scene: THREE.Scene,
   renderer: THREE.Renderer,
   dt: number,

@@ -27,7 +27,7 @@ const terrainSize = 12;
 
 export let waterSimulation: WaterFlowVisualization | null = null;
 
-export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
+const initSimulation: RendererInitSystem = (world, _scene, renderer) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
     const [heightMapEntity$] = query(world, [Default, HeightMap, TextureRef]);
     const textureId = TextureRef.ref[heightMapEntity$];
@@ -49,10 +49,10 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
     const simulationTextureId = simulationTexture.id;
     registerTextureResource(simulationTextureId, simulationTexture);
     createTexture(world, simulationTextureId, WaterHeightmapOf(entity$));
-
-    console.log("render init system");
   });
+};
 
+const initAddWater: RendererInitSystem = (world, scene, renderer) => {
   const canvas: HTMLElement = renderer.domElement;
 
   canvas.addEventListener("click", (event) => {
@@ -112,7 +112,9 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
 
     waterSimulation.addWater(x, y, 0.1, 3);
   });
+};
 
+export const initResize: RendererInitSystem = (_world, scene, renderer) => {
   // Handle window resize
   window.addEventListener("resize", () => {
     const camera = getCamera(scene) as THREE.OrthographicCamera;
@@ -129,4 +131,10 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+};
+
+export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
+  initSimulation(world, scene, renderer);
+  initAddWater(world, scene, renderer);
+  initResize(world, scene, renderer);
 };
