@@ -8,8 +8,6 @@ import { rendererSyncSystem } from "@/renderer/systems/renderSyncSystem";
 import { createSceneResource } from "@/scene/resources";
 import { sceneInitSystem } from "@/scene/systems/sceneInitSystem";
 import { sceneSyncSystem } from "@/scene/systems/sceneSyncSystem";
-// import { loadFromWorldStorage, saveToWorldStorage } from "@/storage";
-// import { cameraMovementInitSystem } from "@/world/systems/cameraMovement";
 import { worldInitSystem } from "@/world/systems/worldInitSystem";
 import { worldSyncSystem } from "@/world/systems/worldSyncSystem";
 
@@ -22,48 +20,6 @@ const { renderer, render } = createRendererResource();
 rendererInitSystem(world, scene, renderer); // why does this have to be first again?
 sceneInitSystem(world, scene);
 worldInitSystem(world);
-
-// Load saved ECS state from localStorage on startup
-// loadFromWorldStorage(world, "ecs-snapshot");
-
-// Create save/load UI controls
-// function createEcsControls() {
-//   const container = document.createElement("div");
-//   container.className = "ecs-controls";
-
-//   // Save button
-//   const saveBtn = document.createElement("button");
-//   saveBtn.className = "ecs-btn";
-//   saveBtn.textContent = "💾 Save State";
-//   saveBtn.onclick = () => {
-//     saveToWorldStorage(world, "ecs-snapshot");
-//   };
-
-//   // Load button
-//   const loadBtn = document.createElement("button");
-//   loadBtn.className = "ecs-btn";
-//   loadBtn.textContent = "📂 Load State";
-//   loadBtn.onclick = () => {
-//     loadFromWorldStorage(world, "ecs-snapshot");
-//   };
-
-//   // Clear button
-//   const clearBtn = document.createElement("button");
-//   clearBtn.className = "ecs-btn";
-//   clearBtn.textContent = "🗑️ Clear State";
-//   clearBtn.onclick = () => {
-//     localStorage.removeItem("ecs-snapshot");
-//     console.log("Saved ECS state cleared from localStorage");
-//   };
-
-//   container.appendChild(saveBtn);
-//   container.appendChild(loadBtn);
-//   container.appendChild(clearBtn);
-
-//   document.body.appendChild(container);
-// }
-
-// createEcsControls();
 
 createLoopResource((_t, dt) => {
   worldSyncSystem(world, dt);
