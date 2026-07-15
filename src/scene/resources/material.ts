@@ -27,11 +27,13 @@ export const createWaterVisualizationMaterialResource = ({
   waterHeightMap,
   cloudShadowMap,
   velocityMap,
+  erodedHeightMap,
 }: {
   heightmap: THREE.Texture;
   waterHeightMap: THREE.Texture;
   cloudShadowMap: THREE.Texture;
   velocityMap: THREE.Texture;
+  erodedHeightMap: THREE.Texture;
 }) => {
   const minHeight: number = -1.5;
   const maxHeight: number = 2.0;
@@ -42,6 +44,7 @@ export const createWaterVisualizationMaterialResource = ({
       uWaterHeightmap: { value: waterHeightMap },
       uCloudShadowMap: { value: cloudShadowMap },
       uVelocityMap: { value: velocityMap },
+      uErodedHeightmap: { value: erodedHeightMap },
       uMinHeight: { value: minHeight },
       uMaxHeight: { value: maxHeight },
       uShowVelocity: { value: 1 },

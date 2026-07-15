@@ -27,6 +27,7 @@ export const WaterSimulation = {};
 export const WaterHeightmapOf = createRelation({ exclusive: true });
 export const CloudShadowMapOf = createRelation({ exclusive: true });
 export const VelocityMapOf = createRelation({ exclusive: true });
+export const ErodedHeightmapOf = createRelation({ exclusive: true });
 
 export const Position = {
   x: f32([]),
