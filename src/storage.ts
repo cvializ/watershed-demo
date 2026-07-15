@@ -1,8 +1,10 @@
 import { type World, query, removeEntity } from "bitecs";
 import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/serialization";
 
+import type { GameWorld } from "@/types";
+
 import { Transform, Camera, Position, MeshRef, Velocity } from "@/components/components";
-import { type GameContext } from "@/index";
+import { type GameContext } from "@/context";
 
 /**
  * Create a serializer for the ECS world
@@ -15,7 +17,7 @@ let deserializer: (
 ) => Map<number, number> | undefined;
 
 // Initialize serializers on first use (after world is created)
-const initSerializers = (world: World<GameContext>) => {
+const initSerializers = (world: GameWorld) => {
   if (!serializer || !deserializer) {
     serializer = createSnapshotSerializer(world, components);
     deserializer = createSnapshotDeserializer(world, components);
@@ -25,7 +27,7 @@ const initSerializers = (world: World<GameContext>) => {
 /**
  * Serialize the ECS world state and custom context to strings
  */
-const serializeWorld = (world: World<GameContext>): { ecs: string; context: string } => {
+const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
   initSerializers(world);
 
   // Serialize ECS components to ArrayBuffer (no args = serialize all entities)
@@ -46,7 +48,7 @@ const serializeWorld = (world: World<GameContext>): { ecs: string; context: stri
 /**
  * Deserialize ECS state from base64 string and apply to world
  */
-const deserializeWorld = (world: World<GameContext>, base64String: string): void => {
+const deserializeWorld = (world: GameWorld, base64String: string): void => {
   if (!base64String) return;
 
   // Initialize deserializer if needed
@@ -69,10 +71,7 @@ const deserializeWorld = (world: World<GameContext>, base64String: string): void
 /**
  * Save ECS state and custom context to localStorage
  */
-export const saveToWorldStorage = (
-  world: World<GameContext>,
-  storageKey = "ecs-snapshot",
-): void => {
+export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
   const serialized = serializeWorld(world);
   if (!serialized.ecs) {
     console.log("ECS serialization empty");
@@ -89,10 +88,7 @@ export const saveToWorldStorage = (
 /**
  * Load ECS state and custom context from localStorage
  */
-export const loadFromWorldStorage = (
-  world: World<GameContext>,
-  storageKey = "ecs-snapshot",
-): void => {
+export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
   const ecsSerialized = localStorage.getItem(`${storageKey}-ecs`);
   const contextSerialized = localStorage.getItem(`${storageKey}-context`);
 
