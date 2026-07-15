@@ -8,6 +8,18 @@ import { createDefaultMaterial } from "@/world/factories/material";
 import { createWaterSimulation } from "@/world/factories/simulation";
 import { createTerrain } from "@/world/factories/terrain";
 import { createDefaultHeightmapTexture } from "@/world/factories/texture";
+import { createWireframe } from "@/world/factories/wireframe";
+
+const mutateTerrain: WorldInitSystem = (world) => {
+  const [terrainEid] = query(world, [MeshRef, Terrain]);
+  const [simulationEid] = query(world, [WaterSimulation]);
+
+  if (!terrainEid || !simulationEid) {
+    return;
+  }
+
+  MaterialRef.ref[terrainEid] = MaterialRef.ref[simulationEid];
+};
 
 export const worldInitSystem: WorldInitSystem = (world) => {
   createDefaultMaterial(world);
@@ -17,12 +29,7 @@ export const worldInitSystem: WorldInitSystem = (world) => {
 
   createWaterSimulation(world);
 
-  const [terrainEid] = query(world, [MeshRef, Terrain]);
-  const [simulationEid] = query(world, [WaterSimulation]);
+  mutateTerrain(world);
 
-  if (!terrainEid || !simulationEid) {
-    return;
-  }
-
-  MaterialRef.ref[terrainEid] = MaterialRef.ref[simulationEid];
+  createWireframe(world);
 };

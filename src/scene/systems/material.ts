@@ -6,7 +6,9 @@ import { MaterialRef, MeshRef } from "@/components/components";
 import { getMaterial } from "@/scene/resources/material";
 
 export const materialSystem: SceneSystem = (world, scene, _dt) => {
+  // Get all material meshes
   const materialMeshes$ = query(world, [MeshRef, MaterialRef]);
+
   for (const mesh$ of materialMeshes$) {
     const meshId = MeshRef.ref[mesh$];
     if (!meshId) {
@@ -20,6 +22,7 @@ export const materialSystem: SceneSystem = (world, scene, _dt) => {
     }
 
     const materialId = MaterialRef.ref[mesh$];
+
     mesh.material = getMaterial(materialId);
   }
 };
