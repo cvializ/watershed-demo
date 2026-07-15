@@ -5,8 +5,8 @@ import type { SceneSystem } from "@/scene/types";
 import { MeshRef, Position } from "@/components/components";
 
 export const positionSystem: SceneSystem = (world, scene, _dt) => {
-  const meshEntities = query(world, [Position, MeshRef]);
-  for (const entity$ of meshEntities) {
+  const meshes$ = query(world, [Position, MeshRef]);
+  for (const entity$ of meshes$) {
     const meshId = MeshRef.ref[entity$];
     if (!meshId) {
       console.warn(`entity ${entity$} MeshRef not found in world`);
