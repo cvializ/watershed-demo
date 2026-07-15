@@ -6,7 +6,7 @@ import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 const materialCache = new Map<string, THREE.Material>();
 
 export const getMaterial = (uuid: string) => {
-  return materialCache.get(uuid);
+  return materialCache.get(uuid) as THREE.Material;
 };
 
 export const createDefaultMaterialResource = () => {
