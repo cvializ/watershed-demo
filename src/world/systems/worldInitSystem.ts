@@ -1,3 +1,5 @@
+import { query } from "bitecs";
+
 import type { WorldInitSystem } from "@/world/types";
 
 import { MaterialRef, MeshRef, Terrain, WaterSimulation } from "@/components/components";
@@ -29,5 +31,5 @@ export const worldInitSystem: WorldInitSystem = (world) => {
 
   mutateTerrain(world);
 
-  const _wireframe$ = createWireframe(world);
+  createWireframe(world);
 };
