@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-import { createOverlay } from "@/dom/createOverlay";
+import { createOverlay } from "@/dom-old/createOverlay";
 import {
   createVisualizationLegend,
   createSlopeLegend,
@@ -16,10 +16,10 @@ import {
   showLegend,
   hideLegend,
   showVelocityLegend,
-} from "@/dom/legend/createLegend.js";
+} from "@/dom-old/legend/createLegend.js";
 // Import DOM manipulation utilities
-import { createTabBar, updateTabActiveState } from "@/dom/ui/createTabBar";
-import { createUIContainer } from "@/dom/ui/createUIContainer";
+import { createTabBar, updateTabActiveState } from "@/dom-old/ui/createTabBar";
+import { createUIContainer } from "@/dom-old/ui/createUIContainer";
 import { createGpuWaterFlowSimulation } from "@/gpu/createGpuWaterFlowSimulation";
 // Import terrain compute helper for height-based, slope-based visualization, and downslope arrows
 import { createDownslopeArrowGeometry } from "@/nodes/geometry/createDownslopeArrowGeometry";
