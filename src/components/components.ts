@@ -19,6 +19,8 @@ export const Rotate = {};
 export const Default = {};
 export const HeightMap = {};
 
+export const Hidden = {};
+
 // Simple relation with no data
 
 export const WaterSimulation = {};
@@ -47,3 +49,5 @@ export const Velocity = {
   y: f32([]),
   z: f32([]),
 };
+
+export const Wireframe = {};

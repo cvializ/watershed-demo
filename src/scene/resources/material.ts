@@ -3,7 +3,7 @@ import * as THREE from "three";
 import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
 import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 
-const materialCache = new Map<string, THREE.Material>();
+export const materialCache = new Map<string, THREE.Material>();
 
 export const getMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;

@@ -16,6 +16,7 @@ import {
   VelocityMapOf,
   WaterHeightmapOf,
   WaterSimulation,
+  Wireframe,
 } from "@/components/components";
 import { createCameraResource } from "@/scene/resources/camera";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/scene/resources/material";
 import { createTerrainResource } from "@/scene/resources/terrain";
 import { createDefaultHeightMapTextureResource, getTexture } from "@/scene/resources/texture";
+import { createWireframeResource } from "@/scene/resources/wireframe";
 import { getCamera } from "@/scene/sceneUtils";
 
 const cameraInitSystem: SceneInitSystem = (world, scene) => {
@@ -58,6 +60,26 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
   observe(world, onAdd(Terrain), (entity$) => {
     const { meshId } = createTerrainResource(scene);
     MeshRef.ref[entity$] = meshId;
+  });
+
+  observe(world, onAdd(Wireframe), (entity$) => {
+    // Get the terrain mesh to create wireframe from
+    const [terrainEntity$] = query(world, [Terrain, MeshRef]);
+
+    if (!terrainEntity$) {
+      console.error("Cannot create wireframe: terrain not found");
+      return;
+    }
+
+    const terrain = scene.getObjectById(MeshRef.ref[terrainEntity$]);
+    if (!terrain || !(terrain instanceof THREE.Mesh)) {
+      console.error("Cannot create wireframe: terrain mesh not found");
+      return;
+    }
+
+    const { meshId, materialId } = createWireframeResource(scene, terrain);
+    MeshRef.ref[entity$] = meshId;
+    MaterialRef.ref[entity$] = materialId;
   });
 
   observe(world, onAdd(Camera), () => {
