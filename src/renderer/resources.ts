@@ -41,17 +41,16 @@ export const createRendererResource = () => {
 export type LoopFunction = (t: number, dt: number) => void;
 
 export const createLoopResource = (cb: LoopFunction) => {
+  const timer = new THREE.Timer();
+  timer.connect(document);
+
   // --- Animation Loop ---
-  let lastTime = performance.now();
-
-  function animate(now: number): void {
-    const dt = (now - lastTime) / 1000; // delta time in seconds
-    lastTime = now;
-
-    cb(now, dt);
-
+  const animate: FrameRequestCallback = (time) => {
     requestAnimationFrame(animate);
-  }
+
+    timer.update(time);
+    cb(time, timer.getDelta());
+  };
 
   animate(performance.now());
 };
