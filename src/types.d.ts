@@ -1,5 +1,5 @@
 import type { World } from "bitecs";
 
-import type { GameContext } from "@/context";
+import type { GameWorldContext } from "@/context";
 
 export type GameWorld = GameWorld;

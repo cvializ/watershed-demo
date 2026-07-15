@@ -4,7 +4,7 @@ import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/ser
 import type { GameWorld } from "@/types";
 
 import { Transform, Camera, Position, MeshRef, Velocity } from "@/components/components";
-import { type GameContext } from "@/context";
+import { type GameWorldContext } from "@/context";
 
 /**
  * Create a serializer for the ECS world
@@ -100,7 +100,7 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
   // Deserialize custom context from JSON
   if (contextSerialized) {
     try {
-      const deserializedContext = JSON.parse(contextSerialized) as GameContext;
+      const deserializedContext = JSON.parse(contextSerialized) as GameWorldContext;
       // Merge with existing context to preserve any runtime properties
       Object.assign(world, deserializedContext);
     } catch (error) {

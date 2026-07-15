@@ -1,7 +1,7 @@
 import "@/style.css";
 import { createWorld } from "bitecs";
 
-import { createGameContext } from "@/context";
+import { createGameWorldContext } from "@/context";
 import { createLoopResource, createRendererResource } from "@/renderer/resources";
 import { rendererInitSystem } from "@/renderer/systems/renderInitSystem";
 import { rendererSyncSystem } from "@/renderer/systems/renderSyncSystem";
@@ -13,8 +13,8 @@ import { sceneSyncSystem } from "@/scene/systems/sceneSyncSystem";
 import { worldInitSystem } from "@/world/systems/worldInitSystem";
 import { worldSyncSystem } from "@/world/systems/worldSyncSystem";
 
-const gameContext = createGameContext();
-const world = createWorld(gameContext);
+const gameWorldContext = createGameWorldContext();
+const world = createWorld(gameWorldContext);
 
 const { scene } = createSceneResource();
 const { renderer, render } = createRendererResource();
