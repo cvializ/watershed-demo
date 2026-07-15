@@ -54,6 +54,19 @@ export const GameUI = ({ world }: GameUiProps) => {
             ))}
           </select>
         </div>
+        <div style={styles.erosionSection}>
+          <span style={styles.label}>Erosion:</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={world.erosionRate}
+            onChange={(e) => world.erosionRate = parseFloat(e.target.value)}
+            style={styles.slider}
+            title="Erosion rate"
+          />
+        </div>
       </div>
     </div>
   );
@@ -114,5 +127,18 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     outline: "none",
+  } satisfies React.CSSProperties,
+  erosionSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  } satisfies React.CSSProperties,
+  label: {
+    fontSize: "12px",
+    whiteSpace: "nowrap",
+  } satisfies React.CSSProperties,
+  slider: {
+    width: "100px",
+    cursor: "pointer",
   } satisfies React.CSSProperties,
 };

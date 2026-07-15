@@ -1,6 +1,4 @@
 // Creates diagnostic overlay for FPS and object count
-import { createMaterialDropdown } from "./createMaterialDropdown";
-
 export interface Overlay {
   element: HTMLDivElement;
   update: (fps: number, objectCount: number) => void;
@@ -20,14 +18,12 @@ export const createOverlay = (): Overlay => {
   infoContainer.style.cssText = "font-size: 12px; white-space: nowrap;";
 
   // Material dropdown (right side)
-  const materialDropdown = createMaterialDropdown();
 
   const update = (fps: number, objectCount: number): void => {
     infoContainer.textContent = `FPS: ${fps} | Objects: ${objectCount}`;
   };
 
   overlay.appendChild(infoContainer);
-  overlay.appendChild(materialDropdown.container);
 
   return { element: overlay, update };
 };
