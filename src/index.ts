@@ -1,6 +1,7 @@
 import "@/style.css";
 import { createWorld } from "bitecs";
 
+import { createGameContext, type GameContext } from "@/context";
 import { rendererInitSystem } from "@/renderer/renderInitSystem";
 import { rendererSyncSystem } from "@/renderer/renderSyncSystem";
 import { createLoopResource, createRendererResource } from "@/renderer/resources";
@@ -12,12 +13,7 @@ import { sceneSyncSystem } from "@/scene/systems/sceneSyncSystem";
 import { worldInitSystem } from "@/world/systems/worldInitSystem";
 import { worldSyncSystem } from "@/world/systems/worldSyncSystem";
 
-const gameContext = {
-  time: 0,
-};
-
-export type GameContext = typeof gameContext;
-
+const gameContext = createGameContext();
 const world = createWorld<GameContext>(gameContext);
 
 const { scene } = createSceneResource();
@@ -26,8 +22,6 @@ const { renderer, render } = createRendererResource();
 rendererInitSystem(world, scene, renderer); // why does this have to be first again?
 sceneInitSystem(world, scene);
 worldInitSystem(world);
-
-// cameraMovementInitSystem(world);
 
 // Load saved ECS state from localStorage on startup
 // loadFromWorldStorage(world, "ecs-snapshot");
