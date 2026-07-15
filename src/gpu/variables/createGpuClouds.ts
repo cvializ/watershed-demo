@@ -25,17 +25,6 @@ const createInitialCloudTexture = (
   return { texture, data };
 };
 
-export type GpuClouds = {
-  cloudVariable: Variable;
-  updateClouds: (deltaTime: number) => void;
-
-  /**
-   * Get the cloud texture from GPU computation render target.
-   * This texture can be used as a shadow map on terrain materials.
-   */
-  getCloudTexture: () => THREE.Texture;
-};
-
 /**
  * Creates a GPU-based animated cloud computation system using the drifting cloud shader.
  *
