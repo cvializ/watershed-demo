@@ -3,26 +3,26 @@ import { addComponent, addEntity, type World } from "bitecs";
 import { Default, HeightMap, TextureRef } from "@/components/components";
 
 export const createDefaultHeightmapTexture = (world: World) => {
-  const eid = addEntity(world);
+  const entity$ = addEntity(world);
 
-  addComponent(world, eid, Default);
-  addComponent(world, eid, HeightMap);
-  addComponent(world, eid, TextureRef); // set by scene init system
+  addComponent(world, entity$, Default);
+  addComponent(world, entity$, HeightMap);
+  addComponent(world, entity$, TextureRef); // set by scene init system
 
-  return eid;
+  return entity$;
 };
 
 export const createTexture = (world: World, textureId: number, relation: unknown) => {
-  const eid = addEntity(world);
+  const entity$ = addEntity(world);
 
-  addComponent(world, eid, HeightMap);
-  addComponent(world, eid, TextureRef);
+  addComponent(world, entity$, HeightMap);
+  addComponent(world, entity$, TextureRef);
 
   if (relation) {
-    addComponent(world, eid, relation);
+    addComponent(world, entity$, relation);
   }
 
-  TextureRef.ref[eid] = textureId; // pre-registered with registerTexture
+  TextureRef.ref[entity$] = textureId; // pre-registered with registerTexture
 
-  return eid;
+  return entity$;
 };

@@ -101,6 +101,36 @@ data.forEach(x => { ... });  // Use 'item', 'element', etc.
 arr.map(e => e * 2);         // Use descriptive names
 ```
 
+### Eid Variable Naming Convention
+
+**Use `$` suffix for entity IDs**: Variables that store Eid (entity ID) values should use a dollar sign (`$`) as their suffix. This makes entity references immediately distinguishable in code.
+
+**Good examples**:
+
+```ts
+// Use $ suffix for entity IDs
+const entity$ = addEntity(world);
+const cameraEntity$ = getCameraEntity(world);
+
+// In loops, use $ suffix for iteration variables
+for (const entity$ of entities) {
+  Position.x[entity$] += Velocity.x[entity$] * dt;
+}
+
+// Return type for factory functions remains number
+export function createTerrain(world: World): number {
+  const entity$ = addEntity(world);
+  // ... add components ...
+  return entity$;
+}
+```
+
+**Reasons for this convention**:
+
+- **Immediate recognition**: The `$` suffix makes it clear a variable holds an entity ID without needing to check the type
+- **Consistency with domain**: Follows ECS (Entity Component System) pattern conventions where entity IDs are first-class values
+- **Visual distinction**: Helps distinguish entity IDs from other numeric values in code
+
 ### Import Style Examples
 
 **Top-level imports (PREFERRED)**:
