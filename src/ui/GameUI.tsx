@@ -37,7 +37,7 @@ export const GameUI = ({ world }: GameUiProps) => {
     <div style={styles.container}>
       <div style={styles.panel}>
         <div style={styles.fpsSection}>
-          <span>FPS: {world.fps}</span>
+          <span>FPS: {Math.round(world.fps)}</span>
         </div>
         <div style={styles.materialSection}>
           <label htmlFor="material-select" style={styles.materialLabel}>Material:</label>
