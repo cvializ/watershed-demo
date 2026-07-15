@@ -53,7 +53,9 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
     console.log("render init system");
   });
 
-  window.addEventListener("click", (event) => {
+  const canvas: HTMLElement = renderer.domElement;
+
+  canvas.addEventListener("click", (event) => {
     if (!waterSimulation) {
       return;
     }
