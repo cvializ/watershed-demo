@@ -410,22 +410,22 @@ npm run build    # Build for production
 
 ```ts
 // DON'T use 'system' in filename
-core-system.ts
-audio-system.ts
-video-system.ts
+core - system.ts;
+audio - system.ts;
+video - system.ts;
 ```
 
 **Examples - DO this instead**:
 
 ```ts
 // Use descriptive names without 'system'
-core.ts
-audio.ts
-video.ts
+core.ts;
+audio.ts;
+video.ts;
 
 // OK - official system files
-init.ts
-sync.ts
+init.ts;
+sync.ts;
 ```
 
 **Reasons for this policy**:
