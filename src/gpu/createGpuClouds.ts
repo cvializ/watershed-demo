@@ -63,21 +63,21 @@ export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: numbe
 
   gpuCompute.setVariableDependencies(cloudVariable, [cloudVariable]);
 
-  // Initialize uniforms (must be set before updateClouds is called)
-  cloudVariable.material.uniforms = {
-    uTime: { value: 0.0 },
-    uDriftSpeed: { value: new THREE.Vector2(0.05, 0.05) },
-    uSpeed: { value: 0.1 },
-    uScale: { value: 4.0 },
-    uDensity: { value: 0.6 },
-  };
-
   // Cloud configuration
   const config = {
     driftSpeed: new THREE.Vector2(0.1, 0.05),
     speed: 0.1,
     scale: 1.5,
     density: 0.7,
+  };
+
+  // Initialize uniforms (must be set before updateClouds is called)
+  cloudVariable.material.uniforms = {
+    uTime: { value: 0.0 },
+    uDriftSpeed: { value: config.driftSpeed.clone() },
+    uSpeed: { value: config.speed },
+    uScale: { value: config.scale },
+    uDensity: { value: config.density },
   };
 
   let currentTime = 0;
@@ -88,14 +88,7 @@ export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: numbe
 
     // Update uniforms for cloud animation
     cloudVariable.material.uniforms.uTime.value = currentTime;
-    cloudVariable.material.uniforms.uDriftSpeed.value.copy(config.driftSpeed);
-    cloudVariable.material.uniforms.uSpeed.value = config.speed;
-    cloudVariable.material.uniforms.uScale.value = config.scale;
-    cloudVariable.material.uniforms.uDensity.value = config.density;
   };
-
-  // Set initial uniforms
-  updateClouds(0);
 
   // Get the cloud texture from GPU computation render target
   const getCloudTexture = (): THREE.Texture => {
