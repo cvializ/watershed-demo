@@ -1,8 +1,7 @@
 import type { ShaderMaterial } from "three";
 
-import * as THREE from "three";
-
 import { query } from "bitecs";
+import * as THREE from "three";
 
 import type { RendererSystem } from "@/renderer/types";
 
@@ -22,8 +21,8 @@ export const simulationSystem: RendererSystem = (world, scene, _renderer, dt) =>
 
   // Update sun light position uniform for shadow calculation
   const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
-  if (sunLight && material.uniforms.uLightPosition) {
-    material.uniforms.uLightPosition.value.copy(sunLight.position);
+  if (sunLight) {
+    waterSimulation.setSunPosition(sunLight.position);
   }
 
   waterSimulation.compute(dt);
