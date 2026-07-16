@@ -6,28 +6,22 @@ import type { SceneInitSystem } from "@/scene/types";
 
 import {
   Camera,
-  CloudShadowMapOf,
   Default,
   HeightMap,
   MaterialRef,
   MeshRef,
   Terrain,
   TextureRef,
-  VelocityMapOf,
-  WaterHeightmapOf,
-  WaterSimulation,
   Wireframe,
 } from "@/components/components";
 import { createCameraResource } from "@/scene/resources/camera";
-import {
-  createDefaultMaterialResource,
-  createWaterVisualizationMaterialResource,
-} from "@/scene/resources/material";
+import { createDefaultMaterialResource } from "@/scene/resources/material";
 import { createTerrainResource } from "@/scene/resources/terrain";
-import { createDefaultHeightMapTextureResource, getTexture } from "@/scene/resources/texture";
+import { createDefaultHeightMapTextureResource } from "@/scene/resources/texture";
 import { createWireframeResource } from "@/scene/resources/wireframe";
 import { getCamera } from "@/scene/sceneUtils";
 import { hiddenInitSystem } from "@/scene/systems/hidden";
+import { initWaterSimulation } from "@/scene/systems/init/waterSimulation";
 
 const cameraInitSystem: SceneInitSystem = (world, scene) => {
   const [cameraEntity$] = query(world, [Camera]);
@@ -45,7 +39,7 @@ const cameraInitSystem: SceneInitSystem = (world, scene) => {
   camera.lookAt(terrain.position);
 };
 
-export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
+export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   // TODO: constructors directory?
 
   observe(world, onAdd(Default, MaterialRef), (entity$) => {
@@ -87,47 +81,7 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     createCameraResource(scene);
     cameraInitSystem(world, scene);
   });
-
-  observe(world, onAdd(WaterSimulation), (entity$) => {
-    // Query for the heightmap textures populated by the simulation
-    // to generate the visualization shader material.
-    // This doesn't need to be a sync because the texture reference updates in place
-
-    // TODO: queries directory
-
-    const [heightmapEntity$] = query(world, [Default, HeightMap, TextureRef]);
-    const heightmap = getTexture(TextureRef.ref[heightmapEntity$]);
-
-    const [waterHeightmapEid$] = query(world, [TextureRef, WaterHeightmapOf(entity$)]);
-    const waterHeightMap = getTexture(TextureRef.ref[waterHeightmapEid$]);
-
-    const [cloudShadowMapEid$] = query(world, [TextureRef, CloudShadowMapOf(entity$)]);
-    const cloudShadowMap = getTexture(TextureRef.ref[cloudShadowMapEid$]);
-
-    const [velocityMapEid$] = query(world, [TextureRef, VelocityMapOf(entity$)]);
-    const velocityMap = getTexture(TextureRef.ref[velocityMapEid$]);
-
-    if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
-      console.error("missing simulation textures");
-      return;
-    }
-
-    // Get the sun light from scene
-    const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
-    if (!sunLight) {
-      console.error("Sun light not found in scene");
-      return;
-    }
-
-    const { materialId } = createWaterVisualizationMaterialResource({
-      heightmap,
-      waterHeightMap,
-      cloudShadowMap,
-      velocityMap,
-      sunLight,
-    });
-    MaterialRef.ref[entity$] = materialId;
-  });
+  initWaterSimulation(world, scene);
 
   hiddenInitSystem(world, scene);
 };
