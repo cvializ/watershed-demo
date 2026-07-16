@@ -15,14 +15,10 @@ export const sunOrbitSystem: SceneSystem = (world, scene, _dt): void => {
 
   // Orbital parameters
   const radius = 25; // Distance from origin
-  const speed = 0.1; // radians per second
   const inclination = Math.PI / 4; // 45 degrees - goes above and below terrain
 
-  // Get current time
-  const time = world.time;
-
-  // Calculate angle in orbit
-  const angle = time * speed;
+  // Use world.sunAngle for manual control, or fall back to time-based calculation
+  const angle = world.sunAngle;
 
   // Calculate position with inclination (orbit tilted around X-axis)
   const x = radius * Math.cos(angle);

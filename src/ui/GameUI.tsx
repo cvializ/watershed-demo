@@ -67,6 +67,19 @@ export const GameUI = ({ world }: GameUiProps) => {
             title="Erosion rate"
           />
         </div>
+        <div style={styles.sunAngleSection}>
+          <span style={styles.label}>Sun Angle:</span>
+          <input
+            type="range"
+            min={0}
+            max={Math.PI * 2}
+            step="0.01"
+            value={world.sunAngle}
+            onChange={(e) => world.sunAngle = parseFloat(e.target.value)}
+            style={styles.slider}
+            title="Sun position angle"
+          />
+        </div>
       </div>
     </div>
   );
@@ -140,5 +153,10 @@ const styles = {
   slider: {
     width: "100px",
     cursor: "pointer",
+  } satisfies React.CSSProperties,
+  sunAngleSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
   } satisfies React.CSSProperties,
 };
