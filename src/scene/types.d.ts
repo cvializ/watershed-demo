@@ -1,5 +1,5 @@
-import type { World } from "bitecs";
+import type { GameWorld } from "@/types";
 
-export type SceneInitSystem = (world: World, scene: THREE.Scene) => void;
+export type SceneInitSystem = (world: GameWorld, scene: THREE.Scene) => void;
 
-export type SceneSystem = (world: World, scene: THREE.Scene, dt: number) => void;
+export type SceneSystem = (world: GameWorld, scene: THREE.Scene, dt: number) => void;

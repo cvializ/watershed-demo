@@ -22,7 +22,9 @@ export const simulationSystem: RendererSystem = (world, scene, _renderer, dt) =>
   // Update sun light position uniform for shadow calculation
   const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
   if (sunLight) {
-    waterSimulation.setSunPosition(sunLight.position);
+    // console.log(sunLight.position);
+    // waterSimulation.setSunPosition(sunLight.position);
+    material.uniforms.uLightPosition.value.copy(sunLight.position);
   }
 
   waterSimulation.compute(dt);
