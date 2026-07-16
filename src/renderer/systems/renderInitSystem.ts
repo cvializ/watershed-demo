@@ -134,6 +134,10 @@ export const initResize: RendererInitSystem = (_world, scene, renderer) => {
 };
 
 export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
+  // Enable shadow mapping
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+
   initSimulation(world, scene, renderer);
   initAddWater(world, scene, renderer);
   initResize(world, scene, renderer);

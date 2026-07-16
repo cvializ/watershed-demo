@@ -10,7 +10,10 @@ export const getMaterial = (uuid: string) => {
 };
 
 export const createDefaultMaterialResource = () => {
-  const material = new THREE.MeshPhongMaterial() as THREE.Material;
+  const material = new THREE.MeshPhongMaterial({
+    color: 0x8B4513, // Brownish terrain color
+    flatShading: false,
+  }) as THREE.MeshPhongMaterial;
   materialCache.set(material.uuid, material);
 
   return {
@@ -27,11 +30,13 @@ export const createWaterVisualizationMaterialResource = ({
   waterHeightMap,
   cloudShadowMap,
   velocityMap,
+  sunLight,
 }: {
   heightmap: THREE.Texture;
   waterHeightMap: THREE.Texture;
   cloudShadowMap: THREE.Texture;
   velocityMap: THREE.Texture;
+  sunLight: THREE.DirectionalLight;
 }) => {
   const minHeight: number = -1.5;
   const maxHeight: number = 2.0;
@@ -45,6 +50,9 @@ export const createWaterVisualizationMaterialResource = ({
       uMinHeight: { value: minHeight },
       uMaxHeight: { value: maxHeight },
       uShowVelocity: { value: 1 },
+      // Shadow calculation uniforms
+      uLightPosition: { value: sunLight.position.clone() },
+      uLightSpaceMatrix: { value: new THREE.Matrix4() },
     },
     vertexShader: waterVisualizationVert,
     fragmentShader: waterVisualizationFrag,

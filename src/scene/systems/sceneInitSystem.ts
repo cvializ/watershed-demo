@@ -112,11 +112,19 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
       return;
     }
 
+    // Get the sun light from scene
+    const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
+    if (!sunLight) {
+      console.error("Sun light not found in scene");
+      return;
+    }
+
     const { materialId } = createWaterVisualizationMaterialResource({
       heightmap,
       waterHeightMap,
       cloudShadowMap,
       velocityMap,
+      sunLight,
     });
     MaterialRef.ref[entity$] = materialId;
   });
