@@ -153,10 +153,11 @@ export const createGpuWaterFlowSimulation = (
       clearWater();
     },
     addWater,
-    setSunPosition: (position: THREE.Vector3) => {
-      if (waterHeightVariable.material.uniforms.uLightPosition) {
-        waterHeightVariable.material.uniforms.uLightPosition.value.copy(position);
-      }
+    setSunPosition: (_position: THREE.Vector3) => {
+      // console.log("we are coping");
+      // if (waterHeightVariable.material.uniforms.uLightPosition) {
+      //   waterHeightVariable.material.
+      // }
     },
     getCloudShadowTexture: () => getCloudTexture(),
     getSimulationTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
