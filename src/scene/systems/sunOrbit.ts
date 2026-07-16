@@ -28,6 +28,12 @@ export const sunOrbitSystem: SceneSystem = (world, scene, _dt): void => {
   // Update sun position - this is where the shadow camera will be placed
   sunLight.position.set(x, y, z);
 
+  // Update sun sphere to follow the light
+  const sunSphere = (scene as any).sunSphere as THREE.Mesh;
+  if (sunSphere) {
+    sunSphere.position.set(x, y, z);
+  }
+
   // Point the sun light toward the center of the terrain (0, 0, 0)
   // This sets the direction of the parallel light rays
   sunLight.lookAt(0, 0, 0);
