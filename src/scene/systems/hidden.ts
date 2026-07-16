@@ -5,7 +5,7 @@ import type { SceneInitSystem } from "@/scene/types";
 
 import { Hidden, MeshRef } from "@/components/components";
 
-export const hiddenInitSystem: SceneInitSystem = (world, scene) => {
+const hideSystem: SceneInitSystem = (world, scene) => {
   observe(world, onAdd(Hidden, MeshRef), (entity$) => {
     // Get all material meshes
     console.log("hidden");
@@ -21,7 +21,9 @@ export const hiddenInitSystem: SceneInitSystem = (world, scene) => {
     }
     mesh.visible = false;
   });
+};
 
+const showSystem: SceneInitSystem = (world, scene) => {
   observe(world, onRemove(Hidden, MeshRef), (entity$) => {
     // Get all material meshes
 
@@ -37,4 +39,9 @@ export const hiddenInitSystem: SceneInitSystem = (world, scene) => {
     }
     mesh.visible = true;
   });
+};
+
+export const hiddenInitSystem: SceneInitSystem = (world, scene) => {
+  hideSystem(world, scene);
+  showSystem(world, scene);
 };
