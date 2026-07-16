@@ -13,7 +13,7 @@ const width = 256;
 
 const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-const { variable: cloudVariable, update: updateClouds } = createGpuClouds(gpuCompute, width);
+const { cloudVariable, updateClouds } = createGpuClouds(gpuCompute, width);
 
 // Initialize the GPU computation renderer (creates render targets)
 const error = gpuCompute.init();

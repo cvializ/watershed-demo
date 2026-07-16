@@ -8,8 +8,27 @@ uniform float uMinHeight;
 uniform float uMaxHeight;
 uniform int uShowVelocity; // 0 = show height, 1 = show velocity
 
+// Shadow calculation uniforms for sun light
+uniform vec3 uLightPosition;
+uniform vec4 uLightSpaceMatrix;
+
 varying vec2 vUv;
 varying vec3 vNormal;
+
+// Simple shadow calculation from directional light
+float calculateShadow(vec3 normal, vec3 worldPosition) {
+    // Direction from fragment to light
+    vec3 lightDir = normalize(uLightPosition - worldPosition);
+    
+    // Angle between normal and light direction
+    float diff = max(dot(normal, lightDir), 0.0);
+    
+    // Simple distance-based shadow falloff
+    // In a real implementation, you'd use a shadow map texture
+    float shadow = 0.5 + 0.5 * diff;
+    
+    return clamp(shadow, 0.3, 1.0);
+}
 
 // Expand shadow with bleed and blur effect using multiple samples
 float getBlurredShadow(vec2 uv, sampler2D shadowMap) {
@@ -60,12 +79,23 @@ void main() {
     // Base terrain color
     vec3 terrainColor = vec3(0.4, 0.3, 0.2); // Brownish terrain
     
+    // Calculate world position for shadow calculation
+    // We need to reconstruct it from UV and height map
+    float height = texture2D(uHeightMap, vUv).r;
+    vec3 worldPosition = vec3(vUv.x * 12.0 - 6.0, height, vUv.y * 12.0 - 6.0);
+    
+    // Calculate shadow from sun light
+    float shadow = calculateShadow(vNormal, worldPosition);
+
     // Sample cloud shadow intensity with blur and expansion
     float cloudShadow = getBlurredShadow(vUv, uCloudShadowMap);
 
     // Apply cloud shadow to terrain where there's no water
     float finalAlpha = 1.0;
     vec3 finalColor = terrainColor;
+    
+    // Apply sun light shadow (multiplicative)
+    finalColor *= shadow;
     
     if (cloudShadow > 0.01) {
         float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);

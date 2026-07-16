@@ -4,6 +4,12 @@ import * as THREE from "three";
 
 import driftingCloudFragmentShader from "@/shaders/compute/drifting-cloud.frag?raw";
 
+export type GpuClouds = {
+  cloudVariable: Variable;
+  updateClouds: (deltaTime: number) => void;
+  getCloudTexture: () => THREE.Texture;
+};
+
 /**
  * Creates an initial cloud texture with no clouds (all zeros).
  */
