@@ -11,6 +11,5 @@ export const fpsSystem: WorldSystem = (world) => {
     world.fps = frameCount / (world.time - fpsUpdateTime);
     frameCount = 0;
     fpsUpdateTime = world.time;
-    console.log(world.fps);
   }
 };
