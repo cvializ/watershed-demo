@@ -78,18 +78,20 @@ export const createGpuWaterHeight = (
   ]);
   waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
   waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
-  waterHeightVariable.material.uniforms.drainageRate = { value: 0.01 }; // Default: slow drainage
+  waterHeightVariable.material.uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage
   waterHeightVariable.material.uniforms.waterSourcesMap = { value: null };
   waterHeightVariable.material.uniforms.cloudShadowMap = { value: null };
+  waterHeightVariable.material.uniforms.surfaceMaterialMap = { value: null }; // Surface material texture
 
   return {
     waterHeightVariable,
-    updateWaterHeight: () => {
+    updateWaterHeight: (surfaceMaterialTexture?: THREE.Texture) => {
       // Update uniforms with the results of the computation
       waterHeightVariable.material.uniforms.cloudShadowMap.value =
         gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture;
       waterHeightVariable.material.uniforms.waterSourcesMap.value =
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
+      waterHeightVariable.material.uniforms.surfaceMaterialMap.value = surfaceMaterialTexture || null;
     },
   };
 };

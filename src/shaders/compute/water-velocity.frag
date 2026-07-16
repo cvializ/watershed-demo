@@ -2,6 +2,31 @@
 
 uniform sampler2D uHeightMap;
 uniform sampler2D uWaterHeightmap;
+uniform sampler2D surfaceMaterialMap; // Surface material texture
+
+// Material types
+const float MATERIAL_BARE_DIRT = 0.0;
+const float MATERIAL_GRASS = 1.0;
+const float MATERIAL_ROCKS = 2.0;
+
+// Material friction coefficients (higher = slower flow)
+const float FRICTION_BARE_DIRT = 1.0;
+const float FRICTION_GRASS = 1.3; // Grass slows water flow
+const float FRICTION_ROCKS = 0.8; // Smooth rocks allow faster flow
+
+// Get friction based on material
+float getMaterialFriction(vec2 uv) {
+    vec4 materialData = texture2D(surfaceMaterialMap, uv);
+    float materialType = materialData.r;
+    
+    if (materialType < 0.5) {
+        return FRICTION_BARE_DIRT;
+    } else if (materialType < 1.5) {
+        return FRICTION_GRASS;
+    } else {
+        return FRICTION_ROCKS;
+    }
+}
 
 void main() {
     // Get texture coordinates from GPU computation renderer
@@ -79,6 +104,10 @@ void main() {
     
     vec2 velocity = actualDownslopeDir * velocityMagnitude;
 
+    // Apply material-based friction to velocity
+    float friction = getMaterialFriction(uv);
+    velocity /= friction; // Higher friction = lower velocity
+    
     // Store velocity in RGB (R=velocityX, G=velocityY, B=magnitude)
     float magnitude = length(velocity);
     gl_FragColor = vec4(velocity.x, velocity.y, magnitude, 1.0);

@@ -41,6 +41,11 @@ export type WaterFlowVisualization = {
    */
   getSimulationTexture: () => THREE.Texture;
 
+  /**
+   * Get the surface material texture.
+   */
+  getSurfaceMaterialTexture: () => THREE.Texture;
+
   setSunPosition: (position: THREE.Vector3) => void;
 };
 
