@@ -8,7 +8,6 @@ import {
   Camera,
   CloudShadowMapOf,
   Default,
-  ErodedHeightmapOf,
   HeightMap,
   MaterialRef,
   MeshRef,
@@ -108,10 +107,7 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
     const [velocityMapEid$] = query(world, [TextureRef, VelocityMapOf(entity$)]);
     const velocityMap = getTexture(TextureRef.ref[velocityMapEid$]);
 
-    const [erodedHeightmapEid$] = query(world, [TextureRef, ErodedHeightmapOf(entity$)]);
-    const erodedHeightMap = getTexture(TextureRef.ref[erodedHeightmapEid$]);
-
-    if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap || !erodedHeightMap) {
+    if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
       console.error("missing simulation textures");
       return;
     }
@@ -121,7 +117,6 @@ export const sceneInitSystem = (world: World, scene: THREE.Scene): void => {
       waterHeightMap,
       cloudShadowMap,
       velocityMap,
-      erodedHeightMap,
     });
     MaterialRef.ref[entity$] = materialId;
   });

@@ -11,7 +11,6 @@ import {
   WaterHeightmapOf,
   CloudShadowMapOf,
   VelocityMapOf,
-  ErodedHeightmapOf,
   Terrain,
   MeshRef,
 } from "@/components/components";
@@ -50,12 +49,6 @@ const initSimulation: RendererInitSystem = (world, _scene, renderer) => {
     const simulationTextureId = simulationTexture.id;
     registerTextureResource(simulationTextureId, simulationTexture);
     createTexture(world, simulationTextureId, WaterHeightmapOf(entity$));
-
-    // Get the erosion texture (eroded heightmap) for terrain visualization
-    const erosionTexture = waterSimulation.getErodedHeightmapTexture();
-    const erosionTextureId = erosionTexture.id;
-    registerTextureResource(erosionTextureId, erosionTexture);
-    createTexture(world, erosionTextureId, ErodedHeightmapOf(entity$));
   });
 };
 

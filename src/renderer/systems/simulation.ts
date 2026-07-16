@@ -13,17 +13,10 @@ export const simulationSystem: RendererSystem = (world, _scene, _renderer, dt) =
     return;
   }
 
-  const { showVelocity, erosionRate, depositionRate, sedimentCapacity } = world;
+  const { showVelocity } = world;
   const [entity$] = query(world, [WaterSimulation, MaterialRef]);
   const material = getMaterial(MaterialRef.ref[entity$]) as ShaderMaterial;
   material.uniforms.uShowVelocity.value = showVelocity;
-
-  // Update erosion parameters if they've changed
-  waterSimulation.setErosionParameters(
-    erosionRate ?? 0.1,
-    depositionRate ?? 0.05,
-    sedimentCapacity ?? 0.5,
-  );
 
   waterSimulation.compute(dt);
 };
