@@ -1,11 +1,12 @@
 #include <common>
 
 uniform sampler2D terrainHeightmap;
+uniform sampler2D surfaceMaterialMap; // Surface material texture
 uniform sampler2D cloudShadowMap; // Cloud shadow texture from cloud shadow computation variable
 uniform sampler2D waterSourcesMap; // Water sources texture from water sources computation variable
 uniform float uTerrainSize;
 uniform float simulationSpeed;
-uniform float drainageRate;
+uniform float baseDrainageRate;
 
 // Direction vectors for 8 neighbors (dx, dy)
 // 0: N, 1: NE, 2: E, 3: SE, 4: S, 5: SW, 6: W, 7: NW
@@ -19,6 +20,38 @@ const vec2 directions[8] = vec2[](
     vec2(-1.0, 0.0),   // West
     vec2(-1.0, 1.0)    // Northwest
 );
+
+// Material types
+const float MATERIAL_BARE_DIRT = 0.0;
+const float MATERIAL_GRASS = 1.0;
+const float MATERIAL_ROCKS = 2.0;
+
+// Material infiltration rates (how quickly water soaks into ground)
+// Higher = more absorption, less surface flow
+const float INFILTRATION_BARE_DIRT = 0.5;
+const float INFILTRATION_GRASS = 0.8;
+const float INFILTRATION_ROCKS = 0.2;
+
+// Get infiltration rate based on material
+float getInfiltrationRate(vec2 uv) {
+    vec4 materialData = texture2D(surfaceMaterialMap, uv);
+    float materialType = materialData.r;
+    
+    if (materialType < 0.5) {
+        return INFILTRATION_BARE_DIRT;
+    } else if (materialType < 1.5) {
+        return INFILTRATION_GRASS;
+    } else {
+        return INFILTRATION_ROCKS;
+    }
+}
+
+// Apply material-based adjustment to drainage
+float applyMaterialDrainage(float rawDrainage, float infiltrationRate) {
+    // Material affects how quickly water drains/evaporates
+    // Higher infiltration = faster drainage (water soaks in)
+    return rawDrainage * (0.5 + infiltrationRate);
+}
 
 void main() {
     vec2 cellSize = 1.0 / resolution.xy;
@@ -162,8 +195,13 @@ void main() {
     // Final water height = (current - outflow) + inflow
     float finalWaterHeight = newWaterHeight - outflow + inflow;
     
+    // Get material infiltration rate
+    float infiltrationRate = getInfiltrationRate(uv);
+    
     // Drain water that has accumulated (simulate evaporation/runoff)
-    float drainage = finalWaterHeight * drainageRate;
+    // Material affects drainage rate
+    float rawDrainage = finalWaterHeight * baseDrainageRate;
+    float drainage = applyMaterialDrainage(rawDrainage, infiltrationRate);
     finalWaterHeight -= drainage;
     
     // Clamp to non-negative

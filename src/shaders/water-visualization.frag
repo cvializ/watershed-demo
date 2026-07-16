@@ -7,6 +7,7 @@ uniform sampler2D uVelocityMap;
 uniform float uMinHeight;
 uniform float uMaxHeight;
 uniform int uShowVelocity; // 0 = show height, 1 = show velocity
+uniform sampler2D uSurfaceMaterialMap; // Surface material texture
 
 // Shadow calculation uniforms for sun light
 uniform vec3 uLightPosition;
@@ -75,10 +76,26 @@ float getBlurredShadow(vec2 uv, sampler2D shadowMap) {
 }
 
 // Visualize water based on height or velocity
-void main() {
-    // Base terrain color
-    vec3 terrainColor = vec3(0.4, 0.3, 0.2); // Brownish terrain
+vec3 getTerrainMaterialColor(vec2 uv) {
+    vec4 materialData = texture2D(uSurfaceMaterialMap, uv);
+    float materialType = materialData.r;
     
+    // Base colors for each material type
+    vec3 colorBareDirt = vec3(0.4, 0.3, 0.2);   // Brownish
+    vec3 colorGrass = vec3(0.2, 0.6, 0.2);      // Green
+    vec3 colorRocks = vec3(0.5, 0.5, 0.6);      // Grayish
+    
+    // Return color based on material type
+    if (materialType < 0.5) {
+        return colorBareDirt;
+    } else if (materialType < 1.5) {
+        return colorGrass;
+    } else {
+        return colorRocks;
+    }
+}
+
+void main() {
     // Calculate world position for shadow calculation
     // We need to reconstruct it from UV and height map
     float height = texture2D(uHeightMap, vUv).r;
@@ -89,17 +106,16 @@ void main() {
 
     // Sample cloud shadow intensity with blur and expansion
     float cloudShadow = getBlurredShadow(vUv, uCloudShadowMap);
-
-    // Apply cloud shadow to terrain where there's no water
-    float finalAlpha = 1.0;
-    vec3 finalColor = terrainColor;
     
+    // Get terrain material color
+    vec3 terrainMaterialColor = getTerrainMaterialColor(vUv);
+
     // Apply sun light shadow (multiplicative)
-    finalColor *= shadow;
+    terrainMaterialColor *= shadow;
     
     if (cloudShadow > 0.01) {
         float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
-        finalColor *= (1.0 - shadowDarkening);
+        terrainMaterialColor *= (1.0 - shadowDarkening);
     }
 
     // Sample water height and velocity
@@ -127,16 +143,21 @@ void main() {
             
             // Blend with terrain - make velocity more visible
             float blendAmount = clamp(velMag * 0.5 + 0.3, 0.3, 1.0);
-            finalColor = mix(terrainColor, velocityColor, blendAmount);
+            vec3 finalColor = mix(terrainMaterialColor, velocityColor, blendAmount);
+            
+            gl_FragColor = vec4(finalColor, 1.0);
         } else {
             // Visualize water height (original behavior)
             float waterIntensity = clamp(waterHeight * 3.0, 0.2, 1.0);
             vec3 waterColor = mix(vec3(0.4, 0.7, 1.0), vec3(0.1, 0.3, 0.7), waterIntensity);
             
             // Blend terrain and water (water overlays terrain)
-            finalColor = mix(terrainColor, waterColor, waterIntensity * 0.6);
+            vec3 finalColor = mix(terrainMaterialColor, waterColor, waterIntensity * 0.6);
+            
+            gl_FragColor = vec4(finalColor, 1.0);
         }
+    } else {
+        // No water - just show terrain material color
+        gl_FragColor = vec4(terrainMaterialColor, 1.0);
     }
-    
-    gl_FragColor = vec4(finalColor, finalAlpha);
 }
