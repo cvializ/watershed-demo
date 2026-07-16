@@ -25,5 +25,15 @@ export const createSceneResource = () => {
 
   scene.add(sunLight);
 
+  // Yellow sphere at sun position for visualization
+  const sunSphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+  const sunSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
+  const sunSphere = new THREE.Mesh(sunSphereGeometry, sunSphereMaterial);
+  sunSphere.position.copy(sunLight.position);
+  scene.add(sunSphere);
+
+  // Store reference to sun sphere on scene for easy access
+  (scene as any).sunSphere = sunSphere;
+
   return { scene, sunLight };
 };
