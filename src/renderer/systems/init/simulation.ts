@@ -1,7 +1,7 @@
 import { observe, onAdd, query } from "bitecs";
 import * as THREE from "three";
 
-import type { RendererInitSystem, RendererSystem } from "@/renderer/types";
+import type { RendererInitSystem } from "@/renderer/types";
 
 import {
   WaterSimulation,
@@ -47,27 +47,4 @@ export const initSimulation: RendererInitSystem = (world, _scene, renderer) => {
     registerTextureResource(simulationTextureId, simulationTexture);
     createTexture(world, simulationTextureId, WaterHeightmapOf(entity$));
   });
-};
-
-import type { ShaderMaterial } from "three";
-import { MaterialRef, WaterSimulation as WaterSimulationComponent } from "@/components/components";
-import { getMaterial } from "@/scene/resources/material";
-
-export const simulationSystem: RendererSystem = (world, scene, _renderer, dt) => {
-  if (!waterSimulation) {
-    return;
-  }
-
-  const { showVelocity } = world;
-  const [entity$] = query(world, [WaterSimulationComponent, MaterialRef]);
-  const material = getMaterial(MaterialRef.ref[entity$]) as ShaderMaterial;
-  material.uniforms.uShowVelocity.value = showVelocity;
-
-  // Update sun light position uniform for shadow calculation
-  const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
-  if (sunLight) {
-    material.uniforms.uLightPosition.value.copy(sunLight.position);
-  }
-
-  waterSimulation.compute(dt);
 };

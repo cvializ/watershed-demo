@@ -2,12 +2,9 @@ import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
 
-import {
-  initSimulation,
-  waterSimulation,
-} from "@/renderer/systems/init/simulation";
 import { initAddWater } from "@/renderer/systems/init/addWater";
 import { initResize } from "@/renderer/systems/init/resize";
+import { initSimulation } from "@/renderer/systems/init/simulation";
 
 export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
   // Enable shadow mapping
@@ -18,5 +15,3 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
   initAddWater(world, scene, renderer);
   initResize(world, scene, renderer);
 };
-
-export { waterSimulation };
