@@ -104,7 +104,7 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
       // Merge with existing context to preserve any runtime properties
       Object.assign(world, deserializedContext);
     } catch (error) {
-      console.warn("Failed to deserialize custom context:", error);
+      console.error("Failed to deserialize custom context:", error);
     }
   }
 

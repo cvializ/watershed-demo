@@ -29,19 +29,19 @@ const createDownslopeArrows: RendererInitSystem = (world, scene) => {
 
   const [terrainEntity$] = query(world, [Terrain, MeshRef]);
   if (!terrainEntity$) {
-    console.warn("Cannot create downslope arrows: terrain entity not found");
+    console.error("Cannot create downslope arrows: terrain entity not found");
     return;
   }
 
   const meshId = MeshRef.ref[terrainEntity$];
   if (!meshId) {
-    console.warn("Cannot create downslope arrows: terrain mesh reference not found");
+    console.error("Cannot create downslope arrows: terrain mesh reference not found");
     return;
   }
 
   const terrain = scene.getObjectById(meshId);
   if (!terrain || !(terrain instanceof THREE.Mesh)) {
-    console.warn("Cannot create downslope arrows: terrain mesh not found in scene");
+    console.error("Cannot create downslope arrows: terrain mesh not found in scene");
     return;
   }
 
@@ -56,10 +56,6 @@ const createDownslopeArrows: RendererInitSystem = (world, scene) => {
   const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
   arrows.name = "downslope-arrows";
   arrows.rotation.x = -Math.PI / 2;
-
-  // Store reference on scene for easy access
-  (scene as any).downslopeArrows = arrows;
-
   scene.add(arrows);
 
   // Store reference on world for visibility toggling
@@ -69,7 +65,7 @@ const createDownslopeArrows: RendererInitSystem = (world, scene) => {
 export const initVisualizations: RendererInitSystem = (world, scene, _renderer) => {
   // Initialize default visualization mode
   if (!world.visualizationMode) {
-    (world as any).visualizationMode = 4; // Start with Water Flow mode
+    world.visualizationMode = 1; // Start with Water Flow mode
   }
 
   /**
@@ -82,25 +78,25 @@ export const initVisualizations: RendererInitSystem = (world, scene, _renderer) 
     const [terrainEntity$] = query(world, [Terrain, MeshRef]);
 
     if (!terrainEntity$) {
-      console.warn("Cannot update material: terrain entity not found");
+      console.error("Cannot update material: terrain entity not found");
       return;
     }
 
     const meshId = MeshRef.ref[terrainEntity$];
     if (!meshId) {
-      console.warn("Cannot update material: terrain mesh reference not found");
+      console.error("Cannot update material: terrain mesh reference not found");
       return;
     }
 
     const heightmapEntity$ = TextureRef.ref[terrainEntity$];
     if (!heightmapEntity$) {
-      console.warn("Cannot update material: heightmap texture reference not found");
+      console.error("Cannot update material: heightmap texture reference not found");
       return;
     }
 
     const heightMap = getTexture(heightmapEntity$);
     if (!heightMap) {
-      console.warn("Cannot update material: heightmap texture not found in cache");
+      console.error("Cannot update material: heightmap texture not found in cache");
       return;
     }
 
