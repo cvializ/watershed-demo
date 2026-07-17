@@ -13,7 +13,9 @@
     "lint": "oxlint .",
     "format": "oxfmt --check",
     "validate": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "pre-commit": "npm run validate && npm run knip && npm run format"
+    "pre-commit": "npm run validate && npm run knip && npm run format",
+    "lint:init-world-reads": "npx tsx scripts/lint/lint-init-world-reads.ts",
+    "lint:validate-system-names": "npx tsx scripts/lint/validate-system-names.js"
   },
   "dependencies": {
     "bitecs": "^0.4.0",

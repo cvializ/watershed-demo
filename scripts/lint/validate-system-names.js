@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S npx tsx
 
 import fs from "fs";
 import path from "path";
@@ -81,3 +81,5 @@ const validateSystemNames = () => {
 
 // Run validation
 validateSystemNames();
+
+console.log('ok');
