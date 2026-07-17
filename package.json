@@ -14,7 +14,6 @@
     "format": "oxfmt --check",
     "constraint": "npm run constraint:init-world-reads && npm run constraint:validate-system-names",
     "constraint:init-world-reads": "npx tsx scripts/constraint/init-system-world-reads.ts",
-    "constraint:validate-system-names": "npx tsx scripts/constraint/system-identifier-name.js",
     "validate": "npm run constraint && npm run lint && npm run typecheck && npm run test && npm run build",
     "pre-commit": "npm run validate && npm run knip && npm run format"
   },
