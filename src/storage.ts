@@ -113,6 +113,15 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
 };
 
 /**
+ * Clear ECS state and custom context from localStorage
+ */
+export const clearWorldStorage = (storageKey = "ecs-snapshot"): void => {
+  localStorage.removeItem(`${storageKey}-ecs`);
+  localStorage.removeItem(`${storageKey}-context`);
+  console.log(`Storage cleared for key: ${storageKey}`);
+};
+
+/**
  * Helper: Convert ArrayBuffer to base64
  */
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
