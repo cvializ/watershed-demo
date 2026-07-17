@@ -2,11 +2,11 @@ import * as THREE from "three";
 
 import { materialCache } from "./material";
 
-export const getWireframeMaterial = (uuid: string) => {
+const getWireframeMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;
 };
 
-export const createWireframeMaterialResource = () => {
+const createWireframeMaterialResource = () => {
   const wireframeMaterial = new THREE.LineBasicMaterial({
     color: 0xffaa00,
     opacity: 0.1,

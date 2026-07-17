@@ -7,7 +7,7 @@ import type { SceneSystem } from "@/scene/types";
  */
 const updateSunAngle = (world: any, dt: number): void => {
   world.sunAngle += world.sunSpeed * dt;
-  
+
   // Keep angle within 0 to 2π range
   if (world.sunAngle >= Math.PI * 2) {
     world.sunAngle -= Math.PI * 2;
@@ -68,7 +68,7 @@ const updateBackground = (scene: THREE.Scene, sunLight: THREE.DirectionalLight):
   // Daytime colors (sun above horizon)
   const daySkyColor = new THREE.Color("#87CEEB"); // Sky blue
   const dayAmbientLight = 0.6;
-  
+
   // Nighttime colors (sun below horizon)
   const nightSkyColor = new THREE.Color("#0a0a2e"); // Deep dark blue
   const nightAmbientLight = 0.1;
