@@ -23,9 +23,10 @@ const mutateTerrain: WorldInitSystem = (world) => {
 
 export const worldInitSystem: WorldInitSystem = (world) => {
   createDefaultMaterial(world);
+  createDefaultHeightmapTexture(world);
+
   createTerrain(world);
   createCamera(world);
-  createDefaultHeightmapTexture(world);
 
   createWaterSimulation(world);
 
