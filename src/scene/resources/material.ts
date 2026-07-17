@@ -1,11 +1,11 @@
 import * as THREE from "three";
 
-import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
-import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 import heightVisualizationFrag from "@/shaders/height-visualization.frag?raw";
 import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
 import slopeVisualizationFrag from "@/shaders/slope-visualization.frag?raw";
 import slopeVisualizationVert from "@/shaders/slope-visualization.vert?raw";
+import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
+import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 
 export const materialCache = new Map<string, THREE.Material>();
 
@@ -13,12 +13,16 @@ export const getMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;
 };
 
+const setMaterial = (material: THREE.Material) => {
+  materialCache.set(material.uuid, material);
+};
+
 export const createDefaultMaterialResource = () => {
   const material = new THREE.MeshPhongMaterial({
-    color: 0x8B4513, // Brownish terrain color
+    color: 0x8b4513, // Brownish terrain color
     flatShading: false,
   }) as THREE.MeshPhongMaterial;
-  materialCache.set(material.uuid, material);
+  setMaterial(material);
 
   return {
     materialId: material.uuid,
@@ -46,7 +50,7 @@ export const createHeightVisualizationMaterialResource = ({
     fragmentShader: heightVisualizationFrag,
     side: THREE.DoubleSide,
   });
-  materialCache.set(material.uuid, material);
+  setMaterial(material);
 
   return {
     materialId: material.uuid,
@@ -66,7 +70,7 @@ export const createSlopeVisualizationMaterialResource = () => {
     fragmentShader: slopeVisualizationFrag,
     side: THREE.DoubleSide,
   });
-  materialCache.set(material.uuid, material);
+  setMaterial(material);
 
   return {
     materialId: material.uuid,
@@ -83,7 +87,7 @@ export const createDownslopeArrowMaterialResource = () => {
     transparent: true,
     opacity: 0.8,
   });
-  materialCache.set(material.uuid, material);
+  setMaterial(material);
 
   return {
     materialId: material.uuid,
@@ -95,7 +99,7 @@ export const createDownslopeArrowMaterialResource = () => {
  */
 export const createNormalMaterialResource = () => {
   const material = new THREE.MeshNormalMaterial({});
-  materialCache.set(material.uuid, material);
+  setMaterial(material);
 
   return {
     materialId: material.uuid,
