@@ -10,10 +10,3 @@ export const createDefaultMaterial = (world: World) => {
 
   return entity$;
 };
-
-export const createMaterial = (world: World) => {
-  const entity$ = addEntity(world);
-
-  // HMM what else
-  addComponent(world, entity$, MaterialRef); // set by scene init system
-};
