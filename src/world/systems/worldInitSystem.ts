@@ -11,14 +11,14 @@ import { createDefaultHeightmapTexture } from "@/world/factories/texture";
 import { createWireframe } from "@/world/factories/wireframe";
 
 const mutateTerrain: WorldInitSystem = (world) => {
-  const [terrainEid] = query(world, [MeshRef, Terrain]);
-  const [simulationEid] = query(world, [WaterSimulation]);
+  const [terrain$] = query(world, [MeshRef, Terrain]);
+  const [simulation$] = query(world, [WaterSimulation]);
 
-  if (!terrainEid || !simulationEid) {
+  if (!terrain$ || !simulation$) {
     return;
   }
 
-  MaterialRef.ref[terrainEid] = MaterialRef.ref[simulationEid];
+  MaterialRef.ref[terrain$] = MaterialRef.ref[simulation$];
 };
 
 export const worldInitSystem: WorldInitSystem = (world) => {
