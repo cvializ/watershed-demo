@@ -9,6 +9,9 @@ import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 
 export const materialCache = new Map<string, THREE.Material>();
 
+// Cache materials by visualization mode to avoid recreating them
+const vizModeMaterialCache = new Map<number, string>();
+
 export const getMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;
 };
@@ -18,11 +21,18 @@ const setMaterial = (material: THREE.Material) => {
 };
 
 export const createDefaultMaterialResource = () => {
+  // Check if we already created this material
+  const existingUuid = vizModeMaterialCache.get(3); // Mode 3 is default material for downslope
+  if (existingUuid) {
+    return { materialId: existingUuid };
+  }
+
   const material = new THREE.MeshPhongMaterial({
     color: 0x8b4513, // Brownish terrain color
     flatShading: false,
   }) as THREE.MeshPhongMaterial;
   setMaterial(material);
+  vizModeMaterialCache.set(3, material.uuid);
 
   return {
     materialId: material.uuid,
@@ -37,6 +47,12 @@ export const createHeightVisualizationMaterialResource = ({
 }: {
   heightmap: THREE.Texture;
 }) => {
+  // Check if we already created this material
+  const existingUuid = vizModeMaterialCache.get(0); // Mode 0 is height visualization
+  if (existingUuid) {
+    return { materialId: existingUuid };
+  }
+
   const minHeight = -1.5;
   const maxHeight = 2.0;
 
@@ -51,6 +67,7 @@ export const createHeightVisualizationMaterialResource = ({
     side: THREE.DoubleSide,
   });
   setMaterial(material);
+  vizModeMaterialCache.set(0, material.uuid);
 
   return {
     materialId: material.uuid,
@@ -61,6 +78,12 @@ export const createHeightVisualizationMaterialResource = ({
  * Create a shader material that visualizes terrain slope using surface normals
  */
 export const createSlopeVisualizationMaterialResource = () => {
+  // Check if we already created this material
+  const existingUuid = vizModeMaterialCache.get(1);
+  if (existingUuid) {
+    return { materialId: existingUuid };
+  }
+
   const material = new THREE.ShaderMaterial({
     uniforms: {
       uMinSlope: { value: 0.0 },
@@ -71,6 +94,7 @@ export const createSlopeVisualizationMaterialResource = () => {
     side: THREE.DoubleSide,
   });
   setMaterial(material);
+  vizModeMaterialCache.set(1, material.uuid);
 
   return {
     materialId: material.uuid,
@@ -81,6 +105,12 @@ export const createSlopeVisualizationMaterialResource = () => {
  * Create a line basic material for downslope arrows visualization
  */
 export const createDownslopeArrowMaterialResource = () => {
+  // Check if we already created this material
+  const existingUuid = vizModeMaterialCache.get(3); // Mode 3 is downslope arrows
+  if (existingUuid) {
+    return { materialId: existingUuid };
+  }
+
   const material = new THREE.LineBasicMaterial({
     color: 0xffffff,
     linewidth: 1,
@@ -88,6 +118,7 @@ export const createDownslopeArrowMaterialResource = () => {
     opacity: 0.8,
   });
   setMaterial(material);
+  vizModeMaterialCache.set(3, material.uuid);
 
   return {
     materialId: material.uuid,
@@ -98,8 +129,15 @@ export const createDownslopeArrowMaterialResource = () => {
  * Create a mesh normal material for verification/debugging
  */
 export const createNormalMaterialResource = () => {
+  // Check if we already created this material
+  const existingUuid = vizModeMaterialCache.get(2);
+  if (existingUuid) {
+    return { materialId: existingUuid };
+  }
+
   const material = new THREE.MeshNormalMaterial({});
   setMaterial(material);
+  vizModeMaterialCache.set(2, material.uuid);
 
   return {
     materialId: material.uuid,
@@ -122,6 +160,12 @@ export const createWaterVisualizationMaterialResource = ({
   velocityMap: THREE.Texture;
   sunLight: THREE.DirectionalLight;
 }) => {
+  // Check if we already created this material with the same textures
+  const existingUuid = vizModeMaterialCache.get(4);
+  if (existingUuid) {
+    return { materialId: existingUuid };
+  }
+
   const minHeight = -1.5;
   const maxHeight = 2.0;
 
@@ -143,6 +187,7 @@ export const createWaterVisualizationMaterialResource = ({
     side: THREE.DoubleSide,
   });
   materialCache.set(material.uuid, material);
+  vizModeMaterialCache.set(4, material.uuid);
 
   return {
     materialId: material.uuid,

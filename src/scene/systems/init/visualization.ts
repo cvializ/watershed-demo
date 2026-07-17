@@ -1,4 +1,4 @@
-import { observe, onAdd, query } from "bitecs";
+import { observe, onAdd } from "bitecs";
 import * as THREE from "three";
 
 import type { SceneInitSystem } from "@/scene/types";

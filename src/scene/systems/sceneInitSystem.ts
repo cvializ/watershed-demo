@@ -1,7 +1,7 @@
 import type { SceneInitSystem } from "@/scene/types";
 
-import { hiddenInitSystem } from "@/scene/systems/hidden";
 import { cameraInitSystem } from "@/scene/systems/init/camera";
+import { hiddenInitSystem } from "@/scene/systems/init/hidden";
 import { refsInitSystem } from "@/scene/systems/init/refs";
 import { visualizationInitSystem } from "@/scene/systems/init/visualization";
 import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation";
