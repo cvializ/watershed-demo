@@ -1,10 +1,11 @@
+import { query } from "bitecs";
 import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
 
 import { Terrain, MeshRef } from "@/components/components";
-import { query } from "bitecs";
 import { getCamera, getMesh } from "@/scene/sceneUtils";
+
 import { waterSimulation } from "./simulation";
 
 const SIM_SIZE = 512;

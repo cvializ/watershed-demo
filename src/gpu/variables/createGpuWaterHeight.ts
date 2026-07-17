@@ -91,7 +91,8 @@ export const createGpuWaterHeight = (
         gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture;
       waterHeightVariable.material.uniforms.waterSourcesMap.value =
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
-      waterHeightVariable.material.uniforms.surfaceMaterialMap.value = surfaceMaterialTexture || null;
+      waterHeightVariable.material.uniforms.surfaceMaterialMap.value =
+        surfaceMaterialTexture || null;
     },
   };
 };

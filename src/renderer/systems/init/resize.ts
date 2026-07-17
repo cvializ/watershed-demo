@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
+
 import { getCamera } from "@/scene/sceneUtils";
 
 export const resizeInitSystem: RendererInitSystem = (_world, scene, renderer) => {
