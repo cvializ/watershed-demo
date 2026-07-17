@@ -2,7 +2,13 @@ import { query } from "bitecs";
 
 import type { SceneSystem } from "@/scene/types";
 
-import { MaterialRef, MeshRef, Terrain, TextureRef } from "@/components/components";
+import {
+  MaterialRef,
+  MeshRef,
+  Terrain,
+  TextureRef,
+  WaterSimulation,
+} from "@/components/components";
 import {
   createDefaultMaterialResource,
   createHeightVisualizationMaterialResource,
@@ -35,6 +41,12 @@ const updateMaterialForVisualizationMode = (world: any, entity$: number) => {
     return;
   }
 
+  const [simulation$] = query(world, [WaterSimulation, MaterialRef]);
+  if (!simulation$) {
+    console.error("Cannot update material: simulation textureref not found in world");
+    return;
+  }
+
   // Get current visualization mode
   const vizMode = world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
 
@@ -60,9 +72,7 @@ const updateMaterialForVisualizationMode = (world: any, entity$: number) => {
     case 4:
     default:
       // Water flow visualization
-      MaterialRef.ref[entity$] = createHeightVisualizationMaterialResource({
-        heightmap: heightMap,
-      }).materialId;
+      MaterialRef.ref[entity$] = MaterialRef.ref[simulation$];
       break;
   }
 };
