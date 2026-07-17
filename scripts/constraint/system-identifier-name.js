@@ -5,14 +5,27 @@ import path from "path";
 
 /**
  * Check if a filename ends with "System" but not "InitSystem"
+ * or SyncSystem that matches its enclosing folder
  */
-const isInvalidSystemName = (filename) => {
+const isInvalidSystemName = (filename, dirPath) => {
   // Remove extension for checking
   const nameWithoutExt = filename.replace(/\.[^.]+$/, "");
 
   const endsWithSystem = nameWithoutExt.toLowerCase().endsWith("system");
   const endsWithInitSystem = nameWithoutExt.toLowerCase().endsWith("initsystem");
 
+  // Allow SyncSystem if it matches the enclosing folder name (parent of dirPath)
+  const endsWithSyncSystem = nameWithoutExt.toLowerCase().endsWith("syncsystem");
+  if (endsWithSyncSystem && dirPath) {
+    const parentDir = path.dirname(dirPath);
+    const folderName = path.basename(parentDir);
+    const syncSystemBase = nameWithoutExt.replace(/syncsystem$/i, "");
+    if (syncSystemBase.toLowerCase() === folderName.toLowerCase()) {
+      return false;
+    }
+  }
+
+  // Invalid if ends with System but not an allowed exception (InitSystem or matching SyncSystem)
   return endsWithSystem && !endsWithInitSystem;
 };
 
@@ -53,8 +66,9 @@ const validateSystemNames = () => {
 
     for (const filePath of files) {
       const filename = path.basename(filePath);
+      const dirPath = path.dirname(filePath);
 
-      if (isInvalidSystemName(filename)) {
+      if (isInvalidSystemName(filename, dirPath)) {
         invalidFiles.push(filePath);
       }
     }
@@ -70,7 +84,7 @@ const validateSystemNames = () => {
 
     console.error("");
     console.error(
-      'Unnecessary "System" suffix in file name of `${filePath}`. Only the init system files can end in "System."',
+      'Unnecessary "System" suffix in file name. Only init system files and sync systems matching their folder (e.g., "rendererSyncSystem.ts" in "renderer/") can end in "System".',
     );
     process.exit(1);
   }

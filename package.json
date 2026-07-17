@@ -11,12 +11,12 @@
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "lint": "oxlint .",
-    "constraint": "npm run lint:init-world-reads && npm run lint:validate-system-names",
     "format": "oxfmt --check",
-    "validate": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "pre-commit": "npm run validate && npm run knip && npm run format",
-    "constraint:init-world-reads": "npx tsx scripts/lint/lint-init-world-reads.ts",
-    "constraint:validate-system-names": "npx tsx scripts/lint/validate-system-names.js"
+    "constraint": "npm run constraint:init-world-reads && npm run constraint:validate-system-names",
+    "constraint:init-world-reads": "npx tsx scripts/constraint/init-system-world-reads.ts",
+    "constraint:validate-system-names": "npx tsx scripts/constraint/system-identifier-name.js",
+    "validate": "npm run constraint && npm run lint && npm run typecheck && npm run test && npm run build",
+    "pre-commit": "npm run validate && npm run knip && npm run format"
   },
   "dependencies": {
     "bitecs": "^0.4.0",
