@@ -2,7 +2,8 @@ import "@/style.css";
 import { createWorld } from "bitecs";
 
 import { createGameWorldContext } from "@/context";
-import { createLoopResource, createRendererResource } from "@/renderer/resources";
+import { createLoopResource } from "@/renderer/resources/loop";
+import { createRendererResource } from "@/renderer/resources/renderer";
 import { rendererInitSystem } from "@/renderer/systems/rendererInitSystem";
 import { rendererSyncSystem } from "@/renderer/systems/renderSyncSystem";
 import { createSceneResource } from "@/scene/resources";
