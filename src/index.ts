@@ -5,7 +5,7 @@ import { createGameWorldContext } from "@/context";
 import { createLoopResource } from "@/renderer/resources/loop";
 import { createRendererResource } from "@/renderer/resources/renderer";
 import { rendererInitSystem } from "@/renderer/systems/rendererInitSystem";
-import { rendererSyncSystem } from "@/renderer/systems/renderSyncSystem";
+import { rendererSyncSystem } from "@/renderer/systems/rendererSyncSystem";
 import { createSceneResource } from "@/scene/resources";
 import { sceneInitSystem } from "@/scene/systems/sceneInitSystem";
 import { sceneSyncSystem } from "@/scene/systems/sceneSyncSystem";
