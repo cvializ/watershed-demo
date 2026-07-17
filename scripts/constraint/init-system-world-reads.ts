@@ -231,7 +231,7 @@ function collectFiles(): string[] {
     const fullPath = path.join(process.cwd(), dir);
 
     if (!fs.existsSync(fullPath)) {
-      console.warn(`Directory not found: ${fullPath}`);
+      console.error(`Directory not found: ${fullPath}`);
       continue;
     }
 

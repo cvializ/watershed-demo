@@ -12,12 +12,12 @@ export const materialSystem: SceneSystem = (world, scene, _dt) => {
   for (const mesh$ of materialMeshes$) {
     const meshId = MeshRef.ref[mesh$];
     if (!meshId) {
-      console.warn(`entity ${mesh$} MeshRef not found in world`);
+      console.error(`entity ${mesh$} MeshRef not found in world`);
       continue;
     }
     const mesh = scene.getObjectById(meshId);
     if (!mesh) {
-      console.warn(`mesh with id ${meshId} not found in scene`);
+      console.error(`mesh with id ${meshId} not found in scene`);
       continue;
     }
 
