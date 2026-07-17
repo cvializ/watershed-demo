@@ -1,5 +1,6 @@
 {
   "rules": {
-    "no-optional-chaining": "deny"
+    "no-optional-chaining": "deny",
+    "import/no-default-export": "deny"
   }
 }

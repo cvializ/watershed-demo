@@ -3,7 +3,7 @@ import { createWorld } from "bitecs";
 
 import { createGameWorldContext } from "@/context";
 import { createLoopResource, createRendererResource } from "@/renderer/resources";
-import { rendererInitSystem } from "@/renderer/systems/renderInitSystem";
+import { rendererInitSystem } from "@/renderer/systems/rendererInitSystem";
 import { rendererSyncSystem } from "@/renderer/systems/renderSyncSystem";
 import { createSceneResource } from "@/scene/resources";
 import { sceneInitSystem } from "@/scene/systems/sceneInitSystem";
