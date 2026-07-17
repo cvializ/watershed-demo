@@ -51,9 +51,3 @@ export const Velocity = {
 };
 
 export const Wireframe = {};
-
-/** Visualization mode component */
-export const VisualizationMode = {
-  /** 0=Height, 1=Slope, 2=Normal, 3=Downslope, 4=Water */
-  mode: f32([]),
-};
