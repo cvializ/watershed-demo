@@ -1,4 +1,3 @@
-import { observe, onAdd } from "bitecs";
 import { query } from "bitecs";
 import * as THREE from "three";
 
@@ -74,21 +73,13 @@ export const visualizationsInitSystem: RendererInitSystem = (world, scene, _rend
    * or when the visualization mode changes.
    */
   const updateMaterialForVisualizationMode = (entity$: number) => {
-    // Get the terrain mesh and heightmap
-    const [terrainEntity$] = query(world, [Terrain, MeshRef]);
-
-    if (!terrainEntity$) {
-      console.error("Cannot update material: terrain entity not found");
-      return;
-    }
-
-    const meshId = MeshRef.ref[terrainEntity$];
-    if (!meshId) {
+    // Check if this entity has the required components
+    if (!MeshRef.ref[entity$]) {
       console.error("Cannot update material: terrain mesh reference not found");
       return;
     }
 
-    const heightmapEntity$ = TextureRef.ref[terrainEntity$];
+    const heightmapEntity$ = TextureRef.ref[entity$];
     if (!heightmapEntity$) {
       console.error("Cannot update material: heightmap texture reference not found");
       return;
@@ -135,11 +126,6 @@ export const visualizationsInitSystem: RendererInitSystem = (world, scene, _rend
         break;
     }
   };
-
-  // Update materials when terrain entities with MaterialRef are added
-  observe(world, onAdd(Terrain, MaterialRef), (entity$) => {
-    updateMaterialForVisualizationMode(entity$);
-  });
 
   // Store a function to update visualization on mode change
   (world as any).updateVisualizationMaterial = updateMaterialForVisualizationMode;

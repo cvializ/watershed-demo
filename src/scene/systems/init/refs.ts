@@ -34,5 +34,10 @@ export const refsInitSystem: SceneInitSystem = (world, scene) => {
 
     const [heightMap$] = query(world, [Default, HeightMap, TextureRef]);
     TextureRef.ref[entity$] = TextureRef.ref[heightMap$];
+
+    // Trigger visualization material update after all components are set
+    if ((world as any).updateVisualizationMaterial) {
+      (world as any).updateVisualizationMaterial(entity$);
+    }
   });
 };
