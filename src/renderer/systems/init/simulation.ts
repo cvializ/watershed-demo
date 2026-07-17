@@ -24,7 +24,7 @@ const terrainSize = 12;
 
 export let waterSimulation: WaterFlowVisualization | null = null;
 
-export const initSimulation: RendererInitSystem = (world, _scene, renderer) => {
+export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
     const [heightMapEntity$] = query(world, [Default, HeightMap, TextureRef]);
     const textureId = TextureRef.ref[heightMapEntity$];
