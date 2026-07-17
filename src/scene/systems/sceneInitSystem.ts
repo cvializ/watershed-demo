@@ -3,6 +3,7 @@ import type { SceneInitSystem } from "@/scene/types";
 import { hiddenInitSystem } from "@/scene/systems/hidden";
 import { cameraInitSystem } from "@/scene/systems/init/camera";
 import { refsInitSystem } from "@/scene/systems/init/refs";
+import { visualizationInitSystem } from "@/scene/systems/init/visualization";
 import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation";
 import { wireframeInitSystem } from "@/scene/systems/init/wireframe";
 
@@ -14,4 +15,6 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   waterSimulationInitSystem(world, scene);
 
   cameraInitSystem(world, scene);
+
+  visualizationInitSystem(world, scene);
 };

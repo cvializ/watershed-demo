@@ -5,7 +5,6 @@ import type { RendererInitSystem } from "@/renderer/types";
 import { addWaterInitSystem } from "@/renderer/systems/init/addWater";
 import { resizeInitSystem } from "@/renderer/systems/init/resize";
 import { simulationInitSystem } from "@/renderer/systems/init/simulation";
-import { visualizationsInitSystem } from "@/renderer/systems/init/visualizations";
 
 export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
   // Enable shadow mapping
@@ -15,5 +14,4 @@ export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) =
   simulationInitSystem(world, scene, renderer);
   addWaterInitSystem(world, scene, renderer);
   resizeInitSystem(world, scene, renderer);
-  visualizationsInitSystem(world, scene, renderer);
 };
