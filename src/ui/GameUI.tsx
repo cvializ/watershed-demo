@@ -1,8 +1,9 @@
 import type { GameWorld } from "@/types";
+
 import { clearWorldStorage, loadFromWorldStorage, saveToWorldStorage } from "@/storage";
 
-type GameUiProps = { 
-  world: GameWorld 
+type GameUiProps = {
+  world: GameWorld;
 };
 
 /**
@@ -36,9 +37,7 @@ export const GameUI = ({ world }: GameUiProps) => {
   };
 
   // Get the current material name from visualization mode (not used but kept for reference)
-  void _materialOptions.find(
-    (_opt: any) => _opt.id === world.visualizationMode
-  );
+  void _materialOptions.find((_opt: any) => _opt.id === world.visualizationMode);
 
   return (
     <>
@@ -48,7 +47,9 @@ export const GameUI = ({ world }: GameUiProps) => {
             <span>FPS: {Math.round(world.fps)}</span>
           </div>
           <div style={styles.materialSection}>
-            <label htmlFor="material-select" style={styles.materialLabel}>Material:</label>
+            <label htmlFor="material-select" style={styles.materialLabel}>
+              Material:
+            </label>
             <select
               id="material-select"
               value={world.visualizationMode}
@@ -70,7 +71,7 @@ export const GameUI = ({ world }: GameUiProps) => {
               max="1"
               step="0.01"
               value={world.erosionRate}
-              onChange={(e) => world.erosionRate = parseFloat(e.target.value)}
+              onChange={(e) => (world.erosionRate = parseFloat(e.target.value))}
               style={styles.slider}
               title="Erosion rate"
             />
@@ -83,7 +84,7 @@ export const GameUI = ({ world }: GameUiProps) => {
               max={Math.PI * 2}
               step="0.01"
               value={world.sunAngle}
-              onChange={(e) => world.sunAngle = parseFloat(e.target.value)}
+              onChange={(e) => (world.sunAngle = parseFloat(e.target.value))}
               style={styles.slider}
               title="Sun position angle"
             />
@@ -92,18 +93,10 @@ export const GameUI = ({ world }: GameUiProps) => {
       </div>
       <div style={styles.storageContainer}>
         <div style={styles.storageSection}>
-          <button
-            onClick={handleSaveClick}
-            style={styles.button}
-            title="Save current state"
-          >
+          <button onClick={handleSaveClick} style={styles.button} title="Save current state">
             Save
           </button>
-          <button
-            onClick={handleLoadClick}
-            style={styles.button}
-            title="Load saved state"
-          >
+          <button onClick={handleLoadClick} style={styles.button} title="Load saved state">
             Load
           </button>
           <button

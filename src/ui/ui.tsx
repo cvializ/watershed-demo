@@ -1,6 +1,8 @@
-import type { GameWorld } from "@/types";
-import { GameUI } from "@/ui/GameUI";
 import { createRoot } from "react-dom/client";
+
+import type { GameWorld } from "@/types";
+
+import { GameUI } from "@/ui/GameUI";
 
 const uiContainer = document.getElementById("ui-root");
 
@@ -16,5 +18,5 @@ export function initGameUI() {
 }
 
 export function renderGameUI(world: GameWorld) {
-  uiRoot.render(<GameUI world={world}/>);
+  uiRoot.render(<GameUI world={world} />);
 }
