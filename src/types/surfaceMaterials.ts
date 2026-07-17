@@ -2,11 +2,13 @@
  * Surface material types for terrain
  * Stored as single-channel float texture (0.0, 1.0, 2.0)
  */
-export enum SurfaceMaterial {
-  BareDirt = 0,
-  Grass = 1,
-  Rocks = 2,
-}
+export const SurfaceMaterial = {
+  BareDirt: 0,
+  Grass: 1,
+  Rocks: 2,
+} as const;
+
+export type SurfaceMaterialType = typeof SurfaceMaterial[keyof typeof SurfaceMaterial];
 
 /**
  * Material properties that affect water flow
@@ -33,7 +35,7 @@ export interface MaterialProperties {
 /**
  * Material properties lookup
  */
-export const materialProperties: Record<SurfaceMaterial, MaterialProperties> = {
+export const materialProperties: Record<number, MaterialProperties> = {
   [SurfaceMaterial.BareDirt]: {
     infiltrationRate: 0.5,
     friction: 1.0,

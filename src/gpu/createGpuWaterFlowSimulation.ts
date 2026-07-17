@@ -167,5 +167,9 @@ export const createGpuWaterFlowSimulation = (
     getCloudShadowTexture: () => getCloudTexture(),
     getSimulationTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
     getVelocityTexture: () => gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
+    getSurfaceMaterialTexture: (): THREE.Texture => {
+      // Placeholder - returns empty texture as surface materials are not yet implemented
+      return new THREE.Texture();
+    },
   };
 };

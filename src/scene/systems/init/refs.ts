@@ -1,4 +1,4 @@
-import { observe, onAdd } from "bitecs";
+import { observe, onAdd, query } from "bitecs";
 
 import type { SceneInitSystem } from "@/scene/types";
 
@@ -28,5 +28,11 @@ export const refsInitSystem: SceneInitSystem = (world, scene) => {
   observe(world, onAdd(Terrain), (entity$) => {
     const { meshId } = createTerrainResource(scene);
     MeshRef.ref[entity$] = meshId;
+    // Add default material reference that will be updated by visualization init system
+    const { materialId: terrainMaterialId } = createDefaultMaterialResource();
+    MaterialRef.ref[entity$] = terrainMaterialId;
+
+    const [heightMap$] = query(world, [Default, HeightMap, TextureRef]);
+    TextureRef.ref[entity$] = TextureRef.ref[heightMap$];
   });
 };

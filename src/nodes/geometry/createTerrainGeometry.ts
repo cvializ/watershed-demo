@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { calculateHeight } from "@/terrainUtils";
-import type { SurfaceMaterial } from "@/types/surfaceMaterials";
+import { SurfaceMaterial } from "@/types/surfaceMaterials";
 
 /**
  * Calculate surface material based on terrain characteristics
@@ -13,7 +13,7 @@ function calculateSurfaceMaterial(
   x: number,
   z: number,
   height: number,
-): SurfaceMaterial {
+): typeof SurfaceMaterial[keyof typeof SurfaceMaterial] {
   // Calculate slope using finite differences
   const delta = 0.1;
   const heightRight = calculateHeight(x + delta, z);
@@ -53,7 +53,7 @@ export const createTerrainGeometry = () => {
   const materialData = new Float32Array(materialWidth * materialWidth * 4);
   
   // Track materials for visualization
-  const materials = new Map<number, SurfaceMaterial>();
+  const materials = new Map<number, typeof SurfaceMaterial[keyof typeof SurfaceMaterial]>();
 
   // Calculate height and materials for each vertex
   for (let i = 0; i < positions.count; i++) {

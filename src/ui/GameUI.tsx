@@ -1,8 +1,4 @@
 import type { GameWorld } from "@/types";
-import { useState } from "react";
-
-
-type MaterialId = "water" | "downslope" | "slope" | "height" | "debug-height-range" | "debug-position" | "debug-depth" | "debug-face-normal" | "debug-displacement" | "debug-time";
 
 type GameUiProps = { 
   world: GameWorld 
@@ -12,26 +8,24 @@ type GameUiProps = {
  * Main game UI component - renders on top of the canvas
  */
 export const GameUI = ({ world }: GameUiProps) => {
-  const [selectedMaterial, setSelectedMaterial] = useState<MaterialId>("water");
-
-  const materialOptions: { id: MaterialId; label: string }[] = [
-    { id: "water", label: "Water Flow" },
-    { id: "downslope", label: "Downslope Arrows" },
-    { id: "slope", label: "Slope Visualization" },
-    { id: "height", label: "Height Visualization" },
-    { id: "debug-height-range", label: "Debug Height Range" },
-    { id: "debug-position", label: "Debug Position" },
-    { id: "debug-depth", label: "Debug Depth" },
-    { id: "debug-face-normal", label: "Debug Face Normal" },
-    { id: "debug-displacement", label: "Debug Displacement" },
-    { id: "debug-time", label: "Debug Time" },
+  // Map internal visualization mode numbers to UI labels (not used but kept for reference)
+  const _materialOptions: { id: number; label: string }[] = [
+    { id: 0, label: "Height Visualization" },
+    { id: 1, label: "Slope Visualization" },
+    { id: 2, label: "Normal Material (Debug)" },
+    { id: 3, label: "Downslope Arrows" },
+    { id: 4, label: "Water Flow" },
   ];
 
   const handleMaterialChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value as MaterialId;
-    setSelectedMaterial(value);
-    world.showVelocity = value !== 'downslope';
+    const value = parseInt(event.target.value, 10);
+    world.visualizationMode = value;
   };
+
+  // Get the current material name from visualization mode (not used but kept for reference)
+  void _materialOptions.find(
+    (_opt: any) => _opt.id === world.visualizationMode
+  );
 
   return (
     <div style={styles.container}>
@@ -43,11 +37,11 @@ export const GameUI = ({ world }: GameUiProps) => {
           <label htmlFor="material-select" style={styles.materialLabel}>Material:</label>
           <select
             id="material-select"
-            value={selectedMaterial}
+            value={world.visualizationMode}
             onChange={handleMaterialChange}
             style={styles.materialDropdown}
           >
-            {materialOptions.map((option) => (
+            {_materialOptions.map((option) => (
               <option key={option.id} value={option.id}>
                 {option.label}
               </option>
