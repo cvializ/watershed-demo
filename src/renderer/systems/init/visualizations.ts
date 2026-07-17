@@ -20,9 +20,9 @@ import { getTexture } from "@/scene/resources/texture";
  * Create downslope arrow geometry for terrain.
  * These are rendered as LineSegments on top of the terrain mesh.
  */
-const createDownslopeArrows: RendererInitSystem = (world, scene) => {
+const createDownslopeArrows = (world: any, scene: THREE.Scene) => {
   // Check if arrows already exist
-  const existingArrows = scene.objects.find((obj: any) => obj.name === "downslope-arrows") as any;
+  const existingArrows = scene.children.find((obj: any) => obj.name === "downslope-arrows") as any;
   if (existingArrows) {
     return; // Already created
   }
@@ -62,7 +62,7 @@ const createDownslopeArrows: RendererInitSystem = (world, scene) => {
   (world as any).downslopeArrowEntity = arrows;
 };
 
-export const initVisualizations: RendererInitSystem = (world, scene, _renderer) => {
+export const visualizationsInitSystem: RendererInitSystem = (world, scene, _renderer) => {
   // Initialize default visualization mode
   if (!world.visualizationMode) {
     world.visualizationMode = 1; // Start with Water Flow mode

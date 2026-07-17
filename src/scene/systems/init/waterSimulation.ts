@@ -17,7 +17,7 @@ import {
 import { createWaterVisualizationMaterialResource } from "@/scene/resources/material";
 import { getTexture } from "@/scene/resources/texture";
 
-export const initWaterSimulation: SceneInitSystem = (world: World, scene: THREE.Scene) => {
+export const waterSimulationInitSystem: SceneInitSystem = (world: World, scene: THREE.Scene) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
     // Query for the heightmap textures populated by the simulation
     // to generate the visualization shader material.

@@ -6,7 +6,7 @@ import {
 } from "@/components/components";
 import { query } from "bitecs";
 
-export const syncVisualizations: RendererSystem = (world, scene, _renderer, _dt) => {
+export const syncVisualizationsSystem: RendererSystem = (world, scene, _renderer, _dt) => {
   const vizMode = world.visualizationMode !== undefined 
     ? world.visualizationMode 
     : 4; // Default to Water Flow

@@ -43,7 +43,7 @@ const onKeyUp = (e: KeyboardEvent, world: World): void => {
   addVelocity(world, -1 * x * CAMERA_SPEED, -1 * y * CAMERA_SPEED);
 };
 
-export const cameraMovementInitSystem: WorldInitSystem = (world) => {
+export const cameraMovementSystem: WorldInitSystem = (world) => {
   document.addEventListener("keydown", (event) => onKeyDown(event, world));
   document.addEventListener("keyup", (event) => onKeyUp(event, world));
 };

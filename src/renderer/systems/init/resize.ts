@@ -3,7 +3,7 @@ import * as THREE from "three";
 import type { RendererInitSystem } from "@/renderer/types";
 import { getCamera } from "@/scene/sceneUtils";
 
-export const initResize: RendererInitSystem = (_world, scene, renderer) => {
+export const resizeInitSystem: RendererInitSystem = (_world, scene, renderer) => {
   // Handle window resize
   window.addEventListener("resize", () => {
     const camera = getCamera(scene) as THREE.OrthographicCamera;
