@@ -2,8 +2,8 @@ import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComp
 
 import * as THREE from "three";
 
-import { getUniforms } from "@/gpu/variables/uniformUtils";
 import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
+import { getUniforms } from "@/utils/uniformUtils";
 
 export interface WaterVelocityUniforms {
   uHeightMap: THREE.IUniform<THREE.Texture>;

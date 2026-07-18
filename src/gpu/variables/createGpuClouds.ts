@@ -2,8 +2,8 @@ import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComp
 
 import * as THREE from "three";
 
-import { getUniforms } from "@/gpu/variables/uniformUtils";
 import driftingCloudFragmentShader from "@/shaders/compute/drifting-cloud.frag?raw";
+import { getUniforms } from "@/utils/uniformUtils";
 
 /**
  * Uniform structure for drifting cloud computation shader.

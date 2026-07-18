@@ -532,6 +532,18 @@ interface WaveUniforms {
   uColorB: THREE.IUniform<THREE.Color>;
 }
 
+// For GPUComputeRenderer variables:
+
+const uniforms = getUniforms<WaterHeightUniforms>(waterHeightVariable.material);
+uniforms.terrainHeightmap = { value: heightMapTexture };
+uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
+uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage
+uniforms.waterSourcesMap = { value: null };
+uniforms.cloudShadowMap = { value: null };
+uniforms.surfaceMaterialMap = { value: null }; // Surface material texture
+
+// And for ShaderMaterials:
+
 const uniforms: WaveUniforms = {
   uTime: { value: 0 },
   uAmplitude: { value: 0.3 },
@@ -546,7 +558,7 @@ const material = new THREE.ShaderMaterial({
 });
 
 function updateWave(elapsed: number): void {
-  uniforms.uTime.value = elapsed;      // typo-safe: uniforms.uTme would fail to compile
+  uniforms.uTime.value = elapsed; // typo-safe: uniforms.uTme would fail to compile
 }
 ```
 
