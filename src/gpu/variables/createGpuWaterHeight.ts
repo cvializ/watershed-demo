@@ -8,14 +8,14 @@ import { getUniforms } from "@/utils/uniformUtils";
 /**
  * Uniform structure for water height computation shader.
  */
-export interface WaterHeightUniforms {
+export type WaterHeightUniforms = {
   terrainHeightmap: THREE.IUniform<THREE.Texture>;
   simulationSpeed: THREE.IUniform<number>;
   baseDrainageRate: THREE.IUniform<number>;
   waterSourcesMap: THREE.IUniform<THREE.Texture | null>;
   cloudShadowMap: THREE.IUniform<THREE.Texture | null>;
   surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
-}
+};
 
 /**
  * Creates the fragment shader for D8 water surface flow simulation.

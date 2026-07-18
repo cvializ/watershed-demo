@@ -8,13 +8,13 @@ import { getUniforms } from "@/utils/uniformUtils";
 /**
  * Uniform structure for drifting cloud computation shader.
  */
-export interface DriftingCloudUniforms {
+export type DriftingCloudUniforms = {
   uTime: THREE.IUniform<number>;
   uDriftSpeed: THREE.IUniform<THREE.Vector2>;
   uSpeed: THREE.IUniform<number>;
   uScale: THREE.IUniform<number>;
   uDensity: THREE.IUniform<number>;
-}
+};
 
 export type GpuClouds = {
   cloudVariable: Variable;

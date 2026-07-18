@@ -6,12 +6,12 @@ import * as THREE from "three";
  * Uniform interface for water sources computation shader.
  * Each water source is represented as a vec4: (x, y, radius, amount).
  */
-export interface WaterSourcesUniforms {
+export type WaterSourcesUniforms = {
   terrainHeightmap: THREE.IUniform<THREE.Texture>;
   uTerrainSize: THREE.IUniform<number>;
   uWaterSourceCount: THREE.IUniform<number>;
   uWaterSourcePoints: THREE.IUniform<THREE.Vector4[]>;
-}
+};
 
 import waterSourcesFragmentShader from "@/shaders/compute/water-sources.frag?raw";
 import { getUniforms } from "@/utils/uniformUtils";
@@ -61,22 +61,24 @@ export const createGpuWaterSources = (
   gpuCompute.setVariableDependencies(waterSourcesVariable, [waterSourcesVariable]);
 
   const uniforms = getUniforms<WaterSourcesUniforms>(waterSourcesVariable.material);
-  uniforms.terrainHeightmap = { value: heightMapTexture };
-  uniforms.uTerrainSize = { value: terrainSize };
-  uniforms.uWaterSourceCount = { value: 0 };
-  uniforms.uWaterSourcePoints = {
-    value: (() => {
-      // Add water sources uniforms (array of vec4: x, y, radius, amount)
-      const waterSourceUniforms: THREE.Vector4[] = [];
-      for (let i = 0; i < 16; i++) {
-        waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
-      }
-      return waterSourceUniforms;
-    })(),
-  };
 
   return {
     waterSourcesVariable,
+    initWaterSources: () => {
+      uniforms.terrainHeightmap = { value: heightMapTexture };
+      uniforms.uTerrainSize = { value: terrainSize };
+      uniforms.uWaterSourceCount = { value: 0 };
+      uniforms.uWaterSourcePoints = {
+        value: (() => {
+          // Add water sources uniforms (array of vec4: x, y, radius, amount)
+          const waterSourceUniforms: THREE.Vector4[] = [];
+          for (let i = 0; i < 16; i++) {
+            waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
+          }
+          return waterSourceUniforms;
+        })(),
+      };
+    },
     addWater: (x: number, y: number, amount: number, radius: number) => {
       addWater(uniforms, x, y, amount, radius);
     },
