@@ -98,7 +98,7 @@ export const createGpuWaterFlowSimulation = (
     heightMapTexture,
     terrainSize,
   );
-  const { waterHeightVariable, initWaterHeight } = createGpuWaterHeight(
+  const { waterHeightVariable, initWaterHeight, updateWaterHeight } = createGpuWaterHeight(
     gpuCompute,
     width,
     heightMapTexture,
@@ -125,6 +125,7 @@ export const createGpuWaterFlowSimulation = (
     compute: (deltaTime: number) => {
       updateClouds(deltaTime);
 
+      updateWaterHeight();
       // Compute all variables (velocity computation)
       gpuCompute.compute();
 
