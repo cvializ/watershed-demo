@@ -7,7 +7,7 @@ import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer
 import { createGpuClouds } from "@/gpu/variables/createGpuClouds";
 import { createGpuWaterHeight } from "@/gpu/variables/createGpuWaterHeight";
 import { createGpuWaterSources } from "@/gpu/variables/createGpuWaterSources";
-import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
+import { createGpuWaterVelocity } from "@/gpu/variables/createGpuWaterVelocity";
 
 export type WaterFlowVisualization = {
   /**
@@ -106,46 +106,14 @@ export const createGpuWaterFlowSimulation = (
     waterSourcesVariable,
   );
 
-  // Create velocity texture with initial zero values
-  const data = new Float32Array(width * width * 4);
-  for (let i = 0; i < width * width; i++) {
-    data[i * 4 + 0] = 0.0; // vx
-    data[i * 4 + 1] = 0.0; // vy
-    data[i * 4 + 2] = 0.0; // magnitude (blue channel for debugging)
-    data[i * 4 + 3] = 1.0; // alpha
-  }
-
-  const velocityTexture = new THREE.DataTexture(
-    data,
+  const { waterVelocityVariable } = createGpuWaterVelocity(
+    gpuCompute,
     width,
-    width,
-    THREE.RGBAFormat,
-    THREE.FloatType,
+    heightMapTexture,
+    waterHeightVariable,
   );
-  velocityTexture.needsUpdate = true;
-
-  const waterVelocityVariable = gpuCompute.addVariable(
-    "waterVelocity",
-    waterVelocityFragmentShader,
-    velocityTexture,
-  );
-
-  gpuCompute.setVariableDependencies(waterVelocityVariable, [waterHeightVariable]);
-
-  // Set uniforms for velocity computation
-  waterVelocityVariable.material.uniforms.uHeightMap = { value: heightMapTexture };
-
-  const error = gpuCompute.init();
-
-  waterVelocityVariable.material.uniforms.uWaterHeightmap = {
-    value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
-  };
 
   updateWaterHeight();
-
-  if (error !== null) {
-    console.error("D8 GPU computation initialization error:", error);
-  }
 
   return {
     compute: (deltaTime: number) => {
