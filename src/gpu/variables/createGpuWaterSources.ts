@@ -1,6 +1,17 @@
-import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
+import type { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
+
+/**
+ * Uniform interface for water sources computation shader.
+ * Each water source is represented as a vec4: (x, y, radius, amount).
+ */
+export interface WaterSourcesUniforms {
+  terrainHeightmap: THREE.IUniform<THREE.Texture>;
+  uTerrainSize: THREE.IUniform<number>;
+  uWaterSourceCount: THREE.IUniform<number>;
+  uWaterSourcePoints: THREE.IUniform<THREE.Vector4[]>;
+}
 
 import waterSourcesFragmentShader from "@/shaders/compute/water-sources.frag?raw";
 
@@ -31,11 +42,6 @@ const createInitialWaterSourcesTexture = (
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
   texture.needsUpdate = true;
-  console.log("Initial water sources texture created:", {
-    size,
-    firstValue: data[0],
-    lastValue: data[data.length - 4],
-  });
   return { texture, data };
 };
 
@@ -52,28 +58,35 @@ export const createGpuWaterSources = (
     waterSourcesTexture,
   );
   gpuCompute.setVariableDependencies(waterSourcesVariable, [waterSourcesVariable]);
-  waterSourcesVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
-  waterSourcesVariable.material.uniforms.uTerrainSize = { value: terrainSize };
-  waterSourcesVariable.material.uniforms.uWaterSourceCount = { value: 0 };
-  // Add water sources uniforms (array of vec4: x, y, radius, amount)
-  const waterSourceUniforms: THREE.Vector4[] = [];
-  for (let i = 0; i < 16; i++) {
-    waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
-  }
-  waterSourcesVariable.material.uniforms.uWaterSourcePoints = { value: waterSourceUniforms };
+
+  const uniforms: WaterSourcesUniforms = {
+    terrainHeightmap: { value: heightMapTexture },
+    uTerrainSize: { value: terrainSize },
+    uWaterSourceCount: { value: 0 },
+    uWaterSourcePoints: {
+      value: (() => {
+        // Add water sources uniforms (array of vec4: x, y, radius, amount)
+        const waterSourceUniforms: THREE.Vector4[] = [];
+        for (let i = 0; i < 16; i++) {
+          waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
+        }
+        return waterSourceUniforms;
+      })(),
+    },
+  };
 
   return {
     waterSourcesVariable,
     addWater: (x: number, y: number, amount: number, radius: number) => {
-      addWater(waterSourcesVariable, x, y, amount, radius);
+      addWater(uniforms, x, y, amount, radius);
     },
     clearWater: () => {
       // Clear water sources for next frame (they've been consumed by the simulation)
-      const sourceArray = waterSourcesVariable.material.uniforms.uWaterSourcePoints.value;
+      const sourceArray = uniforms.uWaterSourcePoints.value;
       for (let i = 0; i < sourceArray.length; i++) {
         sourceArray[i].set(0.0, 0.0, 0.0, 0.0);
       }
-      waterSourcesVariable.material.uniforms.uWaterSourceCount.value = 0;
+      uniforms.uWaterSourceCount.value = 0;
     },
   };
 };
@@ -83,22 +96,22 @@ export const createGpuWaterSources = (
  * Sets a uniform with the source point coordinates which the water sources shader uses to add water.
  * The uniform is cleared after each simulation step (water sources are consumed).
  *
- * @param waterSourcesVariable - The water sources variable from the simulation
+ * @param uniforms - The water sources uniforms object
  * @param x - X coordinate in world space (0 to terrainSize)
  * @param y - Y coordinate in world space (0 to terrainSize)
  * @param amount - Amount of water to add
  * @param radius - Radius of the water circle in world units
  */
 const addWater = (
-  waterSourcesVariable: Variable,
+  uniforms: WaterSourcesUniforms,
   x: number,
   y: number,
   amount: number,
   radius: number,
 ) => {
   // Set the water source point uniform
-  const sourcesUniform = waterSourcesVariable.material.uniforms.uWaterSourcePoints;
-  const countUniform = waterSourcesVariable.material.uniforms.uWaterSourceCount;
+  const sourcesUniform = uniforms.uWaterSourcePoints;
+  const countUniform = uniforms.uWaterSourceCount;
 
   // Add water source to the first available slot
   const currentCount = countUniform.value;
