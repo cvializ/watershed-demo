@@ -19,7 +19,7 @@ const world = createWorld(gameWorldContext);
 const { scene } = createSceneResource();
 const { renderer, render } = createRendererResource();
 
-rendererInitSystem(world, scene, renderer); // why does this have to be first again?
+rendererInitSystem(world, scene, renderer);
 sceneInitSystem(world, scene);
 worldInitSystem(world);
 

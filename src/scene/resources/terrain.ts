@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import { calculateHeight } from "@/terrainUtils";
 
-const createTerrainGeometry = () => {
+export const createTerrainGeometry = () => {
   // Create triangular terrain mesh
   const terrainSize = 12;
   const segments = 80;
