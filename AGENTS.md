@@ -518,6 +518,52 @@ const variable = gpuCompute.addVariable('waterVelocity', waterVelocityFragmentSh
 - **Version control**: Changes to shaders are clearer in diffs without TypeScript boilerplate
 - **Tooling support**: GLSL-specific linting and formatting tools can be applied
 
+## TypeScript Shader Uniform Pattern
+
+**Always use typed uniform interfaces for Three.js ShaderMaterial**: Define explicit interfaces for shader uniforms to get compile-time type safety and IDE autocomplete. This prevents typos in uniform names and ensures proper structure.
+
+**Pattern**:
+
+```ts
+interface WaveUniforms {
+  uTime: THREE.IUniform<number>;
+  uAmplitude: THREE.IUniform<number>;
+  uColorA: THREE.IUniform<THREE.Color>;
+  uColorB: THREE.IUniform<THREE.Color>;
+}
+
+const uniforms: WaveUniforms = {
+  uTime: { value: 0 },
+  uAmplitude: { value: 0.3 },
+  uColorA: { value: new THREE.Color(0x1e293b) },
+  uColorB: { value: new THREE.Color(0x60a5fa) },
+};
+
+const material = new THREE.ShaderMaterial({
+  uniforms, // structurally compatible with Record<string, IUniform>
+  vertexShader,
+  fragmentShader,
+});
+
+function updateWave(elapsed: number): void {
+  uniforms.uTime.value = elapsed;      // typo-safe: uniforms.uTme would fail to compile
+}
+```
+
+**Benefits**:
+
+- **Compile-time typo detection**: `uniforms.uTme` would fail compilation instead of silently failing at runtime
+- **Autocomplete support**: IDE provides intelligent suggestions for uniform names
+- **Type safety**: Ensures correct types are assigned to each uniform's `value` property
+- **Refactoring confidence**: Renaming uniforms is safely tracked by TypeScript
+- **Documentation**: Interface serves as self-documenting schema for the shader's expected inputs
+
+**When to use this pattern**:
+
+- Any ShaderMaterial with multiple uniforms
+- Shaders where uniform types are well-defined and stable
+- Projects requiring robust TypeScript integration
+
 ## Three.js Geometry and Shader Integration Warnings
 
 ### Rotated PlaneGeometry and Normal Calculation
