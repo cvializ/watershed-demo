@@ -134,9 +134,15 @@ export const createGpuWaterFlowSimulation = (
 
   // Set uniforms for velocity computation
   waterVelocityVariable.material.uniforms.uHeightMap = { value: heightMapTexture };
-  waterVelocityVariable.material.uniforms.uWaterHeightmap = { value: null };
 
   const error = gpuCompute.init();
+
+  waterVelocityVariable.material.uniforms.uWaterHeightmap = {
+    value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
+  };
+
+  updateWaterHeight();
+
   if (error !== null) {
     console.error("D8 GPU computation initialization error:", error);
   }
@@ -144,13 +150,6 @@ export const createGpuWaterFlowSimulation = (
   return {
     compute: (deltaTime: number) => {
       updateClouds(deltaTime);
-
-      // Update water height uniforms before computing
-      updateWaterHeight();
-
-      // Update water heightmap uniform for velocity computation
-      waterVelocityVariable.material.uniforms.uWaterHeightmap.value =
-        gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture;
 
       // Compute all variables (velocity computation)
       gpuCompute.compute();
