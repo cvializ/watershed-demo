@@ -2,7 +2,19 @@ import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComp
 
 import * as THREE from "three";
 
+import { getUniforms } from "@/gpu/variables/uniformUtils";
 import driftingCloudFragmentShader from "@/shaders/compute/drifting-cloud.frag?raw";
+
+/**
+ * Uniform structure for drifting cloud computation shader.
+ */
+export interface DriftingCloudUniforms {
+  uTime: THREE.IUniform<number>;
+  uDriftSpeed: THREE.IUniform<THREE.Vector2>;
+  uSpeed: THREE.IUniform<number>;
+  uScale: THREE.IUniform<number>;
+  uDensity: THREE.IUniform<number>;
+}
 
 export type GpuClouds = {
   cloudVariable: Variable;
@@ -66,14 +78,13 @@ export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: numbe
     density: 0.7,
   };
 
-  // Initialize uniforms (must be set before updateClouds is called)
-  cloudVariable.material.uniforms = {
-    uTime: { value: 0.0 },
-    uDriftSpeed: { value: config.driftSpeed.clone() },
-    uSpeed: { value: config.speed },
-    uScale: { value: config.scale },
-    uDensity: { value: config.density },
-  };
+  // Initialize uniforms using typed uniform interface (new uniform type approach)
+  const cloudUniforms = getUniforms<DriftingCloudUniforms>(cloudVariable.material);
+  cloudUniforms.uTime = { value: 0.0 };
+  cloudUniforms.uDriftSpeed = { value: config.driftSpeed.clone() };
+  cloudUniforms.uSpeed = { value: config.speed };
+  cloudUniforms.uScale = { value: config.scale };
+  cloudUniforms.uDensity = { value: config.density };
 
   let currentTime = 0;
 
@@ -81,8 +92,8 @@ export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: numbe
   const updateClouds = (deltaTime: number): void => {
     currentTime += deltaTime;
 
-    // Update uniforms for cloud animation
-    cloudVariable.material.uniforms.uTime.value = currentTime;
+    // Update uniforms for cloud animation using typed interface
+    cloudUniforms.uTime.value = currentTime;
   };
 
   // Get the cloud texture from GPU computation render target
