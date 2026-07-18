@@ -8,15 +8,15 @@ export const createTerrainGeometry = () => {
   const segments = 80;
   const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
 
-  // Convert plane to height-based terrain
+  // Convert plane to height-based terrain (flat slope)
   const positions = geometry.attributes.position;
 
-  // Calculate height for each vertex (same calculation as before)
+  // Calculate height for each vertex
   for (let i = 0; i < positions.count; i++) {
     const x = positions.getX(i);
     const y = positions.getY(i);
 
-    // Calculate height using lower frequency noise for rolling hills
+    // Calculate height for each vertex on the flat slope
     let height = 0;
     height += calculateHeight(x, y);
 
