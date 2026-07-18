@@ -108,5 +108,9 @@ export const createGpuWaterHeight = (
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
       uniforms.surfaceMaterialMap.value = null;
     },
+    updateWaterHeight: () => {
+      uniforms.waterSourcesMap.value =
+        gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
+    },
   };
 };
