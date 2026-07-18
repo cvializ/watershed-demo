@@ -17,11 +17,15 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 2, label: "Normal Material (Debug)" },
     { id: 3, label: "Downslope Arrows" },
     { id: 4, label: "Water Flow" },
+    { id: 5, label: "Hide Velocity Arrows" },
   ];
 
   const handleMaterialChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = parseInt(event.target.value, 10);
     world.visualizationMode = value;
+
+    // Special handling for option 5: Hide Velocity Arrows
+    world.showVelocity = (value !== 5);
   };
 
   const handleSaveClick = () => {
