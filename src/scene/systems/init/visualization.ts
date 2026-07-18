@@ -4,9 +4,9 @@ import * as THREE from "three";
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, Terrain } from "@/components/components";
-import { createDownslopeArrowGeometry } from "@/nodes/geometry/createDownslopeArrowGeometry";
 import { createDownslopeArrowMaterialResource } from "@/scene/resources/material";
 import { getMaterial } from "@/scene/resources/material";
+import { createDownslopeArrowGeometry } from "@/shaders/visualizer/createDownslopeArrowGeometry";
 
 /**
  * Create downslope arrow geometry for terrain.

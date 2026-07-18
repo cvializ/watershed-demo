@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { materialCache } from "./material";
+import { materialCache } from "@/scene/resources/material";
 
 const getWireframeMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;
