@@ -29,14 +29,15 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
 
   // Update cloud spheres if available
   if (cloudSphereSystem) {
-    const camera = (renderer as any).getCurrentViewportCamera || 
+    const camera =
+      (renderer as any).getCurrentViewportCamera ||
       scene.children.find((c: THREE.Object3D) => (c as any).isCamera);
     if (camera) {
       cloudSphereSystem.update(camera, dt);
 
       // Add cloud sphere mesh to scene if not already added
       const cloudMesh = cloudSphereSystem.getMesh();
-      
+
       // Check if mesh is already in scene
       const existingCloudMesh = scene.getObjectByName("volumetric-clouds");
       if (!existingCloudMesh && cloudMesh) {

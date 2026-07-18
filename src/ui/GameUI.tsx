@@ -17,7 +17,7 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 2, label: "Normal Material (Debug)" },
     { id: 3, label: "Downslope Arrows" },
     { id: 4, label: "Water Flow" },
-    { id: 5, label: "Hide Velocity Arrows" },
+    { id: 5, label: "Water Height" },
   ];
 
   const handleMaterialChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
