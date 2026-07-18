@@ -98,7 +98,7 @@ export const createGpuWaterFlowSimulation = (
     heightMapTexture,
     terrainSize,
   );
-  const { waterHeightVariable, updateWaterHeight } = createGpuWaterHeight(
+  const { waterHeightVariable, initWaterHeight } = createGpuWaterHeight(
     gpuCompute,
     width,
     heightMapTexture,
@@ -106,14 +106,20 @@ export const createGpuWaterFlowSimulation = (
     waterSourcesVariable,
   );
 
-  const { waterVelocityVariable } = createGpuWaterVelocity(
+  const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
     width,
     heightMapTexture,
     waterHeightVariable,
   );
 
-  updateWaterHeight();
+  const error = gpuCompute.init();
+  if (error) {
+    console.error("gpu compute init error", error);
+  }
+
+  initWaterHeight();
+  initWaterVelocity();
 
   return {
     compute: (deltaTime: number) => {

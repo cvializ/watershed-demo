@@ -2,12 +2,20 @@ import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComp
 
 import * as THREE from "three";
 
+import { getUniforms } from "@/gpu/variables/uniformUtils";
 import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
+
+export interface WaterVelocityUniforms {
+  uHeightMap: THREE.IUniform<THREE.Texture>;
+  uWaterHeightmap: THREE.IUniform<THREE.Texture | null>;
+}
 
 /**
  * Creates an initial velocity texture with zero values for all cells.
  */
-const createInitialVelocityTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
+const createInitialVelocityTexture = (
+  size: number,
+): { texture: THREE.DataTexture; data: Float32Array } => {
   const data = new Float32Array(size * size * 4); // RGBA
   for (let i = 0; i < size * size; i++) {
     data[i * 4 + 0] = 0.0; // vx
@@ -37,19 +45,15 @@ export const createGpuWaterVelocity = (
 
   gpuCompute.setVariableDependencies(waterVelocityVariable, [waterHeightVariable]);
 
-  // Set uniforms for velocity computation
-  waterVelocityVariable.material.uniforms.uHeightMap = { value: heightMapTexture };
-
-  const error = gpuCompute.init();
-
-  // Set the water heightmap uniform after initialization
-  waterVelocityVariable.material.uniforms.uWaterHeightmap = {
-    value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
+  return {
+    waterVelocityVariable,
+    initWaterVelocity: () => {
+      // Set the water heightmap uniform after initialization
+      const uniforms = getUniforms<WaterVelocityUniforms>(waterVelocityVariable.material);
+      uniforms.uHeightMap = { value: heightMapTexture };
+      uniforms.uWaterHeightmap = {
+        value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
+      };
+    },
   };
-
-  if (error !== null) {
-    console.error("D8 GPU velocity computation initialization error:", error);
-  }
-
-  return { waterVelocityVariable };
 };

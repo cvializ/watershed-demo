@@ -2,7 +2,20 @@ import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComp
 
 import * as THREE from "three";
 
+import { getUniforms } from "@/gpu/variables/uniformUtils";
 import waterHeightFragmentShader from "@/shaders/compute/water-height.frag?raw";
+
+/**
+ * Uniform structure for water height computation shader.
+ */
+export interface WaterHeightUniforms {
+  terrainHeightmap: THREE.IUniform<THREE.Texture>;
+  simulationSpeed: THREE.IUniform<number>;
+  baseDrainageRate: THREE.IUniform<number>;
+  waterSourcesMap: THREE.IUniform<THREE.Texture | null>;
+  cloudShadowMap: THREE.IUniform<THREE.Texture | null>;
+  surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+}
 
 /**
  * Creates the fragment shader for D8 water surface flow simulation.
@@ -76,23 +89,24 @@ export const createGpuWaterHeight = (
     waterSourcesVariable,
     waterHeightVariable,
   ]);
-  waterHeightVariable.material.uniforms.terrainHeightmap = { value: heightMapTexture };
-  waterHeightVariable.material.uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
-  waterHeightVariable.material.uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage
-  waterHeightVariable.material.uniforms.waterSourcesMap = { value: null };
-  waterHeightVariable.material.uniforms.cloudShadowMap = { value: null };
-  waterHeightVariable.material.uniforms.surfaceMaterialMap = { value: null }; // Surface material texture
+
+  const uniforms = getUniforms<WaterHeightUniforms>(waterHeightVariable.material);
+  uniforms.terrainHeightmap = { value: heightMapTexture };
+  uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
+  uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage
+  uniforms.waterSourcesMap = { value: null };
+  uniforms.cloudShadowMap = { value: null };
+  uniforms.surfaceMaterialMap = { value: null }; // Surface material texture
 
   return {
     waterHeightVariable,
-    updateWaterHeight: (surfaceMaterialTexture?: THREE.Texture) => {
+    initWaterHeight: () => {
       // Update uniforms with the results of the computation
-      waterHeightVariable.material.uniforms.cloudShadowMap.value =
+      uniforms.cloudShadowMap.value =
         gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture;
-      waterHeightVariable.material.uniforms.waterSourcesMap.value =
+      uniforms.waterSourcesMap.value =
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
-      waterHeightVariable.material.uniforms.surfaceMaterialMap.value =
-        surfaceMaterialTexture || null;
+      uniforms.surfaceMaterialMap.value = null;
     },
   };
 };
