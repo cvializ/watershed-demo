@@ -5,10 +5,10 @@ import * as THREE from "three";
 import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
 import { getUniforms } from "@/utils/uniformUtils";
 
-export interface WaterVelocityUniforms {
+export type WaterVelocityUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
   uWaterHeightmap: THREE.IUniform<THREE.Texture | null>;
-}
+};
 
 /**
  * Creates an initial velocity texture with zero values for all cells.

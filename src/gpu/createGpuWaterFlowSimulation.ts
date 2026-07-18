@@ -1,7 +1,4 @@
-/* @knip-ignore */
-// D8 water surface flow simulation with cloud shadow support
 import * as THREE from "three";
-// Import GPUComputationRenderer from Three.js addons
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import { createGpuClouds } from "@/gpu/variables/createGpuClouds";
@@ -92,7 +89,7 @@ export const createGpuWaterFlowSimulation = (
 
   const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(gpuCompute, width);
 
-  const { waterSourcesVariable, addWater, clearWater } = createGpuWaterSources(
+  const { waterSourcesVariable, initWaterSources, addWater, clearWater } = createGpuWaterSources(
     gpuCompute,
     width,
     heightMapTexture,
@@ -105,7 +102,6 @@ export const createGpuWaterFlowSimulation = (
     cloudVariable,
     waterSourcesVariable,
   );
-
   const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
     width,
@@ -118,6 +114,7 @@ export const createGpuWaterFlowSimulation = (
     console.error("gpu compute init error", error);
   }
 
+  initWaterSources();
   initWaterHeight();
   initWaterVelocity();
 
@@ -132,11 +129,8 @@ export const createGpuWaterFlowSimulation = (
       clearWater();
     },
     addWater,
-    setSunPosition: (_position: THREE.Vector3) => {
-      // console.log("we are coping");
-      // if (waterHeightVariable.material.uniforms.uLightPosition) {
-      //   waterHeightVariable.material.
-      // }
+    setSunPosition: (position: THREE.Vector3) => {
+      waterHeightVariable.material.uniforms.uLightPosition = { value: position.clone() };
     },
     getCloudShadowTexture: () => getCloudTexture(),
     getSimulationTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,

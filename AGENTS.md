@@ -525,12 +525,12 @@ const variable = gpuCompute.addVariable('waterVelocity', waterVelocityFragmentSh
 **Pattern**:
 
 ```ts
-interface WaveUniforms {
+type WaveUniforms = {
   uTime: THREE.IUniform<number>;
   uAmplitude: THREE.IUniform<number>;
   uColorA: THREE.IUniform<THREE.Color>;
   uColorB: THREE.IUniform<THREE.Color>;
-}
+};
 
 // For GPUComputeRenderer variables:
 
