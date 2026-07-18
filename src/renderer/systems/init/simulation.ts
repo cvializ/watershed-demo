@@ -16,6 +16,7 @@ import {
   createGpuWaterFlowSimulation,
   type WaterFlowVisualization,
 } from "@/gpu/createGpuWaterFlowSimulation";
+import { createCloudSphereSystem, type CloudSphereSystem } from "@/gpu/createCloudSphereSystem";
 import { getTexture, registerTextureResource } from "@/scene/resources/texture";
 import { createTexture } from "@/world/factories/texture";
 
@@ -23,6 +24,7 @@ const SIM_SIZE = 512;
 const terrainSize = 12;
 
 export let waterSimulation: WaterFlowVisualization | null = null;
+export let cloudSphereSystem: CloudSphereSystem | null = null;
 
 export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
@@ -46,5 +48,11 @@ export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer
     const simulationTextureId = simulationTexture.id;
     registerTextureResource(simulationTextureId, simulationTexture);
     createTexture(world, simulationTextureId, WaterHeightmapOf(entity$));
+
+    // Create cloud sphere system using the cloud texture from GPU simulation
+    const cloudTexture = waterSimulation.getCloudShadowTexture();
+    if (cloudTexture) {
+      cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);
+    }
   });
 };
