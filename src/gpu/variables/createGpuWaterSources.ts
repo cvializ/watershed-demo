@@ -14,6 +14,7 @@ export interface WaterSourcesUniforms {
 }
 
 import waterSourcesFragmentShader from "@/shaders/compute/water-sources.frag?raw";
+import { getUniforms } from "@/utils/uniformUtils";
 
 /**
  * Creates the fragment shader for computing water sources.
@@ -59,20 +60,19 @@ export const createGpuWaterSources = (
   );
   gpuCompute.setVariableDependencies(waterSourcesVariable, [waterSourcesVariable]);
 
-  const uniforms: WaterSourcesUniforms = {
-    terrainHeightmap: { value: heightMapTexture },
-    uTerrainSize: { value: terrainSize },
-    uWaterSourceCount: { value: 0 },
-    uWaterSourcePoints: {
-      value: (() => {
-        // Add water sources uniforms (array of vec4: x, y, radius, amount)
-        const waterSourceUniforms: THREE.Vector4[] = [];
-        for (let i = 0; i < 16; i++) {
-          waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
-        }
-        return waterSourceUniforms;
-      })(),
-    },
+  const uniforms = getUniforms<WaterSourcesUniforms>(waterSourcesVariable.material);
+  uniforms.terrainHeightmap = { value: heightMapTexture };
+  uniforms.uTerrainSize = { value: terrainSize };
+  uniforms.uWaterSourceCount = { value: 0 };
+  uniforms.uWaterSourcePoints = {
+    value: (() => {
+      // Add water sources uniforms (array of vec4: x, y, radius, amount)
+      const waterSourceUniforms: THREE.Vector4[] = [];
+      for (let i = 0; i < 16; i++) {
+        waterSourceUniforms.push(new THREE.Vector4(0.0, 0.0, 0.0, 0.0));
+      }
+      return waterSourceUniforms;
+    })(),
   };
 
   return {
