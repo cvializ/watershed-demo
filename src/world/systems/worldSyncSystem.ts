@@ -5,7 +5,6 @@ import type { WorldSystem } from "@/world/types";
 import { Camera, Position } from "@/components/components";
 import { fpsSystem } from "@/world/systems/fps";
 import { rotationSystem } from "@/world/systems/rotation";
-import { velocitySystem } from "@/world/systems/velocity";
 
 const timeSyncSystem: WorldSystem = (world, dt) => {
   world.time += dt;
@@ -13,7 +12,6 @@ const timeSyncSystem: WorldSystem = (world, dt) => {
 
 export const worldSyncSystem: WorldSystem = (world, dt) => {
   fpsSystem(world, dt);
-  velocitySystem(world, dt);
   rotationSystem(world, dt);
   timeSyncSystem(world, dt);
 
