@@ -44,10 +44,4 @@ export const MaterialRef = {
   ref: str([]),
 };
 
-export const Velocity = {
-  x: f32([]),
-  y: f32([]),
-  z: f32([]),
-};
-
 export const Wireframe = {};

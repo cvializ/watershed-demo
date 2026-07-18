@@ -3,13 +3,13 @@ import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/ser
 
 import type { GameWorld } from "@/types";
 
-import { Transform, Camera, Position, MeshRef, Velocity } from "@/components/components";
+import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 
 /**
  * Create a serializer for the ECS world
  */
-const components = [Transform, Camera, Position, MeshRef, Velocity];
+const components = Object.values(Components).filter((v) => !(v instanceof Function));
 let serializer: (selectedEntities?: readonly number[]) => ArrayBuffer | undefined;
 let deserializer: (
   packet: ArrayBuffer,
