@@ -37,8 +37,8 @@ export const setMesh = (id: MeshEnum, value: THREE.Object3D) => {
 /**
  * Initialize all mesh geometries and add them to the cache
  */
-export const initMeshes: SceneInitSystem = (_world, scene) => {
-  enumCache.set(MeshEnum.Terrain, createTerrainResource(scene));
-  enumCache.set(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource(scene));
-  enumCache.set(MeshEnum.Wireframe, createWireframeResource(scene));
+export const initMeshes: SceneInitSystem = () => {
+  enumCache.set(MeshEnum.Terrain, createTerrainResource());
+  enumCache.set(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
+  enumCache.set(MeshEnum.Wireframe, createWireframeResource());
 };

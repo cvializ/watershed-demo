@@ -1,4 +1,3 @@
-import { createRelation } from "bitecs";
 import { f32, str } from "bitecs/serialization";
 
 export const Transform = {
@@ -24,9 +23,6 @@ export const Hidden = {};
 // Simple relation with no data
 
 export const WaterSimulation = {};
-export const WaterHeightmapOf = createRelation({ exclusive: true });
-export const CloudShadowMapOf = createRelation({ exclusive: true });
-export const VelocityMapOf = createRelation({ exclusive: true });
 
 export const Position = {
   x: f32([]),
@@ -43,5 +39,7 @@ export const TextureRef = {
 export const MaterialRef = {
   ref: str([]),
 };
+
+export const Renderable = {};
 
 export const Wireframe = {};

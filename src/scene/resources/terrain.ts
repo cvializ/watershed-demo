@@ -29,11 +29,10 @@ export const createTerrainGeometry = () => {
   return geometry;
 };
 
-export const createTerrainResource = (scene: THREE.Scene) => {
+export const createTerrainResource = () => {
   const geometry = createTerrainGeometry();
   const terrain = new THREE.Mesh(geometry);
   terrain.rotation.x = -Math.PI / 2;
-  scene.add(terrain);
 
   return terrain;
 };
