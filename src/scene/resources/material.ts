@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { getTexture, getTextureEnum, TextureEnum } from "@/scene/resources/texture";
+import { getTextureEnum, TextureEnum } from "@/scene/resources/texture";
 import heightVisualizationFrag from "@/shaders/height-visualization.frag?raw";
 import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
 import slopeVisualizationFrag from "@/shaders/slope-visualization.frag?raw";
@@ -11,7 +11,6 @@ import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 export const materialCache = new Map<string, THREE.Material>();
 
 // Cache materials by visualization mode to avoid recreating them
-const vizModeMaterialCache = new Map<number, string>();
 
 export const getMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;
