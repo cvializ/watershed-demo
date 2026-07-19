@@ -9,14 +9,14 @@ const hideSystem: SceneInitSystem = (world, scene) => {
   observe(world, onAdd(Hidden, MeshRef), (entity$) => {
     // Get all material meshes
     console.log("hidden");
-    const meshId = MeshRef.ref[entity$];
+    const meshId = MeshRef.ref[entity$] as string;
     if (!meshId) {
       console.error(`entity ${entity$} MeshRef not found in world`);
       return;
     }
-    const mesh = scene.getObjectById(meshId) as THREE.Mesh;
+    const mesh = scene.getObjectByName(meshId) as THREE.Mesh;
     if (!mesh) {
-      console.error(`mesh with id ${meshId} not found in scene`);
+      console.error(`mesh with name ${meshId} not found in scene`);
       return;
     }
     mesh.visible = false;
@@ -27,14 +27,14 @@ const showSystem: SceneInitSystem = (world, scene) => {
   observe(world, onRemove(Hidden, MeshRef), (entity$) => {
     // Get all material meshes
 
-    const meshId = MeshRef.ref[entity$];
+    const meshId = MeshRef.ref[entity$] as string;
     if (!meshId) {
       console.error(`entity ${entity$} MeshRef not found in world`);
       return;
     }
-    const mesh = scene.getObjectById(meshId) as THREE.Mesh;
+    const mesh = scene.getObjectByName(meshId) as THREE.Mesh;
     if (!mesh) {
-      console.error(`mesh with id ${meshId} not found in scene`);
+      console.error(`mesh with name ${meshId} not found in scene`);
       return;
     }
     mesh.visible = true;

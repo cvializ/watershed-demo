@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export const createCameraResource = (scene: THREE.Scene) => {
+export const createCameraResource = () => {
   const aspect = window.innerWidth / window.innerHeight;
   const frustumSize = 20;
   const camera = new THREE.OrthographicCamera(

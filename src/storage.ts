@@ -61,6 +61,7 @@ const deserializeWorld = (world: GameWorld, base64String: string): void => {
   // This ensures we replace old component data with new serialized data
   const entities$ = query(world, []);
   for (const entity$ of entities$) {
+    console.log("REMOVE");
     removeEntity(world, entity$);
   }
 
