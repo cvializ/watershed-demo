@@ -39,6 +39,12 @@ export const createDefaultMaterialResource = () => {
   };
 };
 
+export type HeightVisualizationUniforms = {
+  uHeightMap: THREE.IUniform<THREE.Texture>;
+  uMinHeight: THREE.IUniform<number>;
+  uMaxHeight: THREE.IUniform<number>;
+};
+
 /**
  * Create a shader material that visualizes terrain height using a color palette
  */
@@ -56,12 +62,14 @@ export const createHeightVisualizationMaterialResource = ({
   const minHeight = -1.5;
   const maxHeight = 2.0;
 
+  const uniforms: HeightVisualizationUniforms = {
+    uHeightMap: { value: heightmap },
+    uMinHeight: { value: minHeight },
+    uMaxHeight: { value: maxHeight },
+  };
+
   const material = new THREE.ShaderMaterial({
-    uniforms: {
-      uHeightMap: { value: heightmap },
-      uMinHeight: { value: minHeight },
-      uMaxHeight: { value: maxHeight },
-    },
+    uniforms,
     vertexShader: heightVisualizationVert,
     fragmentShader: heightVisualizationFrag,
     side: THREE.DoubleSide,
@@ -74,6 +82,11 @@ export const createHeightVisualizationMaterialResource = ({
   };
 };
 
+type SlopeVisualizationUniforms = {
+  uMinSlope: THREE.IUniform<number>;
+  uMaxSlope: THREE.IUniform<number>;
+};
+
 /**
  * Create a shader material that visualizes terrain slope using surface normals
  */
@@ -84,11 +97,13 @@ export const createSlopeVisualizationMaterialResource = () => {
     return { materialId: existingUuid };
   }
 
+  const uniforms: SlopeVisualizationUniforms = {
+    uMinSlope: { value: 0.0 },
+    uMaxSlope: { value: 2.0 },
+  };
+
   const material = new THREE.ShaderMaterial({
-    uniforms: {
-      uMinSlope: { value: 0.0 },
-      uMaxSlope: { value: 2.0 },
-    },
+    uniforms,
     vertexShader: slopeVisualizationVert,
     fragmentShader: slopeVisualizationFrag,
     side: THREE.DoubleSide,
@@ -147,7 +162,7 @@ export const createNormalMaterialResource = () => {
 /**
  * Uniform structure for water visualization shader.
  */
-type WaterVisualizationUniforms = {
+export type WaterVisualizationUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
   uWaterHeightmap: THREE.IUniform<THREE.Texture>;
   uCloudShadowMap: THREE.IUniform<THREE.Texture>;
