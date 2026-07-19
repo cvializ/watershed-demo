@@ -2,16 +2,6 @@ import * as THREE from "three";
 
 import { calculateHeight } from "@/terrainUtils";
 
-const cache = new Map<number, THREE.Texture>();
-
-export const getTexture = (id: number) => {
-  return cache.get(id);
-};
-
-export const registerTextureResource = (id: number, texture: THREE.Texture) => {
-  cache.set(id, texture);
-};
-
 /**
  * Create a displacement map texture from the terrain height function
  */
@@ -53,17 +43,6 @@ export const getTextureEnum = (id: TextureEnum) => {
     throw new Error(`Texture not found ${id}`);
   }
   return texture;
-};
-
-export const createDefaultHeightMapTextureResource = () => {
-  const texture = createDisplacementTexture(512, 12);
-
-  const textureId = texture.id;
-  registerTextureResource(texture.id, texture);
-
-  return {
-    textureId: textureId,
-  };
 };
 
 export const initTextures = () => {
