@@ -17,7 +17,7 @@ const gameWorldContext = createGameWorldContext();
 const world = createWorld(gameWorldContext);
 
 const { scene } = createSceneResource();
-const { renderer, render } = createRendererResource();
+const renderer = createRendererResource();
 
 rendererInitSystem(world, scene, renderer);
 sceneInitSystem(world, scene);
@@ -30,6 +30,5 @@ createLoopResource((_t, dt) => {
   sceneSyncSystem(world, scene, dt);
   rendererSyncSystem(world, scene, renderer, dt);
 
-  render(scene, dt);
   renderGameUI(world);
 });
