@@ -38,7 +38,7 @@ export const MeshRef = {
   ref: f32([]),
 };
 export const TextureRef = {
-  ref: f32([]),
+  ref: str([]),
 };
 export const MaterialRef = {
   ref: str([]),

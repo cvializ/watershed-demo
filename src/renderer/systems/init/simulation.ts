@@ -5,9 +5,6 @@ import type { RendererInitSystem } from "@/renderer/types";
 
 import {
   WaterSimulation,
-  Default,
-  HeightMap,
-  TextureRef,
   WaterHeightmapOf,
   CloudShadowMapOf,
   VelocityMapOf,
@@ -18,7 +15,7 @@ import {
   type WaterFlowVisualization,
 } from "@/gpu/createGpuWaterFlowSimulation";
 import { createTexture } from "@/scene/factories/texture";
-import { getTexture, registerTextureResource } from "@/scene/resources/texture";
+import { getTextureEnum, setTextureEnum, TextureEnum } from "@/scene/resources/texture";
 
 const SIM_SIZE = 512;
 const terrainSize = 12;
@@ -28,26 +25,28 @@ export let cloudSphereSystem: CloudSphereSystem | null = null;
 
 export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
-    const [heightMapEntity$] = query(world, [Default, HeightMap, TextureRef]);
-    const textureId = TextureRef.ref[heightMapEntity$];
-    const texture = getTexture(textureId) as THREE.DataTexture;
+    const heightMapTexture = getTextureEnum(TextureEnum.DefaultHeightMap) as THREE.DataTexture;
 
-    waterSimulation = createGpuWaterFlowSimulation(SIM_SIZE, terrainSize, renderer, texture);
+    console.log("createGpuWaterFlowSimulation");
+
+    waterSimulation = createGpuWaterFlowSimulation(
+      SIM_SIZE,
+      terrainSize,
+      renderer,
+      heightMapTexture,
+    );
 
     const cloudShadowTexture = waterSimulation.getCloudShadowTexture();
-    const cloudShadowTextureId = cloudShadowTexture.id;
-    registerTextureResource(cloudShadowTextureId, cloudShadowTexture);
-    createTexture(world, cloudShadowTextureId, CloudShadowMapOf(entity$));
+    setTextureEnum(TextureEnum.CloudShadowMap, cloudShadowTexture);
+    createTexture(world, TextureEnum.CloudShadowMap, CloudShadowMapOf(entity$));
 
     const velocityTexture = waterSimulation.getVelocityTexture();
-    const velocityTextureId = velocityTexture.id;
-    registerTextureResource(velocityTextureId, velocityTexture);
-    createTexture(world, velocityTextureId, VelocityMapOf(entity$));
+    setTextureEnum(TextureEnum.VelocityMap, velocityTexture);
+    createTexture(world, TextureEnum.VelocityMap, VelocityMapOf(entity$));
 
     const simulationTexture = waterSimulation.getSimulationTexture();
-    const simulationTextureId = simulationTexture.id;
-    registerTextureResource(simulationTextureId, simulationTexture);
-    createTexture(world, simulationTextureId, WaterHeightmapOf(entity$));
+    setTextureEnum(TextureEnum.WaterHeightMap, simulationTexture);
+    createTexture(world, TextureEnum.Simulation, WaterHeightmapOf(entity$));
 
     // Create cloud sphere system using the cloud texture from GPU simulation
     const cloudTexture = waterSimulation.getCloudShadowTexture();

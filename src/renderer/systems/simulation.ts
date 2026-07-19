@@ -7,7 +7,7 @@ import type { RendererSystem } from "@/renderer/types";
 
 import { MaterialRef, WaterSimulation as WaterSimulationComponent } from "@/components/components";
 import { cloudSphereSystem, waterSimulation } from "@/renderer/systems/init/simulation";
-import { getMaterial } from "@/scene/resources/material";
+import { getMaterialEnum, MaterialEnum } from "@/scene/resources/material";
 
 export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => {
   if (!waterSimulation) {
@@ -16,7 +16,7 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
 
   const { showVelocity } = world;
   const [entity$] = query(world, [WaterSimulationComponent, MaterialRef]);
-  const material = getMaterial(MaterialRef.ref[entity$]) as ShaderMaterial;
+  const material = getMaterialEnum(MaterialRef.ref[entity$] as MaterialEnum) as ShaderMaterial;
   material.uniforms.uShowVelocity.value = showVelocity;
 
   // Update sun light position uniform for shadow calculation

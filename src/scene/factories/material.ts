@@ -1,7 +1,7 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
 import { Default, MaterialRef } from "@/components/components";
-import { createDefaultMaterialResource } from "@/scene/resources/material";
+import { MaterialEnum } from "@/scene/resources/material";
 
 export const createDefaultMaterial = (world: World) => {
   const entity$ = addEntity(world);
@@ -9,8 +9,7 @@ export const createDefaultMaterial = (world: World) => {
   addComponent(world, entity$, Default);
   addComponent(world, entity$, MaterialRef);
 
-  const { materialId } = createDefaultMaterialResource();
-  MaterialRef.ref[entity$] = materialId;
+  MaterialRef.ref[entity$] = MaterialEnum.Default;
 
   return entity$;
 };

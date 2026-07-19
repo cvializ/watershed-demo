@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { getTexture, getTextureEnum, TextureEnum } from "@/scene/resources/texture";
 import heightVisualizationFrag from "@/shaders/height-visualization.frag?raw";
 import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
 import slopeVisualizationFrag from "@/shaders/slope-visualization.frag?raw";
@@ -16,27 +17,11 @@ export const getMaterial = (uuid: string) => {
   return materialCache.get(uuid) as THREE.Material;
 };
 
-const setMaterial = (material: THREE.Material) => {
-  materialCache.set(material.uuid, material);
-};
-
 export const createDefaultMaterialResource = () => {
-  // Check if we already created this material
-  const existingUuid = vizModeMaterialCache.get(3); // Mode 3 is default material for downslope
-  if (existingUuid) {
-    return { materialId: existingUuid };
-  }
-
-  const material = new THREE.MeshPhongMaterial({
+  return new THREE.MeshPhongMaterial({
     color: 0x8b4513, // Brownish terrain color
     flatShading: false,
   }) as THREE.MeshPhongMaterial;
-  setMaterial(material);
-  vizModeMaterialCache.set(3, material.uuid);
-
-  return {
-    materialId: material.uuid,
-  };
 };
 
 export type HeightVisualizationUniforms = {
@@ -53,33 +38,18 @@ export const createHeightVisualizationMaterialResource = ({
 }: {
   heightmap: THREE.Texture;
 }) => {
-  // Check if we already created this material
-  const existingUuid = vizModeMaterialCache.get(0); // Mode 0 is height visualization
-  if (existingUuid) {
-    return { materialId: existingUuid };
-  }
-
-  const minHeight = -1.5;
-  const maxHeight = 2.0;
-
   const uniforms: HeightVisualizationUniforms = {
     uHeightMap: { value: heightmap },
-    uMinHeight: { value: minHeight },
-    uMaxHeight: { value: maxHeight },
+    uMinHeight: { value: -1.5 },
+    uMaxHeight: { value: 2.0 },
   };
 
-  const material = new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial({
     uniforms,
     vertexShader: heightVisualizationVert,
     fragmentShader: heightVisualizationFrag,
     side: THREE.DoubleSide,
   });
-  setMaterial(material);
-  vizModeMaterialCache.set(0, material.uuid);
-
-  return {
-    materialId: material.uuid,
-  };
 };
 
 type SlopeVisualizationUniforms = {
@@ -91,72 +61,36 @@ type SlopeVisualizationUniforms = {
  * Create a shader material that visualizes terrain slope using surface normals
  */
 export const createSlopeVisualizationMaterialResource = () => {
-  // Check if we already created this material
-  const existingUuid = vizModeMaterialCache.get(1);
-  if (existingUuid) {
-    return { materialId: existingUuid };
-  }
-
   const uniforms: SlopeVisualizationUniforms = {
     uMinSlope: { value: 0.0 },
     uMaxSlope: { value: 2.0 },
   };
 
-  const material = new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial({
     uniforms,
     vertexShader: slopeVisualizationVert,
     fragmentShader: slopeVisualizationFrag,
     side: THREE.DoubleSide,
   });
-  setMaterial(material);
-  vizModeMaterialCache.set(1, material.uuid);
-
-  return {
-    materialId: material.uuid,
-  };
 };
 
 /**
  * Create a line basic material for downslope arrows visualization
  */
 export const createDownslopeArrowMaterialResource = () => {
-  // Check if we already created this material
-  const existingUuid = vizModeMaterialCache.get(3); // Mode 3 is downslope arrows
-  if (existingUuid) {
-    return { materialId: existingUuid };
-  }
-
-  const material = new THREE.LineBasicMaterial({
+  return new THREE.LineBasicMaterial({
     color: 0xffffff,
     linewidth: 1,
     transparent: true,
     opacity: 0.8,
   });
-  setMaterial(material);
-  vizModeMaterialCache.set(3, material.uuid);
-
-  return {
-    materialId: material.uuid,
-  };
 };
 
 /**
  * Create a mesh normal material for verification/debugging
  */
 export const createNormalMaterialResource = () => {
-  // Check if we already created this material
-  const existingUuid = vizModeMaterialCache.get(2);
-  if (existingUuid) {
-    return { materialId: existingUuid };
-  }
-
-  const material = new THREE.MeshNormalMaterial({});
-  setMaterial(material);
-  vizModeMaterialCache.set(2, material.uuid);
-
-  return {
-    materialId: material.uuid,
-  };
+  return new THREE.MeshNormalMaterial({});
 };
 
 /**
@@ -192,12 +126,6 @@ export const createWaterVisualizationMaterialResource = ({
   velocityMap: THREE.Texture;
   sunLight: THREE.DirectionalLight;
 }) => {
-  // Check if we already created this material with the same textures
-  const existingUuid = vizModeMaterialCache.get(4);
-  if (existingUuid) {
-    return { materialId: existingUuid };
-  }
-
   const minHeight = -1.5;
   const maxHeight = 2.0;
 
@@ -213,16 +141,48 @@ export const createWaterVisualizationMaterialResource = ({
     uLightPosition: { value: sunLight.position.clone() },
     uLightSpaceMatrix: { value: new THREE.Matrix4() },
   };
-  const material = new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial({
     uniforms,
     vertexShader: waterVisualizationVert,
     fragmentShader: waterVisualizationFrag,
     side: THREE.DoubleSide,
   });
-  materialCache.set(material.uuid, material);
-  vizModeMaterialCache.set(4, material.uuid);
+};
 
-  return {
-    materialId: material.uuid,
-  };
+export const MaterialEnum = {
+  Default: "Default",
+  HeightVisualization: "HeightVisualization",
+  Normal: "Normal",
+  DownslopeArrow: "DownslopeArrow",
+  Slope: "Slope",
+  WaterFlow: "WaterFlow",
+} as const;
+
+export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
+
+const enumCache = new Map<MaterialEnum, THREE.Material>();
+
+export const getMaterialEnum = (id: MaterialEnum) => {
+  const material = enumCache.get(id);
+  if (!material) {
+    throw new Error(`Could not find material ${id}`);
+  }
+  return material;
+};
+
+export const setMaterialEnum = (id: MaterialEnum, value: THREE.Material) => {
+  enumCache.set(id, value);
+};
+
+export const initSceneMaterialResources = () => {
+  enumCache.set(MaterialEnum.Default, createDefaultMaterialResource());
+  enumCache.set(
+    MaterialEnum.HeightVisualization,
+    createHeightVisualizationMaterialResource({
+      heightmap: getTextureEnum(TextureEnum.DefaultHeightMap),
+    }),
+  );
+  enumCache.set(MaterialEnum.Normal, createNormalMaterialResource());
+  enumCache.set(MaterialEnum.DownslopeArrow, createDownslopeArrowMaterialResource());
+  enumCache.set(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
 };
