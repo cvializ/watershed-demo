@@ -16,7 +16,7 @@ const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 const heightMapTexture = gpuCompute.createTexture(); // TODO: create actual blank heightmap texture
 const terrainSize = 512;
 
-const { waterSourcesVariable, addWater, clearWater } = createGpuWaterSources(
+const { waterSourcesVariable, addWater, clearWater, initWaterSources } = createGpuWaterSources(
   gpuCompute,
   width,
   heightMapTexture,
@@ -28,6 +28,8 @@ const error = gpuCompute.init();
 if (error !== null) {
   console.error("GPU computation initialization error:", error);
 }
+
+initWaterSources();
 
 gpuCompute.compute();
 
@@ -43,6 +45,8 @@ scene.add(mesh);
 
 const camera = new THREE.OrthographicCamera();
 renderer.render(scene, camera);
+
+gpuCompute.init();
 
 await test("clearWater succeeds", () => {
   clearWater();
