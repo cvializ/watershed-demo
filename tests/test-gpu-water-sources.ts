@@ -172,7 +172,6 @@ await test("addWater with negative coordinates (edge case)", () => {
 });
 
 await test("addWater beyond terrain boundary", () => {
-  renderer.dispose();
   // Test coordinates slightly beyond terrain
   addWater(terrainSize + 10, terrainSize + 10, 1, 5);
   gpuCompute.compute();
