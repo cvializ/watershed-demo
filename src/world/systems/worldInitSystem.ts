@@ -3,12 +3,12 @@ import { query } from "bitecs";
 import type { WorldInitSystem } from "@/world/types";
 
 import { MaterialRef, MeshRef, Terrain, WaterSimulation } from "@/components/components";
-import { createCamera } from "@/world/factories/camera";
-import { createDefaultMaterial } from "@/world/factories/material";
-import { createWaterSimulation } from "@/world/factories/simulation";
-import { createTerrain } from "@/world/factories/terrain";
-import { createDefaultHeightmapTexture } from "@/world/factories/texture";
-import { createWireframe } from "@/world/factories/wireframe";
+import { createCamera } from "@/scene/factories/camera";
+import { createDefaultMaterial } from "@/scene/factories/material";
+import { createWaterSimulation } from "@/scene/factories/simulation";
+import { createTerrain } from "@/scene/factories/terrain";
+import { createDefaultHeightmapTexture } from "@/scene/factories/texture";
+import { createWireframe } from "@/scene/factories/wireframe";
 
 const mutateTerrain: WorldInitSystem = (world) => {
   const [terrain$] = query(world, [MeshRef, Terrain]);

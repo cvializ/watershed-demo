@@ -12,13 +12,13 @@ import {
   CloudShadowMapOf,
   VelocityMapOf,
 } from "@/components/components";
+import { createCloudSphereSystem, type CloudSphereSystem } from "@/gpu/createCloudSphereSystem";
 import {
   createGpuWaterFlowSimulation,
   type WaterFlowVisualization,
 } from "@/gpu/createGpuWaterFlowSimulation";
-import { createCloudSphereSystem, type CloudSphereSystem } from "@/gpu/createCloudSphereSystem";
+import { createTexture } from "@/scene/factories/texture";
 import { getTexture, registerTextureResource } from "@/scene/resources/texture";
-import { createTexture } from "@/world/factories/texture";
 
 const SIM_SIZE = 512;
 const terrainSize = 12;
