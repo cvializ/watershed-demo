@@ -4,7 +4,7 @@ import * as THREE from "three";
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, Terrain } from "@/components/components";
-import { getMaterialEnum, MaterialEnum } from "@/scene/resources/material";
+import { getMaterial, MaterialEnum } from "@/scene/resources/material";
 import { createDownslopeArrowGeometry } from "@/shaders/visualizer/createDownslopeArrowGeometry";
 
 /**
@@ -37,7 +37,7 @@ export const visualizationInitSystem: SceneInitSystem = (world: any, scene: THRE
     const arrowGeometry = createDownslopeArrowGeometry(terrain.geometry, 0.3);
 
     // Create material for arrows
-    const arrowMaterial = getMaterialEnum(MaterialEnum.DownslopeArrow);
+    const arrowMaterial = getMaterial(MaterialEnum.DownslopeArrow);
 
     // Create LineSegments
     const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);

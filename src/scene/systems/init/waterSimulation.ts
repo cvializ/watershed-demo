@@ -7,21 +7,21 @@ import { MaterialRef, WaterSimulation } from "@/components/components";
 import {
   createWaterVisualizationMaterialResource,
   MaterialEnum,
-  setMaterialEnum,
+  setMaterial,
 } from "@/scene/resources/material";
-import { getTextureEnum, TextureEnum } from "@/scene/resources/texture";
+import { getTexture, TextureEnum } from "@/scene/resources/texture";
 
 export const waterSimulationInitSystem: SceneInitSystem = (world: World, scene: THREE.Scene) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
     console.log("ON ADD SIMULATION");
 
-    const heightmap = getTextureEnum(TextureEnum.DefaultHeightMap);
+    const heightmap = getTexture(TextureEnum.DefaultHeightMap);
 
-    const waterHeightMap = getTextureEnum(TextureEnum.WaterHeightMap);
+    const waterHeightMap = getTexture(TextureEnum.WaterHeightMap);
 
-    const cloudShadowMap = getTextureEnum(TextureEnum.CloudShadowMap);
+    const cloudShadowMap = getTexture(TextureEnum.CloudShadowMap);
 
-    const velocityMap = getTextureEnum(TextureEnum.VelocityMap);
+    const velocityMap = getTexture(TextureEnum.VelocityMap);
 
     if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
       console.error("missing simulation textures");
@@ -42,7 +42,7 @@ export const waterSimulationInitSystem: SceneInitSystem = (world: World, scene: 
       velocityMap,
       sunLight,
     });
-    setMaterialEnum(MaterialEnum.WaterFlow, waterFlowMaterial);
+    setMaterial(MaterialEnum.WaterFlow, waterFlowMaterial);
     MaterialRef.ref[entity$] = MaterialEnum.WaterFlow;
   });
 };
