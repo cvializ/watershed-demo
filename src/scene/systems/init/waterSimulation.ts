@@ -1,41 +1,30 @@
 import { observe, onAdd, type World } from "bitecs";
-import { query } from "bitecs";
 import * as THREE from "three";
 
 import type { SceneInitSystem } from "@/scene/types";
 
+import { MaterialRef, WaterSimulation } from "@/components/components";
 import {
-  CloudShadowMapOf,
-  Default,
-  HeightMap,
-  MaterialRef,
-  TextureRef,
-  VelocityMapOf,
-  WaterHeightmapOf,
-  WaterSimulation,
-} from "@/components/components";
-import { createWaterVisualizationMaterialResource } from "@/scene/resources/material";
-import { getTexture } from "@/scene/resources/texture";
+  createWaterVisualizationMaterialResource,
+  MaterialEnum,
+  setMaterialEnum,
+} from "@/scene/resources/material";
+import { getTextureEnum, TextureEnum } from "@/scene/resources/texture";
 
 export const waterSimulationInitSystem: SceneInitSystem = (world: World, scene: THREE.Scene) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
+    console.log("ON ADD SIMULATION");
     // Query for the heightmap textures populated by the simulation
     // to generate the visualization shader material.
     // This doesn't need to be a sync because the texture reference updates in place
 
-    // TODO: queries directory
+    const heightmap = getTextureEnum(TextureEnum.DefaultHeightMap);
 
-    const [heightmapEntity$] = query(world, [Default, HeightMap, TextureRef]);
-    const heightmap = getTexture(TextureRef.ref[heightmapEntity$]);
+    const waterHeightMap = getTextureEnum(TextureEnum.WaterHeightMap);
 
-    const [waterHeightmapEid$] = query(world, [TextureRef, WaterHeightmapOf(entity$)]);
-    const waterHeightMap = getTexture(TextureRef.ref[waterHeightmapEid$]);
+    const cloudShadowMap = getTextureEnum(TextureEnum.CloudShadowMap);
 
-    const [cloudShadowMapEid$] = query(world, [TextureRef, CloudShadowMapOf(entity$)]);
-    const cloudShadowMap = getTexture(TextureRef.ref[cloudShadowMapEid$]);
-
-    const [velocityMapEid$] = query(world, [TextureRef, VelocityMapOf(entity$)]);
-    const velocityMap = getTexture(TextureRef.ref[velocityMapEid$]);
+    const velocityMap = getTextureEnum(TextureEnum.VelocityMap);
 
     if (!heightmap || !waterHeightMap || !cloudShadowMap || !velocityMap) {
       console.error("missing simulation textures");
@@ -49,13 +38,14 @@ export const waterSimulationInitSystem: SceneInitSystem = (world: World, scene: 
       return;
     }
 
-    const { materialId } = createWaterVisualizationMaterialResource({
+    const waterFlowMaterial = createWaterVisualizationMaterialResource({
       heightmap,
       waterHeightMap,
       cloudShadowMap,
       velocityMap,
       sunLight,
     });
-    MaterialRef.ref[entity$] = materialId;
+    setMaterialEnum(MaterialEnum.WaterFlow, waterFlowMaterial);
+    MaterialRef.ref[entity$] = MaterialEnum.WaterFlow;
   });
 };

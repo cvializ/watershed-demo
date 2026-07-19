@@ -30,6 +30,31 @@ const createDisplacementTexture = (size: number, terrainSize: number): THREE.Dat
   return texture;
 };
 
+export const TextureEnum = {
+  DefaultHeightMap: "DefaultHeightMap",
+  HeightMap: "HeightMap",
+  WaterHeightMap: "WaterHeightMap",
+  CloudShadowMap: "CloudShadowMap",
+  VelocityMap: "VelocityMap",
+  Simulation: "Simulation",
+} as const;
+
+export type TextureEnum = (typeof TextureEnum)[keyof typeof TextureEnum];
+
+const enumCache = new Map<TextureEnum, THREE.Texture>();
+
+export const setTextureEnum = (id: TextureEnum, value: THREE.Texture) => {
+  enumCache.set(id, value);
+};
+
+export const getTextureEnum = (id: TextureEnum) => {
+  const texture = enumCache.get(id);
+  if (!texture) {
+    throw new Error(`Texture not found ${id}`);
+  }
+  return texture;
+};
+
 export const createDefaultHeightMapTextureResource = () => {
   const texture = createDisplacementTexture(512, 12);
 
@@ -39,4 +64,8 @@ export const createDefaultHeightMapTextureResource = () => {
   return {
     textureId: textureId,
   };
+};
+
+export const initTextures = () => {
+  enumCache.set(TextureEnum.DefaultHeightMap, createDisplacementTexture(512, 12));
 };

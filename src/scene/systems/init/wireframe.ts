@@ -23,8 +23,7 @@ export const wireframeInitSystem: SceneInitSystem = (world, scene): void => {
       return;
     }
 
-    const { meshId, materialId } = createWireframeResource(scene, terrain);
+    const { meshId } = createWireframeResource(scene, terrain);
     MeshRef.ref[entity$] = meshId;
-    MaterialRef.ref[entity$] = materialId;
   });
 };

@@ -3,7 +3,7 @@ import { query } from "bitecs";
 import type { SceneSystem } from "@/scene/types";
 
 import { MaterialRef, MeshRef } from "@/components/components";
-import { getMaterial } from "@/scene/resources/material";
+import { getMaterialEnum, MaterialEnum } from "@/scene/resources/material";
 
 export const materialSystem: SceneSystem = (world, scene, _dt) => {
   // Get all material meshes
@@ -23,6 +23,6 @@ export const materialSystem: SceneSystem = (world, scene, _dt) => {
 
     const materialId = MaterialRef.ref[mesh$];
 
-    mesh.material = getMaterial(materialId);
+    mesh.material = getMaterialEnum(materialId as MaterialEnum);
   }
 };

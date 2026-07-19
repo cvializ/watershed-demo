@@ -14,6 +14,7 @@ import {
   createHeightVisualizationMaterialResource,
   createNormalMaterialResource,
   createSlopeVisualizationMaterialResource,
+  MaterialEnum,
 } from "@/scene/resources/material";
 import { getTexture } from "@/scene/resources/texture";
 
@@ -53,21 +54,19 @@ const updateMaterialForVisualizationMode = (world: any, entity$: number) => {
   switch (vizMode) {
     case 0:
       // Height-based visualization
-      MaterialRef.ref[entity$] = createHeightVisualizationMaterialResource({
-        heightmap: heightMap,
-      }).materialId;
+      MaterialRef.ref[entity$] = MaterialEnum.HeightVisualization;
       break;
     case 1:
       // Slope-based visualization
-      MaterialRef.ref[entity$] = createSlopeVisualizationMaterialResource().materialId;
+      MaterialRef.ref[entity$] = MaterialEnum.Slope;
       break;
     case 2:
       // Normal material for verification
-      MaterialRef.ref[entity$] = createNormalMaterialResource().materialId;
+      MaterialRef.ref[entity$] = MaterialEnum.Normal;
       break;
     case 3:
       // Downslope arrows - use default material but show arrows
-      MaterialRef.ref[entity$] = createDefaultMaterialResource().materialId;
+      MaterialRef.ref[entity$] = MaterialEnum.Default;
       break;
     case 4:
     default:

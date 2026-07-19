@@ -4,8 +4,7 @@ import * as THREE from "three";
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, Terrain } from "@/components/components";
-import { createDownslopeArrowMaterialResource } from "@/scene/resources/material";
-import { getMaterial } from "@/scene/resources/material";
+import { getMaterialEnum, MaterialEnum } from "@/scene/resources/material";
 import { createDownslopeArrowGeometry } from "@/shaders/visualizer/createDownslopeArrowGeometry";
 
 /**
@@ -38,8 +37,7 @@ export const visualizationInitSystem: SceneInitSystem = (world: any, scene: THRE
     const arrowGeometry = createDownslopeArrowGeometry(terrain.geometry, 0.3);
 
     // Create material for arrows
-    const { materialId: arrowMaterialId } = createDownslopeArrowMaterialResource();
-    const arrowMaterial = getMaterial(arrowMaterialId);
+    const arrowMaterial = getMaterialEnum(MaterialEnum.DownslopeArrow);
 
     // Create LineSegments
     const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
@@ -47,6 +45,7 @@ export const visualizationInitSystem: SceneInitSystem = (world: any, scene: THRE
     arrows.rotation.x = -Math.PI / 2;
     scene.add(arrows);
 
+    // TODO: this sucks
     // Store reference on world for visibility toggling
     (world as any).downslopeArrowId = arrows.id;
   });
