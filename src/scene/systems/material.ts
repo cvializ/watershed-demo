@@ -1,11 +1,13 @@
 import { query } from "bitecs";
+import * as THREE from "three";
 
 import type { SceneSystem } from "@/scene/types";
 
 import { MaterialRef, MeshRef } from "@/components/components";
 import { getMaterial, MaterialEnum } from "@/scene/resources/material";
+import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 
-export const materialSystem: SceneSystem = (world, scene, _dt) => {
+export const materialSystem: SceneSystem = (world) => {
   // Get all material meshes
   const materialMeshes$ = query(world, [MeshRef, MaterialRef]);
 
@@ -15,7 +17,7 @@ export const materialSystem: SceneSystem = (world, scene, _dt) => {
       console.error(`entity ${mesh$} MeshRef not found in world`);
       continue;
     }
-    const mesh = scene.getObjectById(meshId);
+    const mesh = getMesh(meshId as MeshEnum) as THREE.Mesh;
     if (!mesh) {
       console.error(`mesh with id ${meshId} not found in scene`);
       continue;

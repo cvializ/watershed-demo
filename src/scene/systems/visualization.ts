@@ -4,6 +4,7 @@ import type { SceneSystem } from "@/scene/types";
 
 import { MaterialRef, Terrain } from "@/components/components";
 import { MaterialEnum } from "@/scene/resources/material";
+import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 
 export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
   const vizMode = world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
@@ -11,13 +12,13 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
   // Handle downslope arrows visibility
   if (vizMode === 3) {
     // Show downslope arrows when in Downslope mode
-    const arrows = scene.getObjectById(world.downslopeArrowId);
+    const arrows = getMesh(MeshEnum.DownslopeArrows);
     if (arrows && arrows.visible !== undefined) {
       arrows.visible = true;
     }
   } else {
     // Hide downslope arrows in other modes
-    const arrows = scene.getObjectById(world.downslopeArrowId);
+    const arrows = getMesh(MeshEnum.DownslopeArrows);
     if (arrows && arrows.visible !== undefined) {
       arrows.visible = false;
     }

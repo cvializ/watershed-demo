@@ -35,7 +35,7 @@ export const Position = {
 };
 
 export const MeshRef = {
-  ref: f32([]),
+  ref: str([]),
 };
 export const TextureRef = {
   ref: str([]),

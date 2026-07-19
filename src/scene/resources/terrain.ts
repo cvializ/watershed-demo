@@ -35,9 +35,5 @@ export const createTerrainResource = (scene: THREE.Scene) => {
   terrain.rotation.x = -Math.PI / 2;
   scene.add(terrain);
 
-  const meshId = terrain.id;
-
-  return {
-    meshId,
-  };
+  return terrain;
 };

@@ -7,7 +7,7 @@ import * as THREE from "three";
  * This version uses the terrain geometry's vertex normals to determine downslope direction,
  * avoiding redundant height calculations that were already performed during terrain generation.
  */
-export function createDownslopeArrowGeometry(
+export function createDownslopeArrowsGeometry(
   terrainGeometry: THREE.BufferGeometry,
   arrowLength: number = 0.5,
 ): THREE.BufferGeometry {
