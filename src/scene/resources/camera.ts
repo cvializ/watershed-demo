@@ -15,7 +15,5 @@ export const createCameraResource = (scene: THREE.Scene) => {
   camera.zoom = 2.5;
   camera.updateProjectionMatrix();
 
-  scene.add(camera);
-
-  return { camera };
+  return camera;
 };

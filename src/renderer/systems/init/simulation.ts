@@ -1,4 +1,4 @@
-import { observe, onAdd } from "bitecs";
+import { observe, onAdd, onRemove } from "bitecs";
 import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
@@ -44,5 +44,9 @@ export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer
     if (cloudTexture) {
       cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);
     }
+  });
+
+  observe(world, onRemove(WaterSimulation), () => {
+    waterSimulation = null;
   });
 };

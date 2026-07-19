@@ -10,7 +10,7 @@ const createWireframeMaterialResource = () => {
   });
 };
 
-export const createWireframeResource = (scene: THREE.Scene) => {
+export const createWireframeResource = () => {
   const terrainGeometry = createTerrainGeometry();
   const wireframeGeometry = new THREE.WireframeGeometry(terrainGeometry);
   const wireframeMaterial = createWireframeMaterialResource();
@@ -18,8 +18,6 @@ export const createWireframeResource = (scene: THREE.Scene) => {
 
   // Apply same rotation as terrain
   wireframe.rotation.x = -Math.PI / 2;
-
-  scene.add(wireframe);
 
   return wireframe;
 };
