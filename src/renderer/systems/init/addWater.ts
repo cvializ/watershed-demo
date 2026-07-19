@@ -4,7 +4,8 @@ import * as THREE from "three";
 import type { RendererInitSystem } from "@/renderer/types";
 
 import { Terrain, MeshRef } from "@/components/components";
-import { getCamera, getMesh } from "@/scene/sceneUtils";
+import { getMesh, MeshEnum } from "@/scene/resources/mesh";
+import { getCamera } from "@/scene/sceneUtils";
 
 import { waterSimulation } from "./simulation";
 
@@ -25,7 +26,7 @@ export const addWaterInitSystem: RendererInitSystem = (world, scene, renderer) =
 
     const camera = getCamera(scene);
     const [terrainEid] = query(world, [Terrain, MeshRef]);
-    const terrainMesh = getMesh(scene, MeshRef.ref[terrainEid]);
+    const terrainMesh = getMesh(MeshRef.ref[terrainEid] as MeshEnum);
 
     if (!camera || !terrainMesh) {
       return;

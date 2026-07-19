@@ -68,7 +68,7 @@ export const createSlopeVisualizationMaterialResource = () => {
 /**
  * Create a line basic material for downslope arrows visualization
  */
-export const createDownslopeArrowMaterialResource = () => {
+export const createDownslopeArrowsMaterialResource = () => {
   return new THREE.LineBasicMaterial({
     color: 0xffffff,
     linewidth: 1,
@@ -144,7 +144,7 @@ export const MaterialEnum = {
   Default: "Default",
   HeightVisualization: "HeightVisualization",
   Normal: "Normal",
-  DownslopeArrow: "DownslopeArrow",
+  DownslopeArrows: "DownslopeArrows",
   Slope: "Slope",
   WaterFlow: "WaterFlow",
 } as const;
@@ -174,6 +174,6 @@ export const initSceneMaterialResources = () => {
     }),
   );
   enumCache.set(MaterialEnum.Normal, createNormalMaterialResource());
-  enumCache.set(MaterialEnum.DownslopeArrow, createDownslopeArrowMaterialResource());
+  enumCache.set(MaterialEnum.DownslopeArrows, createDownslopeArrowsMaterialResource());
   enumCache.set(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
 };

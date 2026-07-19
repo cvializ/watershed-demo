@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import { createTerrainGeometry } from "@/scene/resources/terrain";
+
 const createWireframeMaterialResource = () => {
   return new THREE.LineBasicMaterial({
     color: 0xffaa00,
@@ -8,8 +10,9 @@ const createWireframeMaterialResource = () => {
   });
 };
 
-export const createWireframeResource = (scene: THREE.Scene, mesh: THREE.Mesh) => {
-  const wireframeGeometry = new THREE.WireframeGeometry(mesh.geometry);
+export const createWireframeResource = (scene: THREE.Scene) => {
+  const terrainGeometry = createTerrainGeometry();
+  const wireframeGeometry = new THREE.WireframeGeometry(terrainGeometry);
   const wireframeMaterial = createWireframeMaterialResource();
   const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
 
@@ -18,7 +21,5 @@ export const createWireframeResource = (scene: THREE.Scene, mesh: THREE.Mesh) =>
 
   scene.add(wireframe);
 
-  return {
-    meshId: wireframe.id,
-  };
+  return wireframe;
 };
