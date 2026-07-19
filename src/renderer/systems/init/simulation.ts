@@ -9,7 +9,7 @@ import {
   createGpuWaterFlowSimulation,
   type WaterFlowVisualization,
 } from "@/gpu/createGpuWaterFlowSimulation";
-import { getTextureEnum, setTextureEnum, TextureEnum } from "@/scene/resources/texture";
+import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
 
 const SIM_SIZE = 512;
 const terrainSize = 12;
@@ -19,7 +19,7 @@ export let cloudSphereSystem: CloudSphereSystem | null = null;
 
 export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer) => {
   observe(world, onAdd(WaterSimulation), () => {
-    const heightMapTexture = getTextureEnum(TextureEnum.DefaultHeightMap) as THREE.DataTexture;
+    const heightMapTexture = getTexture(TextureEnum.DefaultHeightMap) as THREE.DataTexture;
 
     console.log("createGpuWaterFlowSimulation");
 
@@ -31,13 +31,13 @@ export const simulationInitSystem: RendererInitSystem = (world, _scene, renderer
     );
 
     const cloudShadowTexture = waterSimulation.getCloudShadowTexture();
-    setTextureEnum(TextureEnum.CloudShadowMap, cloudShadowTexture);
+    setTexture(TextureEnum.CloudShadowMap, cloudShadowTexture);
 
     const velocityTexture = waterSimulation.getVelocityTexture();
-    setTextureEnum(TextureEnum.VelocityMap, velocityTexture);
+    setTexture(TextureEnum.VelocityMap, velocityTexture);
 
     const simulationTexture = waterSimulation.getSimulationTexture();
-    setTextureEnum(TextureEnum.WaterHeightMap, simulationTexture);
+    setTexture(TextureEnum.WaterHeightMap, simulationTexture);
 
     // Create cloud sphere system using the cloud texture from GPU simulation
     const cloudTexture = waterSimulation.getCloudShadowTexture();

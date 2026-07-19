@@ -33,11 +33,11 @@ export type TextureEnum = (typeof TextureEnum)[keyof typeof TextureEnum];
 
 const enumCache = new Map<TextureEnum, THREE.Texture>();
 
-export const setTextureEnum = (id: TextureEnum, value: THREE.Texture) => {
+export const setTexture = (id: TextureEnum, value: THREE.Texture) => {
   enumCache.set(id, value);
 };
 
-export const getTextureEnum = (id: TextureEnum) => {
+export const getTexture = (id: TextureEnum) => {
   const texture = enumCache.get(id);
   if (!texture) {
     throw new Error(`Texture not found ${id}`);

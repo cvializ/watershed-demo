@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { getTextureEnum, TextureEnum } from "@/scene/resources/texture";
+import { getTexture, TextureEnum } from "@/scene/resources/texture";
 import heightVisualizationFrag from "@/shaders/height-visualization.frag?raw";
 import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
 import slopeVisualizationFrag from "@/shaders/slope-visualization.frag?raw";
@@ -153,7 +153,7 @@ export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
 
 const enumCache = new Map<MaterialEnum, THREE.Material>();
 
-export const getMaterialEnum = (id: MaterialEnum) => {
+export const getMaterial = (id: MaterialEnum) => {
   const material = enumCache.get(id);
   if (!material) {
     throw new Error(`Could not find material ${id}`);
@@ -161,7 +161,7 @@ export const getMaterialEnum = (id: MaterialEnum) => {
   return material;
 };
 
-export const setMaterialEnum = (id: MaterialEnum, value: THREE.Material) => {
+export const setMaterial = (id: MaterialEnum, value: THREE.Material) => {
   enumCache.set(id, value);
 };
 
@@ -170,7 +170,7 @@ export const initSceneMaterialResources = () => {
   enumCache.set(
     MaterialEnum.HeightVisualization,
     createHeightVisualizationMaterialResource({
-      heightmap: getTextureEnum(TextureEnum.DefaultHeightMap),
+      heightmap: getTexture(TextureEnum.DefaultHeightMap),
     }),
   );
   enumCache.set(MaterialEnum.Normal, createNormalMaterialResource());
