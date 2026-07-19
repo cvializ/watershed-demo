@@ -1,6 +1,5 @@
 import type { SceneSystem } from "@/scene/types";
 
-import { updateControls } from "@/scene/systems/init/camera";
 import { materialSystem } from "@/scene/systems/material";
 import { positionSystem } from "@/scene/systems/position";
 import { sunBackgroundSystem } from "@/scene/systems/sunBackground";
@@ -11,6 +10,4 @@ export const sceneSyncSystem: SceneSystem = (world, scene, dt): void => {
   materialSystem(world, scene, dt);
   sunBackgroundSystem(world, scene, dt);
   visualizationSystem(world, scene, dt);
-
-  updateControls(dt);
 };
