@@ -15,11 +15,6 @@ import { createTerrainResource } from "@/scene/resources/terrain";
 import { createDefaultHeightMapTextureResource } from "@/scene/resources/texture";
 
 export const refsInitSystem: SceneInitSystem = (world, scene) => {
-  observe(world, onAdd(Default, MaterialRef), (entity$) => {
-    const { materialId: defaultMaterialId } = createDefaultMaterialResource();
-    MaterialRef.ref[entity$] = defaultMaterialId;
-  });
-
   observe(world, onAdd(Default, HeightMap, TextureRef), (entity$) => {
     const { textureId } = createDefaultHeightMapTextureResource();
     TextureRef.ref[entity$] = textureId;
