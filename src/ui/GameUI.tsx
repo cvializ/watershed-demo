@@ -40,9 +40,6 @@ export const GameUI = ({ world }: GameUiProps) => {
     clearWorldStorage();
   };
 
-  // Get the current material name from visualization mode (not used but kept for reference)
-  void _materialOptions.find((_opt: any) => _opt.id === world.visualizationMode);
-
   return (
     <>
       <div style={styles.container}>

@@ -1,37 +1,36 @@
 import * as THREE from "three";
 
+import type { GameWorldContext } from "@/context";
 import type { SceneSystem } from "@/scene/types";
 
 /**
  * Updates the sun angle based on elapsed time
  */
-const updateSunAngle = (world: any, dt: number): void => {
+const updateSunAngle = (world: GameWorldContext, dt: number): void => {
   world.sunAngle += world.sunSpeed * dt;
 
   // Keep angle within 0 to 2π range
   if (world.sunAngle >= Math.PI * 2) {
     world.sunAngle -= Math.PI * 2;
   }
+
+  const radius = 25; // Distance from origin
+  const inclination = Math.PI / 4; // 45 degrees - goes above and below terrain
+  world.sunPosition.x = radius * Math.cos(world.sunAngle);
+  world.sunPosition.y = radius * Math.sin(world.sunAngle) * Math.sin(inclination);
+  world.sunPosition.z = radius * Math.sin(world.sunAngle) * Math.cos(inclination);
 };
 
 /**
  * Updates the sun's position in an orbit around the origin with inclination
  */
-const updateSunPosition = (scene: THREE.Scene, sunAngle: number): void => {
+const updateSunPosition = (world: GameWorldContext, scene: THREE.Scene): void => {
   const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
   if (!sunLight) {
     return;
   }
 
-  // Orbital parameters
-  const radius = 25; // Distance from origin
-  const inclination = Math.PI / 4; // 45 degrees - goes above and below terrain
-
-  // Calculate position with inclination (orbit tilted around X-axis)
-  const x = radius * Math.cos(sunAngle);
-  const y = radius * Math.sin(sunAngle) * Math.sin(inclination);
-  const z = radius * Math.sin(sunAngle) * Math.cos(inclination);
-
+  const { x, y, z } = world.sunPosition;
   // Update sun position - this is where the shadow camera will be placed
   sunLight.position.set(x, y, z);
 
@@ -64,7 +63,7 @@ const updateSunPosition = (scene: THREE.Scene, sunAngle: number): void => {
  * Daytime colors when sun is above horizon (y > 0)
  * Nighttime colors when sun is below horizon (y <= 0)
  */
-const updateBackground = (scene: THREE.Scene, sunLight: THREE.DirectionalLight): void => {
+const updateBackground = (world: GameWorldContext, scene: THREE.Scene): void => {
   // Daytime colors (sun above horizon)
   const daySkyColor = new THREE.Color("#87CEEB"); // Sky blue
   const dayAmbientLight = 0.6;
@@ -73,8 +72,9 @@ const updateBackground = (scene: THREE.Scene, sunLight: THREE.DirectionalLight):
   const nightSkyColor = new THREE.Color("#0a0a2e"); // Deep dark blue
   const nightAmbientLight = 0.1;
 
+  const position = world.sunPosition;
   // Interpolate colors based on sun height for smooth transition
-  const sunHeight = Math.max(0, sunLight.position.y) / 25; // Normalize to 0-1 range
+  const sunHeight = Math.max(0, position.y) / 25; // Normalize to 0-1 range
   const blend = Math.pow(sunHeight, 0.5); // Ease in for more dramatic transition
 
   // Interpolate between night and day colors
@@ -96,18 +96,9 @@ const updateBackground = (scene: THREE.Scene, sunLight: THREE.DirectionalLight):
  * Updates sun angle, position, and background color based on time of day
  */
 export const sunBackgroundSystem: SceneSystem = (world, scene, dt): void => {
-  // Update sun angle
   updateSunAngle(world, dt);
 
-  // Update sun position based on new angle
-  updateSunPosition(scene, world.sunAngle);
+  updateSunPosition(world, scene);
 
-  // Get the sun light from scene
-  const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
-  if (!sunLight) {
-    return;
-  }
-
-  // Update background color based on sun position
-  updateBackground(scene, sunLight);
+  updateBackground(world, scene);
 };

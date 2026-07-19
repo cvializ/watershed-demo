@@ -7,7 +7,12 @@ import type { RendererSystem } from "@/renderer/types";
 
 import { MaterialRef, WaterSimulation as WaterSimulationComponent } from "@/components/components";
 import { cloudSphereSystem, waterSimulation } from "@/renderer/systems/init/simulation";
-import { getMaterial, MaterialEnum } from "@/scene/resources/material";
+import {
+  getMaterial,
+  MaterialEnum,
+  type WaterVisualizationUniforms,
+} from "@/scene/resources/material";
+import { getUniforms } from "@/utils/uniformUtils";
 
 export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => {
   if (!waterSimulation) {
@@ -17,13 +22,11 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
   const { showVelocity } = world;
   const [entity$] = query(world, [WaterSimulationComponent, MaterialRef]);
   const material = getMaterial(MaterialRef.ref[entity$] as MaterialEnum) as ShaderMaterial;
-  material.uniforms.uShowVelocity.value = showVelocity;
-
-  // Update sun light position uniform for shadow calculation
-  const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
-  if (sunLight) {
-    material.uniforms.uLightPosition.value.copy(sunLight.position);
-  }
+  const uniforms = getUniforms<WaterVisualizationUniforms>(material);
+  uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
+  uniforms.uLightPosition.value.x = world.sunPosition.x;
+  uniforms.uLightPosition.value.y = world.sunPosition.y;
+  uniforms.uLightPosition.value.z = world.sunPosition.z;
 
   waterSimulation.compute(dt);
 

@@ -109,13 +109,13 @@ export const createWaterVisualizationMaterialResource = ({
   waterHeightMap,
   cloudShadowMap,
   velocityMap,
-  sunLight,
+  sunLightPosition,
 }: {
   heightmap: THREE.Texture;
   waterHeightMap: THREE.Texture;
   cloudShadowMap: THREE.Texture;
   velocityMap: THREE.Texture;
-  sunLight: THREE.DirectionalLight;
+  sunLightPosition: THREE.Vector3;
 }) => {
   const minHeight = -1.5;
   const maxHeight = 2.0;
@@ -129,7 +129,7 @@ export const createWaterVisualizationMaterialResource = ({
     uMaxHeight: { value: maxHeight },
     uShowVelocity: { value: 1 },
     // uSurfaceMaterialMap: { value: null }, // Surface material texture (not yet implemented)
-    uLightPosition: { value: sunLight.position.clone() },
+    uLightPosition: { value: sunLightPosition.clone() },
     uLightSpaceMatrix: { value: new THREE.Matrix4() },
   };
   return new THREE.ShaderMaterial({
