@@ -4,7 +4,7 @@ import * as THREE from "three";
 
 import type { SceneInitSystem } from "@/scene/types";
 
-import { MaterialRef, MeshRef, Terrain, Wireframe } from "@/components/components";
+import { MeshRef, Terrain, Wireframe } from "@/components/components";
 import { createWireframeResource } from "@/scene/resources/wireframe";
 
 export const wireframeInitSystem: SceneInitSystem = (world, scene): void => {

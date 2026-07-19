@@ -8,14 +8,6 @@ import slopeVisualizationVert from "@/shaders/slope-visualization.vert?raw";
 import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
 import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 
-export const materialCache = new Map<string, THREE.Material>();
-
-// Cache materials by visualization mode to avoid recreating them
-
-export const getMaterial = (uuid: string) => {
-  return materialCache.get(uuid) as THREE.Material;
-};
-
 export const createDefaultMaterialResource = () => {
   return new THREE.MeshPhongMaterial({
     color: 0x8b4513, // Brownish terrain color

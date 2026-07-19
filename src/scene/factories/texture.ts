@@ -14,18 +14,3 @@ export const createDefaultHeightmapTexture = (world: World) => {
 
   return entity$;
 };
-
-export const createTexture = (world: World, textureId: TextureEnum, relation: unknown) => {
-  const entity$ = addEntity(world);
-
-  addComponent(world, entity$, HeightMap);
-  addComponent(world, entity$, TextureRef);
-
-  if (relation) {
-    addComponent(world, entity$, relation);
-  }
-
-  TextureRef.ref[entity$] = textureId; // pre-registered with registerTexture
-
-  return entity$;
-};

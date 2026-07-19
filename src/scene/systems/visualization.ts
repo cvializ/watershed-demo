@@ -5,13 +5,6 @@ import type { SceneSystem } from "@/scene/types";
 import { MaterialRef, Terrain } from "@/components/components";
 import { MaterialEnum } from "@/scene/resources/material";
 
-/**
- * Create materials for terrain entities based on visualization mode.
- * This is called when a Terrain entity with MaterialRef is added,
- * or when the visualization mode changes.
- */
-const updateMaterialForVisualizationMode = (world: any, entity$: number) => {};
-
 export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
   const vizMode = world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
 

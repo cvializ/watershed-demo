@@ -14,9 +14,6 @@ import { getTextureEnum, TextureEnum } from "@/scene/resources/texture";
 export const waterSimulationInitSystem: SceneInitSystem = (world: World, scene: THREE.Scene) => {
   observe(world, onAdd(WaterSimulation), (entity$) => {
     console.log("ON ADD SIMULATION");
-    // Query for the heightmap textures populated by the simulation
-    // to generate the visualization shader material.
-    // This doesn't need to be a sync because the texture reference updates in place
 
     const heightmap = getTextureEnum(TextureEnum.DefaultHeightMap);
 
