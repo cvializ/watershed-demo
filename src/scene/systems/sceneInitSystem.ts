@@ -1,4 +1,4 @@
-import { observe, onAdd, onRemove, entityExists } from "bitecs";
+import { observe, onAdd, onRemove } from "bitecs";
 
 import type { SceneInitSystem } from "@/scene/types";
 

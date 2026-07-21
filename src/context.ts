@@ -11,6 +11,18 @@ export const createGameWorldContext = () => ({
     z: 0,
   },
   pendingInit: [],
+  // Camera state for serialization
+  cameraPosition: {
+    x: 15,
+    y: 12,
+    z: 15,
+  },
+  cameraTarget: {
+    x: 0,
+    y: 0,
+    z: 0,
+  },
+  cameraZoom: 2.5,
 });
 
 export type GameWorldContext = ReturnType<typeof createGameWorldContext>;

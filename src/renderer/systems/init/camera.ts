@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { observe, onAdd, onRemove } from "bitecs";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 
@@ -10,6 +11,17 @@ import { getCamera } from "@/scene/sceneUtils";
 let controls: OrbitControls | null = null;
 
 export const getControls = () => controls;
+
+/**
+ * Get the camera object from OrbitControls
+ */
+export const getCameraFromControls = (): THREE.OrthographicCamera | null => {
+  if (!controls) {
+    return null;
+  }
+  // OrbitControls.object is typed as Camera, but we know it's OrthographicCamera
+  return controls.object as THREE.OrthographicCamera;
+};
 
 export const updateControls = (dt: number) => {
   if (!controls) {
