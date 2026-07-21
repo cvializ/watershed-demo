@@ -1,10 +1,10 @@
-import { query, removeEntity, resetWorld } from "bitecs";
 import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/serialization";
 
 import type { GameWorld } from "@/types";
 
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
+import { getCameraFromControls, getControls } from "@/renderer/systems/init/camera";
 
 /**
  * Create a serializer for the ECS world
@@ -45,7 +45,7 @@ const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
 /**
  * Deserialize ECS state from base64 string and apply to world
  */
-const deserializeWorld = (world: GameWorld, base64String: string): void => {
+const deserializeWorld = (_world: GameWorld, base64String: string): void => {
   if (!base64String) return;
 
   // Convert base64 to ArrayBuffer
@@ -67,6 +67,21 @@ const deserializeWorld = (world: GameWorld, base64String: string): void => {
  * Save ECS state and custom context to localStorage
  */
 export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
+  // Save current camera state to context before serialization
+  const controls = getControls();
+  if (controls) {
+    world.cameraPosition.x = controls.object.position.x;
+    world.cameraPosition.y = controls.object.position.y;
+    world.cameraPosition.z = controls.object.position.z;
+    world.cameraTarget.x = controls.target.x;
+    world.cameraTarget.y = controls.target.y;
+    world.cameraTarget.z = controls.target.z;
+    const camera = getCameraFromControls();
+    if (camera) {
+      world.cameraZoom = camera.zoom;
+    }
+  }
+
   const serialized = serializeWorld(world);
   if (!serialized.ecs) {
     console.log("ECS serialization empty");
@@ -83,6 +98,7 @@ export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"
 /**
  * Load ECS state and custom context from localStorage
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
   const ecsSerialized = localStorage.getItem(`${storageKey}-ecs`);
   const contextSerialized = localStorage.getItem(`${storageKey}-context`);
@@ -104,8 +120,28 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
       console.error("Failed to deserialize custom context:", error);
     }
   }
-  console.log("ECS Serialized: ", ecsSerialized);
+
+  // Deserialize ECS world first (creates entities including Camera component)
   deserializeWorld(world, ecsSerialized);
+  console.log("ECS state loaded from localStorage");
+
+  // Restore camera state after deserialization
+  const controls = getControls();
+  if (controls) {
+    // Camera should be available now since ECS world was just deserialized
+    controls.object.position.set(
+      world.cameraPosition.x,
+      world.cameraPosition.y,
+      world.cameraPosition.z,
+    );
+    controls.target.set(world.cameraTarget.x, world.cameraTarget.y, world.cameraTarget.z);
+    const camera = getCameraFromControls();
+    if (camera) {
+      camera.zoom = world.cameraZoom;
+      camera.updateProjectionMatrix();
+    }
+    controls.update();
+  }
   console.log("ECS state and custom context loaded from localStorage");
 };
 
