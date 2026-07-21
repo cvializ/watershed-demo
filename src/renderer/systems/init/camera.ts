@@ -20,7 +20,7 @@ export const updateControls = (dt: number) => {
 
 export const cameraInitSystem: RendererInitSystem = (world, scene, renderer) => {
   observe(world, onAdd(Camera), () => {
-    console.log("ON ADD CAMERA");
+    console.log("[camera:add]");
 
     const camera = createCameraResource();
 
@@ -39,6 +39,7 @@ export const cameraInitSystem: RendererInitSystem = (world, scene, renderer) => 
   });
 
   observe(world, onRemove(Camera), () => {
+    console.log("[camera:remove]");
     const camera = getCamera(scene);
     if (!camera) {
       return;
