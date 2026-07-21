@@ -24,6 +24,9 @@ export const materialSystem: SceneSystem = (world) => {
     }
 
     const materialId = MaterialRef.ref[mesh$];
+    if (!materialId) {
+      continue;
+    }
 
     mesh.material = getMaterial(materialId as MaterialEnum);
   }

@@ -1,4 +1,4 @@
-import { observe, onAdd, onRemove } from "bitecs";
+import { observe, onAdd, onRemove, entityExists } from "bitecs";
 
 import type { SceneInitSystem } from "@/scene/types";
 
@@ -13,9 +13,10 @@ import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation"
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   console.log("INIT!");
 
-  observe(world, onAdd(MeshRef, Renderable), (eid$) => {
+
+  observe(world, onAdd(MeshRef, Renderable), (entity$) => {
     console.log("RENDERABLE ADDED");
-    scene.add(getMesh(MeshRef.ref[eid$] as MeshEnum));
+    world.pendingInit.push(entity$);
   });
 
   observe(world, onRemove(MeshRef, Renderable), (eid$) => {
@@ -24,6 +25,8 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
     scene.remove(getMesh(MeshRef.ref[eid$] as MeshEnum));
   });
 
+
+  
   initTextures();
   initSceneMaterialResources();
   initMeshes(world, scene);

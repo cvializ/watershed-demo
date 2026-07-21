@@ -5,7 +5,7 @@ import { calculateHeight } from "@/terrainUtils";
 /**
  * Create a displacement map texture from the terrain height function
  */
-const createDisplacementTexture = (size: number, terrainSize: number): THREE.DataTexture => {
+export const createDisplacementTexture = (size: number, terrainSize: number): THREE.DataTexture => {
   const data = new Float32Array(size * size);
   const terrainScale = terrainSize / 2;
 
