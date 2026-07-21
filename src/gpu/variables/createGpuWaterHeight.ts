@@ -1,6 +1,7 @@
 import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
+import { logger } from "@/utils/logger";
 
 import waterHeightFragmentShader from "@/shaders/compute/water-height.frag?raw";
 import { getUniforms } from "@/utils/uniformUtils";
@@ -63,11 +64,7 @@ const createInitialWaterTexture = (
 
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
   texture.needsUpdate = true;
-  console.log("Initial D8 water texture created:", {
-    size,
-    firstValue: data[0],
-    lastValue: data[data.length - 4],
-  });
+  logger.debug({ size, firstValue: data[0], lastValue: data[data.length - 4] }, "Initial D8 water texture created");
   return { texture, data };
 };
 

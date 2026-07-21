@@ -13,6 +13,7 @@ import {
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
 import { getUniforms } from "@/utils/uniformUtils";
+import { logger } from "@/utils/logger";
 
 export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => {
   if (!waterSimulation) {
@@ -53,14 +54,14 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
       // Check if mesh is already in scene
       const existingCloudMesh = scene.getObjectByName("volumetric-clouds");
       if (!existingCloudMesh && cloudMesh) {
-        console.log("Adding volumetric clouds to scene");
+        logger.info("Adding volumetric clouds to scene");
         cloudMesh.name = "volumetric-clouds";
         scene.add(cloudMesh);
       }
     } else {
-      console.log("Camera not found for clouds");
+      logger.warn("Camera not found for clouds");
     }
   } else {
-    console.log("Cloud sphere system not initialized");
+    logger.warn("Cloud sphere system not initialized");
   }
 };

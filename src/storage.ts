@@ -5,6 +5,7 @@ import type { GameWorld } from "@/types";
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import { getCameraFromControls, getControls } from "@/renderer/systems/init/camera";
+import { logger } from "@/utils/logger";
 
 /**
  * Create a serializer for the ECS world
@@ -84,7 +85,7 @@ export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"
 
   const serialized = serializeWorld(world);
   if (!serialized.ecs) {
-    console.log("ECS serialization empty");
+    logger.warn("ECS serialization empty");
   }
 
   // Store ECS state in localStorage (base64 encoded)
@@ -92,7 +93,7 @@ export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"
 
   // Store custom context in localStorage (JSON string)
   localStorage.setItem(`${storageKey}-context`, serialized.context);
-  console.log("ECS state and custom context saved to localStorage");
+  logger.info("ECS state and custom context saved to localStorage");
 };
 
 /**
@@ -106,7 +107,7 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
   // TODO: What's different the second time this is called?
 
   if (!ecsSerialized) {
-    console.log("No saved ECS state found in localStorage");
+    logger.info("No saved ECS state found in localStorage");
     return;
   }
 
@@ -117,13 +118,13 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
       // Merge with existing context to preserve any runtime properties
       Object.assign(world, deserializedContext);
     } catch (error) {
-      console.error("Failed to deserialize custom context:", error);
+      logger.error({ err: error }, "Failed to deserialize custom context");
     }
   }
 
   // Deserialize ECS world first (creates entities including Camera component)
   deserializeWorld(world, ecsSerialized);
-  console.log("ECS state loaded from localStorage");
+  logger.info("ECS state loaded from localStorage");
 
   // Restore camera state after deserialization
   const controls = getControls();
@@ -142,7 +143,7 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
     }
     controls.update();
   }
-  console.log("ECS state and custom context loaded from localStorage");
+  logger.info("ECS state and custom context loaded from localStorage");
 };
 
 /**
@@ -151,7 +152,7 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
 export const clearWorldStorage = (storageKey = "ecs-snapshot"): void => {
   localStorage.removeItem(`${storageKey}-ecs`);
   localStorage.removeItem(`${storageKey}-context`);
-  console.log(`Storage cleared for key: ${storageKey}`);
+  logger.info(`Storage cleared for key: ${storageKey}`);
 };
 
 /**
