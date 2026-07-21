@@ -1,4 +1,4 @@
-import { query, removeEntity } from "bitecs";
+import { query, removeEntity, resetWorld } from "bitecs";
 import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/serialization";
 
 import type { GameWorld } from "@/types";
@@ -16,20 +16,17 @@ let deserializer: (
   idMapOverride?: Map<number, number>,
 ) => Map<number, number> | undefined;
 
+// TODO: create serializer and deserializer right after world is initialized.
 // Initialize serializers on first use (after world is created)
-const initSerializers = (world: GameWorld) => {
-  if (!serializer || !deserializer) {
-    serializer = createSnapshotSerializer(world, components);
-    deserializer = createSnapshotDeserializer(world, components);
-  }
+export const initSerializers = (world: GameWorld) => {
+  serializer = createSnapshotSerializer(world, components);
+  deserializer = createSnapshotDeserializer(world, components);
 };
 
 /**
  * Serialize the ECS world state and custom context to strings
  */
 const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
-  initSerializers(world);
-
   // Serialize ECS components to ArrayBuffer (no args = serialize all entities)
   const buffer = serializer();
   if (!buffer) {
@@ -51,19 +48,16 @@ const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
 const deserializeWorld = (world: GameWorld, base64String: string): void => {
   if (!base64String) return;
 
-  // Initialize deserializer if needed
-  initSerializers(world);
-
   // Convert base64 to ArrayBuffer
   const buffer = base64ToArrayBuffer(base64String);
 
   // Clear all existing entities before deserializing
   // This ensures we replace old component data with new serialized data
-  const entities$ = query(world, []);
-  for (const entity$ of entities$) {
-    console.log("REMOVE");
-    removeEntity(world, entity$);
-  }
+  // const entities$ = query(world, []);
+  // for (const entity$ of entities$) {
+  //   console.log("REMOVE");
+  //   removeEntity(world, entity$);
+  // }
 
   // Deserialize into world - this creates new entities with serialized data
   deserializer(buffer);
@@ -93,6 +87,8 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
   const ecsSerialized = localStorage.getItem(`${storageKey}-ecs`);
   const contextSerialized = localStorage.getItem(`${storageKey}-context`);
 
+  // TODO: What's different the second time this is called?
+
   if (!ecsSerialized) {
     console.log("No saved ECS state found in localStorage");
     return;
@@ -108,7 +104,7 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
       console.error("Failed to deserialize custom context:", error);
     }
   }
-
+  console.log("ECS Serialized: ", ecsSerialized);
   deserializeWorld(world, ecsSerialized);
   console.log("ECS state and custom context loaded from localStorage");
 };
