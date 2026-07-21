@@ -104,7 +104,7 @@ export type WaterVisualizationUniforms = {
  * Create a shader material that visualizes water flowing on terrain
  * This is the main water shader that manages each of the overlays.
  */
-export const createWaterVisualizationMaterialResource = ({
+const createWaterVisualizationMaterialResource = ({
   heightmap,
   waterHeightMap,
   cloudShadowMap,
@@ -176,4 +176,14 @@ export const initSceneMaterialResources = () => {
   enumCache.set(MaterialEnum.Normal, createNormalMaterialResource());
   enumCache.set(MaterialEnum.DownslopeArrows, createDownslopeArrowsMaterialResource());
   enumCache.set(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
+  enumCache.set(
+  MaterialEnum.WaterFlow,
+    createWaterVisualizationMaterialResource({
+      heightmap: getTexture(TextureEnum.DefaultHeightMap),
+      waterHeightMap: getTexture(TextureEnum.WaterHeightMap),
+      cloudShadowMap: getTexture(TextureEnum.CloudShadowMap),
+      velocityMap: getTexture(TextureEnum.VelocityMap),
+      sunLightPosition: new THREE.Vector3(0, 0, 0),
+    }),
+  );
 };

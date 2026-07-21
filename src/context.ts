@@ -10,6 +10,7 @@ export const createGameWorldContext = () => ({
     y: 0,
     z: 0,
   },
+  pendingInit: [],
 });
 
 export type GameWorldContext = ReturnType<typeof createGameWorldContext>;

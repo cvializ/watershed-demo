@@ -33,9 +33,6 @@ export const Position = {
 export const MeshRef = {
   ref: str([]),
 };
-export const TextureRef = {
-  ref: str([]),
-};
 export const MaterialRef = {
   ref: str([]),
 };

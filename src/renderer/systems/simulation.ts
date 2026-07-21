@@ -19,9 +19,18 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
     return;
   }
 
+  const [simulation$] = query(world, [WaterSimulationComponent]);
+  const simulationExists = Boolean(simulation$);
+  if (!simulationExists) {
+    return;
+  }
+
   const { showVelocity } = world;
-  const [entity$] = query(world, [WaterSimulationComponent, MaterialRef]);
-  const material = getMaterial(MaterialRef.ref[entity$] as MaterialEnum) as ShaderMaterial;
+  const materialId = MaterialRef.ref[simulation$] as MaterialEnum;
+  if (!materialId) {
+    return;
+  }
+  const material = getMaterial(materialId) as ShaderMaterial;
   const uniforms = getUniforms<WaterVisualizationUniforms>(material);
   uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
   uniforms.uLightPosition.value.x = world.sunPosition.x;
