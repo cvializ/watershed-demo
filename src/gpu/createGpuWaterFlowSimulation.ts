@@ -5,6 +5,7 @@ import { createGpuClouds } from "@/gpu/variables/createGpuClouds";
 import { createGpuWaterHeight } from "@/gpu/variables/createGpuWaterHeight";
 import { createGpuWaterSources } from "@/gpu/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/variables/createGpuWaterVelocity";
+import { logger } from "@/utils/logger";
 
 export type WaterFlowVisualization = {
   /**
@@ -111,7 +112,7 @@ export const createGpuWaterFlowSimulation = (
 
   const error = gpuCompute.init();
   if (error) {
-    console.error("gpu compute init error", error);
+    logger.error({ err: error }, "gpu compute init error");
   }
 
   initWaterSources();

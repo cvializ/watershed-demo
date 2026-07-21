@@ -7,6 +7,7 @@ import type { RendererInitSystem } from "@/renderer/types";
 import { Camera } from "@/components/components";
 import { createCameraResource } from "@/renderer/resources/camera";
 import { getCamera } from "@/scene/sceneUtils";
+import { logger } from "@/utils/logger";
 
 let controls: OrbitControls | null = null;
 
@@ -32,7 +33,7 @@ export const updateControls = (dt: number) => {
 
 export const cameraInitSystem: RendererInitSystem = (world, scene, renderer) => {
   observe(world, onAdd(Camera), () => {
-    console.log("[camera:add]");
+    logger.info("[camera:add]");
 
     const camera = createCameraResource();
 
@@ -51,7 +52,7 @@ export const cameraInitSystem: RendererInitSystem = (world, scene, renderer) => 
   });
 
   observe(world, onRemove(Camera), () => {
-    console.log("[camera:remove]");
+    logger.info("[camera:remove]");
     const camera = getCamera(scene);
     if (!camera) {
       return;

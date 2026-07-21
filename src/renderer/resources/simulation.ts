@@ -5,12 +5,13 @@ import {
   createGpuWaterFlowSimulation,
 } from "@/gpu/createGpuWaterFlowSimulation";
 import { createDisplacementTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
+import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
 const terrainSize = 12;
 
 export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
-    console.log("createGpuWaterFlowSimulation");
+    logger.info("createGpuWaterFlowSimulation");
 
     const waterSimulation = createGpuWaterFlowSimulation(
       SIM_SIZE,

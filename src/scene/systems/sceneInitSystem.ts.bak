@@ -9,20 +9,19 @@ import { initTextures } from "@/scene/resources/texture";
 import { cameraInitSystem } from "@/scene/systems/init/camera";
 import { hiddenInitSystem } from "@/scene/systems/init/hidden";
 import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation";
-import { logger } from "@/utils/logger";
 
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
-  logger.info("INIT!");
+  console.log("INIT!");
 
 
   observe(world, onAdd(MeshRef, Renderable), (entity$) => {
-    logger.debug("RENDERABLE ADDED");
+    console.log("RENDERABLE ADDED");
     world.pendingInit.push(entity$);
   });
 
   observe(world, onRemove(MeshRef, Renderable), (eid$) => {
-    logger.debug("RENDERABLE REMOVED");
-    logger.debug(`Remove mesh ${MeshRef.ref[eid$]}`);
+    console.log("RENDERABLE REMOVED");
+    console.log(`Remove mesh ${MeshRef.ref[eid$]}`);
     scene.remove(getMesh(MeshRef.ref[eid$] as MeshEnum));
   });
 

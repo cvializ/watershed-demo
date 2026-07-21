@@ -6,6 +6,7 @@ import type { SceneSystem } from "@/scene/types";
 import { MaterialRef, MeshRef } from "@/components/components";
 import { getMaterial, MaterialEnum } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
+import { logger } from "@/utils/logger";
 
 export const materialSystem: SceneSystem = (world) => {
   // Get all material meshes
@@ -14,12 +15,12 @@ export const materialSystem: SceneSystem = (world) => {
   for (const mesh$ of materialMeshes$) {
     const meshId = MeshRef.ref[mesh$];
     if (!meshId) {
-      console.error(`entity ${mesh$} MeshRef not found in world`);
+      logger.error(`entity ${mesh$} MeshRef not found in world`);
       continue;
     }
     const mesh = getMesh(meshId as MeshEnum) as THREE.Mesh;
     if (!mesh) {
-      console.error(`mesh with id ${meshId} not found in scene`);
+      logger.error(`mesh with id ${meshId} not found in scene`);
       continue;
     }
 

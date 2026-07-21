@@ -8,6 +8,7 @@ import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getCamera } from "@/scene/sceneUtils";
 
 import { waterSimulation } from "./simulation";
+import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
 const terrainSize = 12;
@@ -47,7 +48,7 @@ export const addWaterInitSystem: RendererInitSystem = (world, scene, renderer) =
     const point = intersect.point;
 
     // Debug: log world coordinates
-    console.log("World point:", { x: point.x, y: point.y, z: point.z });
+    logger.debug({ x: point.x, y: point.y, z: point.z }, "World point");
 
     // Convert world coordinates to terrain-local coordinates for water simulation
     // Terrain is rotated -π/2 around X-axis:
@@ -60,7 +61,7 @@ export const addWaterInitSystem: RendererInitSystem = (world, scene, renderer) =
     const y = point.z + terrainSize / 2; // Removed the negative sign
 
     // Debug: log converted coordinates
-    console.log("Converted terrain coords:", { x, y });
+    logger.debug({ x, y }, "Converted terrain coords");
 
     // Debug: log texture texel coordinates
     const uvX = x / terrainSize;
@@ -68,7 +69,7 @@ export const addWaterInitSystem: RendererInitSystem = (world, scene, renderer) =
     const width = SIM_SIZE; // simulation grid size
     const texelX = Math.floor(uvX * width);
     const centerY = Math.floor((1.0 - uvY) * width); // Y is flipped for texture coordinates
-    console.log("Texture texel coords:", { uvX, uvY, texelX, centerY });
+    logger.debug({ uvX, uvY, texelX, centerY }, "Texture texel coords");
 
     waterSimulation.addWater(x, y, 0.1, 3);
   });

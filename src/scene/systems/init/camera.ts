@@ -5,12 +5,13 @@ import type { SceneInitSystem } from "@/scene/types";
 import { Camera, MeshRef, Terrain } from "@/components/components";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getCamera } from "@/scene/sceneUtils";
+import { logger } from "@/utils/logger";
 
 export const cameraInitSystem: SceneInitSystem = (world, scene) => {
   observe(world, onAdd(Camera), () => {
     const camera = getCamera(scene);
     if (!camera) {
-      console.error("no camera in scene after add camera");
+      logger.error("no camera in scene after add camera");
       return;
     }
 

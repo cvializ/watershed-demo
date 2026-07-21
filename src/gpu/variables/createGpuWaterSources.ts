@@ -1,6 +1,7 @@
 import type { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
+import { logger } from "@/utils/logger";
 
 /**
  * Uniform interface for water sources computation shader.
@@ -120,7 +121,7 @@ const addWater = (
   if (currentCount < 16) {
     sourcesUniform.value[currentCount].set(x, y, radius, amount);
     countUniform.value = currentCount + 1;
-    console.log("Water source added:", { x, y, radius, amount, count: countUniform.value });
+    logger.debug({ x, y, radius, amount, count: countUniform.value }, "Water source added");
   } else {
     throw new Error("TOO MANY COUNT");
   }

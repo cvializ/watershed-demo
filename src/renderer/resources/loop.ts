@@ -14,5 +14,6 @@ export const createLoopResource = (cb: LoopFunction) => {
     cb(time, timer.getDelta());
   };
 
-  animate(performance.now());
+  timer.update();
+  animate(timer.getElapsed());
 };
