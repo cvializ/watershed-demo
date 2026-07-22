@@ -11,27 +11,27 @@ const SIM_SIZE = 512;
 const terrainSize = 12;
 
 export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
-    logger.info("createGpuWaterFlowSimulation");
+  logger.info("[simulation:create]");
 
-    const waterSimulation = createGpuWaterFlowSimulation(
-      SIM_SIZE,
-      terrainSize,
-      renderer,
-      createDisplacementTexture(512, 12),
-    );
+  const waterSimulation = createGpuWaterFlowSimulation(
+    SIM_SIZE,
+    terrainSize,
+    renderer,
+    createDisplacementTexture(512, 12),
+  );
 
-    const cloudShadowTexture = waterSimulation.getCloudShadowTexture();
-    setTexture(TextureEnum.CloudShadowMap, cloudShadowTexture);
+  const cloudShadowTexture = waterSimulation.getCloudShadowTexture();
+  setTexture(TextureEnum.CloudShadowMap, cloudShadowTexture);
 
-    const velocityTexture = waterSimulation.getVelocityTexture();
-    setTexture(TextureEnum.VelocityMap, velocityTexture);
+  const velocityTexture = waterSimulation.getVelocityTexture();
+  setTexture(TextureEnum.VelocityMap, velocityTexture);
 
-    const simulationTexture = waterSimulation.getSimulationTexture();
-    setTexture(TextureEnum.WaterHeightMap, simulationTexture);
+  const simulationTexture = waterSimulation.getSimulationTexture();
+  setTexture(TextureEnum.WaterHeightMap, simulationTexture);
 
-    // Create cloud sphere system using the cloud texture from GPU simulation
-    const cloudTexture = waterSimulation.getCloudShadowTexture();
-    const cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);
+  // Create cloud sphere system using the cloud texture from GPU simulation
+  const cloudTexture = waterSimulation.getCloudShadowTexture();
+  const cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);
 
-    return { waterSimulation, cloudSphereSystem };
+  return { waterSimulation, cloudSphereSystem };
 };

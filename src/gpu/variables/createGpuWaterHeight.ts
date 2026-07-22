@@ -75,6 +75,8 @@ export const createGpuWaterHeight = (
   cloudShadowVariable: Variable,
   waterSourcesVariable: Variable,
 ) => {
+  logger.info("[gpu:water-height:create]");
+
   const { texture: waterTexture } = createInitialWaterTexture(width);
   const waterHeightVariable = gpuCompute.addVariable(
     "waterHeight",

@@ -53,6 +53,8 @@ export const createGpuWaterSources = (
   heightMapTexture: THREE.Texture,
   terrainSize: number,
 ) => {
+  logger.info("[gpu:water-sources:create]");
+
   const { texture: waterSourcesTexture } = createInitialWaterSourcesTexture(width);
   const waterSourcesVariable = gpuCompute.addVariable(
     "waterSources",

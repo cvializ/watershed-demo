@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { logger } from "@/utils/logger";
 
 export type CloudSphereSystem = {
   /**
@@ -33,6 +34,8 @@ export const createCloudSphereSystem = (
   _renderer: THREE.WebGLRenderer,
   cloudTexture: THREE.Texture,
 ): CloudSphereSystem => {
+  logger.info("[gpu:cloud-sphere:create]");
+
   // Create a plane that covers the terrain area
   const cloudPlaneGeometry = new THREE.PlaneGeometry(12, 12, 64, 64);
 

@@ -1,8 +1,11 @@
 import * as THREE from "three";
 
 import { calculateHeight } from "@/terrainUtils";
+import { logger } from "@/utils/logger";
 
 export const createTerrainGeometry = () => {
+  logger.info("[terrain:geometry]");
+
   // Create triangular terrain mesh
   const terrainSize = 12;
   const segments = 80;
@@ -30,6 +33,8 @@ export const createTerrainGeometry = () => {
 };
 
 export const createTerrainResource = () => {
+  logger.info("[terrain:resource]");
+
   const geometry = createTerrainGeometry();
   const terrain = new THREE.Mesh(geometry);
   terrain.rotation.x = -Math.PI / 2;

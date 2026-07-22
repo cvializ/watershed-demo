@@ -5,6 +5,7 @@ import type { SceneInitSystem } from "@/scene/types";
 import { createDownslopeArrowsMeshResource } from "@/scene/resources/downslopeArrows";
 import { createTerrainResource } from "@/scene/resources/terrain";
 import { createWireframeResource } from "@/scene/resources/wireframe";
+import { logger } from "@/utils/logger";
 
 export const MeshEnum = {
   Terrain: "Terrain",
@@ -37,7 +38,9 @@ export const setMesh = (id: MeshEnum, value: THREE.Object3D) => {
 /**
  * Initialize all mesh geometries and add them to the cache
  */
-export const initMeshes: SceneInitSystem = () => {
+export const initMeshes: SceneInitSystem = (_world, _scene) => {
+  logger.info("[mesh:init]");
+
   enumCache.set(MeshEnum.Terrain, createTerrainResource());
   enumCache.set(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
   enumCache.set(MeshEnum.Wireframe, createWireframeResource());
