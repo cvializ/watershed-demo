@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
 import { getUniforms } from "@/utils/uniformUtils";
+import { logger } from "@/utils/logger";
 
 export type WaterVelocityUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
@@ -36,6 +37,8 @@ export const createGpuWaterVelocity = (
   heightMapTexture: THREE.Texture,
   waterHeightVariable: Variable,
 ) => {
+  logger.info("[gpu:water-velocity:create]");
+
   const { texture: velocityTexture } = createInitialVelocityTexture(width);
   const waterVelocityVariable = gpuCompute.addVariable(
     "waterVelocity",

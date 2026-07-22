@@ -86,6 +86,8 @@ export const createGpuWaterFlowSimulation = (
   renderer: THREE.WebGLRenderer,
   heightMapTexture: THREE.Texture,
 ): WaterFlowVisualization => {
+  logger.info("[gpu:water-flow:create]");
+
   const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
   const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(gpuCompute, width);

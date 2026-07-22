@@ -12,7 +12,7 @@ import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation"
 import { logger } from "@/utils/logger";
 
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
-  logger.info("INIT!");
+  logger.info("[scene:init]");
 
 
   observe(world, onAdd(MeshRef, Renderable), (entity$) => {

@@ -1,11 +1,14 @@
 import * as THREE from "three";
 
 import { calculateHeight } from "@/terrainUtils";
+import { logger } from "@/utils/logger";
 
 /**
  * Create a displacement map texture from the terrain height function
  */
 export const createDisplacementTexture = (size: number, terrainSize: number): THREE.DataTexture => {
+  logger.info("[texture:displacement]");
+
   const data = new Float32Array(size * size);
   const terrainScale = terrainSize / 2;
 
@@ -46,5 +49,7 @@ export const getTexture = (id: TextureEnum) => {
 };
 
 export const initTextures = () => {
+  logger.info("[texture:init]");
+
   enumCache.set(TextureEnum.DefaultHeightMap, createDisplacementTexture(512, 12));
 };

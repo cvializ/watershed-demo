@@ -20,6 +20,8 @@ let deserializer: (
 // TODO: create serializer and deserializer right after world is initialized.
 // Initialize serializers on first use (after world is created)
 export const initSerializers = (world: GameWorld) => {
+  logger.info("[storage:serializer:init]");
+
   serializer = createSnapshotSerializer(world, components);
   deserializer = createSnapshotDeserializer(world, components);
 };
@@ -68,6 +70,8 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
  * Save ECS state and custom context to localStorage
  */
 export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
+  logger.info("[storage:save]");
+
   // Save current camera state to context before serialization
   const controls = getControls();
   if (controls) {

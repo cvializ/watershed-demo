@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 import driftingCloudFragmentShader from "@/shaders/compute/drifting-cloud.frag?raw";
 import { getUniforms } from "@/utils/uniformUtils";
+import { logger } from "@/utils/logger";
 
 /**
  * Uniform structure for drifting cloud computation shader.
@@ -60,6 +61,8 @@ const createInitialCloudTexture = (
  * @returns GPU clouds system with variable and update function
  */
 export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: number): GpuClouds => {
+  logger.info("[gpu:clouds:create]");
+
   const { texture: cloudTexture } = createInitialCloudTexture(width);
 
   const cloudVariable = gpuCompute.addVariable(

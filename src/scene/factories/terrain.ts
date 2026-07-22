@@ -6,6 +6,8 @@ import { MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
 
 export function createTerrain(world: World): number {
+  logger.info("[terrain:create]");
+
   const entity$ = addEntity(world);
 
   addComponent(world, entity$, Terrain);

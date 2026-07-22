@@ -7,6 +7,7 @@ import slopeVisualizationFrag from "@/shaders/slope-visualization.frag?raw";
 import slopeVisualizationVert from "@/shaders/slope-visualization.vert?raw";
 import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
 import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
+import { logger } from "@/utils/logger";
 
 export const createDefaultMaterialResource = () => {
   return new THREE.MeshPhongMaterial({
@@ -166,6 +167,8 @@ export const setMaterial = (id: MaterialEnum, value: THREE.Material) => {
 };
 
 export const initSceneMaterialResources = () => {
+  logger.info("[material:init]");
+
   enumCache.set(MaterialEnum.Default, createDefaultMaterialResource());
   enumCache.set(
     MaterialEnum.HeightVisualization,
@@ -177,7 +180,7 @@ export const initSceneMaterialResources = () => {
   enumCache.set(MaterialEnum.DownslopeArrows, createDownslopeArrowsMaterialResource());
   enumCache.set(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
   enumCache.set(
-  MaterialEnum.WaterFlow,
+    MaterialEnum.WaterFlow,
     createWaterVisualizationMaterialResource({
       heightmap: getTexture(TextureEnum.DefaultHeightMap),
       waterHeightMap: getTexture(TextureEnum.WaterHeightMap),
