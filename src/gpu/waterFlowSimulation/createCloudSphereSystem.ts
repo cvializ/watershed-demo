@@ -145,11 +145,12 @@ void main() {
   cloudMesh.rotation.x = -Math.PI / 2;
   cloudMesh.renderOrder = 10; // Render after terrain (higher render order)
 
-  let _currentTime = 0;
+  let currentTime = 0;
 
   // Update function
   const update = (_camera: THREE.Camera, deltaTime: number): void => {
-    _currentTime += deltaTime;
+    currentTime += deltaTime;
+    cloudMaterial.uniforms.uTime.value = currentTime;
   };
 
   const getMesh = (): THREE.Mesh => {
