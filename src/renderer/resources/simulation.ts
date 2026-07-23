@@ -1,9 +1,7 @@
 import * as THREE from "three";
 
-import { createCloudSphereSystem } from "@/gpu/createCloudSphereSystem";
-import {
-  createGpuWaterFlowSimulation,
-} from "@/gpu/createGpuWaterFlowSimulation";
+import { createCloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
+import { createGpuWaterFlowSimulation } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
 import { createDisplacementTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 

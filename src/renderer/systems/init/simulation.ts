@@ -1,9 +1,7 @@
 import type { RendererInitSystem } from "@/renderer/types";
 
-import { type CloudSphereSystem } from "@/gpu/createCloudSphereSystem";
-import {
-  type WaterFlowVisualization,
-} from "@/gpu/createGpuWaterFlowSimulation";
+import { type CloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
+import { type WaterFlowVisualization } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
 import { createSimulationResource } from "@/renderer/resources/simulation";
 
 export let waterSimulation: WaterFlowVisualization | null = null;

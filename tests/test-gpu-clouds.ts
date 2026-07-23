@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
-import { createGpuClouds } from "@/gpu/variables/createGpuClouds.ts";
+import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds.ts";
 
 import { test } from "./clientTestUtils.ts";
 
