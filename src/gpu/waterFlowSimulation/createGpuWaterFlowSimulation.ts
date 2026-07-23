@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
-import { createGpuClouds } from "@/gpu/variables/createGpuClouds";
-import { createGpuWaterHeight } from "@/gpu/variables/createGpuWaterHeight";
-import { createGpuWaterSources } from "@/gpu/variables/createGpuWaterSources";
-import { createGpuWaterVelocity } from "@/gpu/variables/createGpuWaterVelocity";
+import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
+import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
+import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
+import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
 import { logger } from "@/utils/logger";
 
 export type WaterFlowVisualization = {
