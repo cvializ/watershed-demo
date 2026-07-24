@@ -13,8 +13,8 @@ import {
   type PulsingVisualizationUniforms,
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
-import { getUniforms } from "@/utils/uniformUtils";
 import { logger } from "@/utils/logger";
+import { getUniforms } from "@/utils/uniformUtils";
 
 export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => {
   if (!waterSimulation) {
@@ -32,12 +32,12 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
   if (!materialId) {
     return;
   }
-  
+
   const material = getMaterial(materialId) as ShaderMaterial;
-  
+
   // Check if this is a pulsing simulation material
   const isPulsingMaterial = materialId === MaterialEnum.PulsingSimulation;
-  
+
   if (isPulsingMaterial) {
     // Update pulsing simulation texture
     const uniform = getUniforms<PulsingVisualizationUniforms>(material);

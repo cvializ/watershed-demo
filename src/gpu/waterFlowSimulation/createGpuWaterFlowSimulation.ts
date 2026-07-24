@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
+import { createPulsingTexture } from "@/gpu/pulsingSimulation/createPulsingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
-import { createPulsingTexture } from "@/gpu/pulsingSimulation/createPulsingTexture";
 import { logger } from "@/utils/logger";
 
 export type WaterFlowVisualization = {
@@ -134,10 +134,10 @@ export const createGpuWaterFlowSimulation = (
       updateClouds(deltaTime);
 
       updateWaterHeight();
-      
+
       // Update pulsing texture
       updatePulsing(deltaTime);
-      
+
       // Compute all variables (velocity computation, pulsing)
       gpuCompute.compute();
 

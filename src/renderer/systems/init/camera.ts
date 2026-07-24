@@ -1,5 +1,5 @@
-import * as THREE from "three";
 import { observe, onAdd, onRemove } from "bitecs";
+import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 
 import type { RendererInitSystem } from "@/renderer/types";
