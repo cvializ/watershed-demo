@@ -34,12 +34,12 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
   },
   page: async ({ page, _pageErrorState, _consoleErrorState }, use, testInfo) => {
     const errors: { type: string; message: string }[] = [];
-    
+
     page.on("pageerror", (err) => {
       const where = `${basename(testInfo.file)}:${testInfo.line}`;
       // eslint-disable-next-line no-console
       console.log(`BROWSER ERROR: ${where} ${err.message}`);
-      errors.push({ type: 'pageerror', message: err.message });
+      errors.push({ type: "pageerror", message: err.message });
     });
 
     page.on("console", (msg) => {
@@ -47,7 +47,7 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
         const where = `${basename(testInfo.file)}:${testInfo.line}`;
         // eslint-disable-next-line no-console
         console.log(`BROWSER CONSOLE ERROR: ${where} ${msg.text()}`);
-        errors.push({ type: 'console', message: msg.text() });
+        errors.push({ type: "console", message: msg.text() });
       }
     });
 
@@ -58,9 +58,9 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
     const consoleErrorsAllowed = _consoleErrorState.allowed;
 
     if (!allErrorsAllowed && errors.length > 0) {
-      const pageErrorCount = errors.filter(e => e.type === 'pageerror').length;
-      const consoleErrorCount = errors.filter(e => e.type === 'console').length;
-      
+      const pageErrorCount = errors.filter((e) => e.type === "pageerror").length;
+      const consoleErrorCount = errors.filter((e) => e.type === "console").length;
+
       let message = `Browser raised ${errors.length} error(s):`;
       if (pageErrorCount > 0 && !pageErrorsAllowed) {
         message += `\n  - ${pageErrorCount} page error(s)`;
@@ -69,7 +69,7 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
         message += `\n  - ${consoleErrorCount} console error(s)`;
       }
       message += `\n${errors.map((e) => e.message).join("\n")}`;
-      
+
       throw new Error(message);
     }
   },

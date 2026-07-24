@@ -1,9 +1,9 @@
 import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
-import { logger } from "@/utils/logger";
 
 import pulsingFragmentShader from "@/shaders/compute/pulsing.frag?raw";
+import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
 /**
@@ -16,7 +16,9 @@ export type PulsingUniforms = {
 /**
  * Creates an initial texture for the pulsing simulation.
  */
-const createInitialPulsingTexture = (size: number): { texture: THREE.DataTexture; data: Float32Array } => {
+const createInitialPulsingTexture = (
+  size: number,
+): { texture: THREE.DataTexture; data: Float32Array } => {
   const data = new Float32Array(size * size * 4); // RGBA
 
   for (let i = 0; i < size * size; i++) {

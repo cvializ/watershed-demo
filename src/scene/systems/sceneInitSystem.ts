@@ -14,7 +14,6 @@ import { logger } from "@/utils/logger";
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   logger.info("[scene:init]");
 
-
   observe(world, onAdd(MeshRef, Renderable), (entity$) => {
     logger.debug("RENDERABLE ADDED");
     world.pendingInit.push(entity$);
@@ -26,8 +25,6 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
     scene.remove(getMesh(MeshRef.ref[eid$] as MeshEnum));
   });
 
-
-  
   initTextures();
   initSceneMaterialResources();
   initMeshes(world, scene);

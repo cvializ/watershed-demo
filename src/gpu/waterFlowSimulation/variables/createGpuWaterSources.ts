@@ -1,6 +1,7 @@
 import type { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
+
 import { logger } from "@/utils/logger";
 
 /**

@@ -6,9 +6,9 @@ import type { RendererInitSystem } from "@/renderer/types";
 import { Terrain, MeshRef } from "@/components/components";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getCamera } from "@/scene/sceneUtils";
+import { logger } from "@/utils/logger";
 
 import { waterSimulation } from "./simulation";
-import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
 const terrainSize = 12;

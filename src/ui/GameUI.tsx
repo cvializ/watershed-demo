@@ -26,7 +26,7 @@ export const GameUI = ({ world }: GameUiProps) => {
     world.visualizationMode = value;
 
     // Special handling for option 5: Hide Velocity Arrows
-    world.showVelocity = (value !== 5);
+    world.showVelocity = value !== 5;
   };
 
   const handleSaveClick = () => {
