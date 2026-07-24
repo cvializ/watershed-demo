@@ -31,7 +31,11 @@ export const updateControls = (dt: number) => {
   controls.update(dt);
 };
 
-export const cameraInitSystem: RendererInitSystem = (world, scene, renderer) => {
+export const cameraInitSystem: RendererInitSystem = (
+  world,
+  scene,
+  renderer,
+) => {
   observe(world, onAdd(Camera), () => {
     logger.info("[camera:add]");
 

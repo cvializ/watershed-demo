@@ -14,7 +14,10 @@ export const createWireframeResource = () => {
   const terrainGeometry = createTerrainGeometry();
   const wireframeGeometry = new THREE.WireframeGeometry(terrainGeometry);
   const wireframeMaterial = createWireframeMaterialResource();
-  const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+  const wireframe = new THREE.LineSegments(
+    wireframeGeometry,
+    wireframeMaterial,
+  );
 
   // Apply same rotation as terrain
   wireframe.rotation.x = -Math.PI / 2;

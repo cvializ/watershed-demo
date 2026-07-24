@@ -6,7 +6,10 @@ import { logger } from "@/utils/logger";
 /**
  * Create a displacement map texture from the terrain height function
  */
-export const createDisplacementTexture = (size: number, terrainSize: number): THREE.DataTexture => {
+export const createDisplacementTexture = (
+  size: number,
+  terrainSize: number,
+): THREE.DataTexture => {
   logger.info("[texture:displacement]");
 
   const data = new Float32Array(size * size);
@@ -18,7 +21,13 @@ export const createDisplacementTexture = (size: number, terrainSize: number): TH
     data[i] = calculateHeight(x, z);
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RedFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RedFormat,
+    THREE.FloatType,
+  );
   texture.needsUpdate = true;
   return texture;
 };
@@ -52,5 +61,8 @@ export const getTexture = (id: TextureEnum) => {
 export const initTextures = () => {
   logger.info("[texture:init]");
 
-  enumCache.set(TextureEnum.DefaultHeightMap, createDisplacementTexture(512, 12));
+  enumCache.set(
+    TextureEnum.DefaultHeightMap,
+    createDisplacementTexture(512, 12),
+  );
 };

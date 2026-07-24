@@ -1,4 +1,7 @@
-import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
+import type {
+  GPUComputationRenderer,
+  Variable,
+} from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
 
@@ -28,7 +31,13 @@ const createInitialPulsingTexture = (
     data[i * 4 + 3] = 1.0; // A: alpha
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
   texture.needsUpdate = true;
   logger.debug({ size }, "Initial pulsing texture created");
   return { texture, data };
@@ -45,7 +54,11 @@ export const createPulsingTexture = (
   logger.info("[gpu:pulsing:create]");
 
   const { texture: pulsingTexture } = createInitialPulsingTexture(width);
-  const pulsingVariable = gpuCompute.addVariable("pulsing", pulsingFragmentShader, pulsingTexture);
+  const pulsingVariable = gpuCompute.addVariable(
+    "pulsing",
+    pulsingFragmentShader,
+    pulsingTexture,
+  );
 
   const uniforms = getUniforms<PulsingUniforms>(pulsingVariable.material);
   uniforms.uTime = { value: 0.0 };

@@ -1,6 +1,11 @@
 import { addEntity, addComponent, type World } from "bitecs";
 
-import { MaterialRef, MeshRef, Renderable, Terrain } from "@/components/components";
+import {
+  MaterialRef,
+  MeshRef,
+  Renderable,
+  Terrain,
+} from "@/components/components";
 import { MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";

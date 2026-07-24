@@ -1,4 +1,7 @@
-import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
+import type {
+  GPUComputationRenderer,
+  Variable,
+} from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
 
@@ -25,7 +28,13 @@ const createInitialVelocityTexture = (
     data[i * 4 + 3] = 1.0; // alpha
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
   texture.needsUpdate = true;
 
   return { texture, data };
@@ -46,13 +55,17 @@ export const createGpuWaterVelocity = (
     velocityTexture,
   );
 
-  gpuCompute.setVariableDependencies(waterVelocityVariable, [waterHeightVariable]);
+  gpuCompute.setVariableDependencies(waterVelocityVariable, [
+    waterHeightVariable,
+  ]);
 
   return {
     waterVelocityVariable,
     initWaterVelocity: () => {
       // Set the water heightmap uniform after initialization
-      const uniforms = getUniforms<WaterVelocityUniforms>(waterVelocityVariable.material);
+      const uniforms = getUniforms<WaterVelocityUniforms>(
+        waterVelocityVariable.material,
+      );
       uniforms.uHeightMap = { value: heightMapTexture };
       uniforms.uWaterHeightmap = {
         value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,

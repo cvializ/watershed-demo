@@ -54,7 +54,8 @@ function findSourceFiles(dir: string): string[] {
 function checkFile(filePath: string): {
   warnings: Array<{ filePath: string; varName: string; line: number }>;
 } {
-  const warnings: Array<{ filePath: string; varName: string; line: number }> = [];
+  const warnings: Array<{ filePath: string; varName: string; line: number }> =
+    [];
 
   try {
     const content = readFileSync(filePath, "utf-8");
@@ -68,7 +69,9 @@ function checkFile(filePath: string): {
       const declarationPos = match.index ?? 0;
 
       // Count lines to get declaration line number
-      const declarationLines = content.substring(0, declarationPos).split("\n").length;
+      const declarationLines = content
+        .substring(0, declarationPos)
+        .split("\n").length;
 
       // Look for usage of this specific variable AFTER its declaration
       // by scanning the content after the declaration line
@@ -109,9 +112,15 @@ function checkFile(filePath: string): {
 
 function main() {
   let totalWarnings = 0;
-  const allWarnings: Array<{ filePath: string; varName: string; line: number }> = [];
+  const allWarnings: Array<{
+    filePath: string;
+    varName: string;
+    line: number;
+  }> = [];
 
-  console.log("Checking for underscore-prefixed variables that are actually used...\n");
+  console.log(
+    "Checking for underscore-prefixed variables that are actually used...\n",
+  );
 
   // Check all source directories
   for (const dir of SOURCE_DIRS) {
@@ -127,7 +136,9 @@ function main() {
 
   // Report results
   if (allWarnings.length > 0) {
-    console.error("❌ Found underscore-prefixed variables that are actually used:\n");
+    console.error(
+      "❌ Found underscore-prefixed variables that are actually used:\n",
+    );
 
     for (const warning of allWarnings) {
       console.error(
@@ -138,7 +149,9 @@ function main() {
     console.error(`\nTotal: ${allWarnings.length} warning(s)\n`);
     totalWarnings = allWarnings.length;
   } else {
-    console.log("✅ No issues found. All underscore-prefixed variables are properly unused.\n");
+    console.log(
+      "✅ No issues found. All underscore-prefixed variables are properly unused.\n",
+    );
   }
 
   process.exit(totalWarnings > 0 ? 1 : 0);

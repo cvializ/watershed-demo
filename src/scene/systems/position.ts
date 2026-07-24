@@ -20,6 +20,10 @@ export const positionSystem: SceneSystem = (world) => {
       continue;
     }
 
-    mesh.position.set(Position.x[entity$], Position.y[entity$], Position.z[entity$]);
+    mesh.position.set(
+      Position.x[entity$],
+      Position.y[entity$],
+      Position.z[entity$],
+    );
   }
 };

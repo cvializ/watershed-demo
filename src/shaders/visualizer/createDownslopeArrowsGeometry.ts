@@ -47,7 +47,9 @@ export function createDownslopeArrowsGeometry(
       const downslopeY = ny / nz;
 
       // Scale to arrow length
-      const magnitude = Math.sqrt(downslopeX * downslopeX + downslopeY * downslopeY);
+      const magnitude = Math.sqrt(
+        downslopeX * downslopeX + downslopeY * downslopeY,
+      );
       if (magnitude > 0.001) {
         const scale = arrowLength / magnitude;
         const dxScaled = downslopeX * scale;
@@ -61,7 +63,10 @@ export function createDownslopeArrowsGeometry(
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(arrowPositions, 3));
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(arrowPositions, 3),
+  );
 
   return geometry;
 }

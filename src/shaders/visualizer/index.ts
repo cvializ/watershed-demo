@@ -16,7 +16,12 @@ interface ShaderConfig {
   fragmentUrl: URL;
   uniforms: Record<
     string,
-    { value: number | THREE.Color | THREE.Vector2; min?: number; max?: number; step?: number }
+    {
+      value: number | THREE.Color | THREE.Vector2;
+      min?: number;
+      max?: number;
+      step?: number;
+    }
   >;
   createGeometry: (geometryKey?: GeometryKey) => {
     geometry: THREE.BufferGeometry;
@@ -208,7 +213,12 @@ const shaderConfig: Record<string, ShaderConfig> = {
     fragmentUrl: new URL("../drifting-cloud.frag", import.meta.url),
     uniforms: {
       uTime: { value: 0.0 }, // Will be updated in animate loop
-      uDriftSpeed: { value: new THREE.Vector2(0.5, 0.3), min: -2, max: 2, step: 0.1 },
+      uDriftSpeed: {
+        value: new THREE.Vector2(0.5, 0.3),
+        min: -2,
+        max: 2,
+        step: 0.1,
+      },
       uSpeed: { value: 1.0, min: 0.1, max: 3, step: 0.1 },
       uScale: { value: 4.0, min: 1.0, max: 10, step: 0.5 },
       uDensity: { value: 0.6, min: 0.1, max: 0.9, step: 0.05 },
@@ -311,7 +321,9 @@ async function loadShaders() {
   for (const key of keys) {
     const option = document.createElement("option");
     option.value = key;
-    option.textContent = key.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    option.textContent = key
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
     shaderSelect.appendChild(option);
   }
 
@@ -399,7 +411,9 @@ async function selectShader(key: string, _geometryKey: GeometryKey = "plane") {
   });
 
   uniformsControls.length = 0;
-  const inputs = controlsPanel ? controlsPanel.querySelectorAll('input[type="range"]') : null;
+  const inputs = controlsPanel
+    ? controlsPanel.querySelectorAll('input[type="range"]')
+    : null;
   if (inputs) {
     inputs.forEach((input) => {
       input.addEventListener("input", onUniformChange);
@@ -426,7 +440,9 @@ function createControlsPanel(key: string) {
     controlGroup.className = "control-group";
 
     const label = document.createElement("label");
-    label.textContent = name.replace("u", "").replace(/[A-Z]/g, (l) => " " + l.toLowerCase());
+    label.textContent = name
+      .replace("u", "")
+      .replace(/[A-Z]/g, (l) => " " + l.toLowerCase());
     controlGroup.appendChild(label);
 
     // Check if this is a Vector2 uniform (like uDriftSpeed)
@@ -582,12 +598,14 @@ function onUniformChange(event: Event) {
   if (shaderMaterial && shaderMaterial.uniforms[uniformName]) {
     // Handle Vector2 uniforms
     if (component === "x") {
-      const vectorValue = shaderMaterial.uniforms[uniformName].value as THREE.Vector2;
+      const vectorValue = shaderMaterial.uniforms[uniformName]
+        .value as THREE.Vector2;
       const newValue = parseFloat((target as HTMLInputElement).value);
       vectorValue.x = newValue;
       shaderMaterial.uniforms[uniformName].value = vectorValue;
     } else if (component === "y") {
-      const vectorValue = shaderMaterial.uniforms[uniformName].value as THREE.Vector2;
+      const vectorValue = shaderMaterial.uniforms[uniformName]
+        .value as THREE.Vector2;
       const newValue = parseFloat((target as HTMLInputElement).value);
       vectorValue.y = newValue;
       shaderMaterial.uniforms[uniformName].value = vectorValue;
@@ -651,7 +669,10 @@ if (shaderSelect && geometrySelect) {
   geometrySelect.addEventListener("change", () => {
     if (shaderSelect && geometrySelect) {
       const geometryKey = (geometrySelect as HTMLSelectElement).value;
-      selectShader((shaderSelect as HTMLSelectElement).value, geometryKey as GeometryKey);
+      selectShader(
+        (shaderSelect as HTMLSelectElement).value,
+        geometryKey as GeometryKey,
+      );
     }
   });
 }

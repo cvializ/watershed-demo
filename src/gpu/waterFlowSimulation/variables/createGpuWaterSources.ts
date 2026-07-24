@@ -43,7 +43,13 @@ const createInitialWaterSourcesTexture = (
     data[i * 4 + 3] = 1.0; // A: alpha
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
   texture.needsUpdate = true;
   return { texture, data };
 };
@@ -56,15 +62,20 @@ export const createGpuWaterSources = (
 ) => {
   logger.info("[gpu:water-sources:create]");
 
-  const { texture: waterSourcesTexture } = createInitialWaterSourcesTexture(width);
+  const { texture: waterSourcesTexture } =
+    createInitialWaterSourcesTexture(width);
   const waterSourcesVariable = gpuCompute.addVariable(
     "waterSources",
     waterSourcesFragmentShader,
     waterSourcesTexture,
   );
-  gpuCompute.setVariableDependencies(waterSourcesVariable, [waterSourcesVariable]);
+  gpuCompute.setVariableDependencies(waterSourcesVariable, [
+    waterSourcesVariable,
+  ]);
 
-  const uniforms = getUniforms<WaterSourcesUniforms>(waterSourcesVariable.material);
+  const uniforms = getUniforms<WaterSourcesUniforms>(
+    waterSourcesVariable.material,
+  );
 
   return {
     waterSourcesVariable,
@@ -124,7 +135,10 @@ const addWater = (
   if (currentCount < 16) {
     sourcesUniform.value[currentCount].set(x, y, radius, amount);
     countUniform.value = currentCount + 1;
-    logger.debug({ x, y, radius, amount, count: countUniform.value }, "Water source added");
+    logger.debug(
+      { x, y, radius, amount, count: countUniform.value },
+      "Water source added",
+    );
   } else {
     throw new Error("TOO MANY COUNT");
   }

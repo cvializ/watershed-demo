@@ -1,6 +1,10 @@
 import type { GameWorld } from "@/types";
 
-import { clearWorldStorage, loadFromWorldStorage, saveToWorldStorage } from "@/storage";
+import {
+  clearWorldStorage,
+  loadFromWorldStorage,
+  saveToWorldStorage,
+} from "@/storage";
 
 type GameUiProps = {
   world: GameWorld;
@@ -21,7 +25,9 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 6, label: "Pulsing Simulation" },
   ];
 
-  const handleMaterialChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleMaterialChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     const value = parseInt(event.target.value, 10);
     world.visualizationMode = value;
 
@@ -95,10 +101,18 @@ export const GameUI = ({ world }: GameUiProps) => {
       </div>
       <div style={styles.storageContainer}>
         <div style={styles.storageSection}>
-          <button onClick={handleSaveClick} style={styles.button} title="Save current state">
+          <button
+            onClick={handleSaveClick}
+            style={styles.button}
+            title="Save current state"
+          >
             Save
           </button>
-          <button onClick={handleLoadClick} style={styles.button} title="Load saved state">
+          <button
+            onClick={handleLoadClick}
+            style={styles.button}
+            title="Load saved state"
+          >
             Load
           </button>
           <button

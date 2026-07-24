@@ -23,12 +23,19 @@ const promisesObjectToArray = async <T>(
   obj: Record<string, () => Promise<T>>,
 ): Promise<Array<[string, T]>> => {
   const entries = Object.entries(obj);
-  const resolvedValues = await Promise.all(Object.values(obj).map((fn) => fn()));
-  return entries.map(([modulePath], index) => [modulePath, resolvedValues[index]]);
+  const resolvedValues = await Promise.all(
+    Object.values(obj).map((fn) => fn()),
+  );
+  return entries.map(([modulePath], index) => [
+    modulePath,
+    resolvedValues[index],
+  ]);
 };
 
 const vertexShaders = await promisesObjectToArray<string>(vertexShaderModules);
-const fragmentShaders = await promisesObjectToArray<string>(fragmentShaderModules);
+const fragmentShaders = await promisesObjectToArray<string>(
+  fragmentShaderModules,
+);
 
 const createVertexShaderTestGeometry = () => {
   const group = new THREE.Group();
@@ -52,7 +59,9 @@ const createFragmentShaderTestGeometry = () => {
   const group = new THREE.Group();
 
   fragmentShaders.forEach(([modulePath, shader]) => {
-    const vertexShaderEntry = vertexShaders.find((p) => p[0].startsWith(getBasename(modulePath)));
+    const vertexShaderEntry = vertexShaders.find((p) =>
+      p[0].startsWith(getBasename(modulePath)),
+    );
     if (!vertexShaderEntry) {
       throw new Error(`Could not find vertex shader for ${modulePath}`);
     }

@@ -1,4 +1,7 @@
-import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
+import type {
+  GPUComputationRenderer,
+  Variable,
+} from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
 
@@ -38,7 +41,13 @@ const createInitialCloudTexture = (
     data[i + 3] = 1.0; // A: alpha
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
   texture.needsUpdate = true;
 
   return { texture, data };
@@ -60,7 +69,10 @@ const createInitialCloudTexture = (
  * @param width - Width of the computation texture (height will be same for square grid)
  * @returns GPU clouds system with variable and update function
  */
-export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: number): GpuClouds => {
+export const createGpuClouds = (
+  gpuCompute: GPUComputationRenderer,
+  width: number,
+): GpuClouds => {
   logger.info("[gpu:clouds:create]");
 
   const { texture: cloudTexture } = createInitialCloudTexture(width);
@@ -82,7 +94,9 @@ export const createGpuClouds = (gpuCompute: GPUComputationRenderer, width: numbe
   };
 
   // Initialize uniforms using typed uniform interface (new uniform type approach)
-  const cloudUniforms = getUniforms<DriftingCloudUniforms>(cloudVariable.material);
+  const cloudUniforms = getUniforms<DriftingCloudUniforms>(
+    cloudVariable.material,
+  );
   cloudUniforms.uTime = { value: 0.0 };
   cloudUniforms.uDriftSpeed = { value: config.driftSpeed.clone() };
   cloudUniforms.uSpeed = { value: config.speed };

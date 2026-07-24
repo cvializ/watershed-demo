@@ -7,7 +7,9 @@
  */
 import * as THREE from "three";
 
-const isSafari = navigator.userAgent.includes("Safari") && !navigator.userAgent.includes("Chrome");
+const isSafari =
+  navigator.userAgent.includes("Safari") &&
+  !navigator.userAgent.includes("Chrome");
 
 /**
  * Configuration options for rendering to console
@@ -30,7 +32,12 @@ export async function renderToConsole(
   material: THREE.Material,
   options: ConsoleRenderOptions = {},
 ): Promise<void> {
-  const { width = 256, height = 256, format = "image/png", quality = 0.9 } = options;
+  const {
+    width = 256,
+    height = 256,
+    format = "image/png",
+    quality = 0.9,
+  } = options;
 
   try {
     // Create a scene and renderer for off-screen rendering
@@ -111,7 +118,12 @@ export async function getRenderedDataURL(
   material: THREE.Material,
   options: ConsoleRenderOptions = {},
 ): Promise<string> {
-  const { width = 256, height = 256, format = "image/png", quality = 0.9 } = options;
+  const {
+    width = 256,
+    height = 256,
+    format = "image/png",
+    quality = 0.9,
+  } = options;
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -154,7 +166,10 @@ export async function renderMultipleToConsole(
   );
 
   for (const item of items) {
-    console.log(`%c${item.name}`, "font-weight: bold; font-size: 12px; color: #666;");
+    console.log(
+      `%c${item.name}`,
+      "font-weight: bold; font-size: 12px; color: #666;",
+    );
     try {
       await renderToConsole(item.material, { width, height, ...options });
     } catch (error) {
@@ -276,12 +291,18 @@ export async function exampleInlineShader(): Promise<void> {
     fragmentShader,
   });
 
-  console.log("%c==============================", "color: #00ff88; font-weight: bold;");
+  console.log(
+    "%c==============================",
+    "color: #00ff88; font-weight: bold;",
+  );
   console.log(
     "%cThree.js Shader in Console",
     "color: #00ff88; font-weight: bold; font-size: 16px;",
   );
-  console.log("%c------------------------------", "color: #00ff88; font-weight: bold;");
+  console.log(
+    "%c------------------------------",
+    "color: #00ff88; font-weight: bold;",
+  );
 
   await renderToConsole(shaderMaterial, {
     width: 256,
@@ -289,7 +310,10 @@ export async function exampleInlineShader(): Promise<void> {
     showSize: true,
   });
 
-  console.log("%c==============================", "color: #00ff88; font-weight: bold;");
+  console.log(
+    "%c==============================",
+    "color: #00ff88; font-weight: bold;",
+  );
 }
 
 /**
@@ -308,5 +332,8 @@ export async function exampleDebugMaterials(): Promise<void> {
     "%c--- Debug Materials Preview ---",
     "color: #00ff88; font-weight: bold; font-size: 14px;",
   );
-  console.log("%c(Debug materials not yet implemented)", "color: #666; font-style: italic;");
+  console.log(
+    "%c(Debug materials not yet implemented)",
+    "color: #666; font-style: italic;",
+  );
 }

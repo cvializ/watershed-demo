@@ -96,28 +96,31 @@ export const createGpuWaterFlowSimulation = (
 
   const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
-  const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(gpuCompute, width);
+  const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(
+    gpuCompute,
+    width,
+  );
 
-  const { waterSourcesVariable, initWaterSources, addWater, clearWater } = createGpuWaterSources(
-    gpuCompute,
-    width,
-    heightMapTexture,
-    terrainSize,
-  );
-  const { waterHeightVariable, initWaterHeight, updateWaterHeight } = createGpuWaterHeight(
-    gpuCompute,
-    width,
-    heightMapTexture,
-    cloudVariable,
-    waterSourcesVariable,
-  );
+  const { waterSourcesVariable, initWaterSources, addWater, clearWater } =
+    createGpuWaterSources(gpuCompute, width, heightMapTexture, terrainSize);
+  const { waterHeightVariable, initWaterHeight, updateWaterHeight } =
+    createGpuWaterHeight(
+      gpuCompute,
+      width,
+      heightMapTexture,
+      cloudVariable,
+      waterSourcesVariable,
+    );
   const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
     width,
     heightMapTexture,
     waterHeightVariable,
   );
-  const { pulsingVariable, initPulsing, updatePulsing } = createPulsingTexture(gpuCompute, width);
+  const { pulsingVariable, initPulsing, updatePulsing } = createPulsingTexture(
+    gpuCompute,
+    width,
+  );
 
   const error = gpuCompute.init();
   if (error) {
@@ -145,15 +148,20 @@ export const createGpuWaterFlowSimulation = (
     },
     addWater,
     setSunPosition: (position: THREE.Vector3) => {
-      waterHeightVariable.material.uniforms.uLightPosition = { value: position.clone() };
+      waterHeightVariable.material.uniforms.uLightPosition = {
+        value: position.clone(),
+      };
     },
     getCloudShadowTexture: () => getCloudTexture(),
-    getSimulationTexture: () => gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
-    getVelocityTexture: () => gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
+    getSimulationTexture: () =>
+      gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
+    getVelocityTexture: () =>
+      gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
     getSurfaceMaterialTexture: (): THREE.Texture => {
       // Placeholder - returns empty texture as surface materials are not yet implemented
       return new THREE.Texture();
     },
-    getPulsingTexture: () => gpuCompute.getCurrentRenderTarget(pulsingVariable).texture,
+    getPulsingTexture: () =>
+      gpuCompute.getCurrentRenderTarget(pulsingVariable).texture,
   };
 };

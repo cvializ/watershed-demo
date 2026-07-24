@@ -16,12 +16,8 @@ const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 const heightMapTexture = gpuCompute.createTexture(); // TODO: create actual blank heightmap texture
 const terrainSize = 512;
 
-const { waterSourcesVariable, addWater, clearWater, initWaterSources } = createGpuWaterSources(
-  gpuCompute,
-  width,
-  heightMapTexture,
-  terrainSize,
-);
+const { waterSourcesVariable, addWater, clearWater, initWaterSources } =
+  createGpuWaterSources(gpuCompute, width, heightMapTexture, terrainSize);
 
 // Initialize the GPU computation renderer (creates render targets)
 const error = gpuCompute.init();
@@ -33,7 +29,8 @@ initWaterSources();
 
 gpuCompute.compute();
 
-const resultTexture = gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
+const resultTexture =
+  gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
 
 const scene = new THREE.Scene();
 const geometry = new THREE.PlaneGeometry(1, 1);

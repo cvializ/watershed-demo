@@ -7,7 +7,11 @@ import { cameraInitSystem } from "@/renderer/systems/init/camera";
 import { resizeInitSystem } from "@/renderer/systems/init/resize";
 import { simulationInitSystem } from "@/renderer/systems/init/simulation";
 
-export const rendererInitSystem: RendererInitSystem = (world, scene, renderer) => {
+export const rendererInitSystem: RendererInitSystem = (
+  world,
+  scene,
+  renderer,
+) => {
   // Enable shadow mapping
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;

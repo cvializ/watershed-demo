@@ -2,7 +2,11 @@ import * as THREE from "three";
 
 import { createCloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
 import { createGpuWaterFlowSimulation } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
-import { createDisplacementTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
+import {
+  createDisplacementTexture,
+  setTexture,
+  TextureEnum,
+} from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
