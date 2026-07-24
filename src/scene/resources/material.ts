@@ -25,49 +25,6 @@ export type HeightVisualizationUniforms = {
 };
 
 /**
- * Create a shader material that visualizes water height only
- */
-export const createWaterHeightMaterialResource = ({
-  waterHeightMap,
-}: {
-  waterHeightMap: THREE.Texture;
-}) => {
-  const uniforms = {
-    uWaterHeightmap: { value: waterHeightMap },
-  };
-
-  return new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: `
-varying vec2 vUv;
-
-void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-`,
-    fragmentShader: `
-precision highp float;
-
-uniform sampler2D uWaterHeightmap;
-varying vec2 vUv;
-
-void main() {
-    // Sample water height
-    float waterHeight = texture2D(uWaterHeightmap, vUv).r;
-    
-    // Visualize water height with a simple color gradient
-    float waterIntensity = clamp(waterHeight * 3.0, 0.2, 1.0);
-    vec3 waterColor = mix(vec3(0.4, 0.7, 1.0), vec3(0.1, 0.3, 0.7), waterIntensity);
-    
-    gl_FragColor = vec4(waterColor, 1.0);
-}
-`,
-    side: THREE.DoubleSide,
-  });
-};
-
-/**
  * Create a shader material that visualizes terrain height using a color palette
  */
 export const createHeightVisualizationMaterialResource = ({
@@ -221,7 +178,6 @@ export const MaterialEnum = {
   Slope: "Slope",
   WaterFlow: "WaterFlow",
   PulsingSimulation: "PulsingSimulation",
-  WaterHeight: "WaterHeight",
 } as const;
 
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
@@ -270,12 +226,6 @@ export const initSceneMaterialResources = () => {
     MaterialEnum.PulsingSimulation,
     createPulsingVisualizationMaterialResource({
       pulsingTexture: getTexture(TextureEnum.PulsingTexture),
-    }),
-  );
-  enumCache.set(
-    MaterialEnum.WaterHeight,
-    createWaterHeightMaterialResource({
-      waterHeightMap: getTexture(TextureEnum.WaterHeightMap),
     }),
   );
 };
