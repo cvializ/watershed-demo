@@ -68,12 +68,17 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
           MaterialRef.ref[terrain$] = MaterialEnum.Default;
           break;
         case 4:
-        default:
           // Water flow visualization
           MaterialRef.ref[terrain$] = MaterialEnum.WaterFlow;
           break;
+        case 5:
+          // Water height visualization
+          MaterialRef.ref[terrain$] = MaterialEnum.WaterHeight;
+          break;
         case 6:
+          // Pulsing simulation
           MaterialRef.ref[terrain$] = MaterialEnum.PulsingSimulation;
+          break;
       }
     }
   }
