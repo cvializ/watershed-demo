@@ -17,14 +17,19 @@ const updateSunAngle = (world: GameWorldContext, dt: number): void => {
   const radius = 25; // Distance from origin
   const inclination = Math.PI / 4; // 45 degrees - goes above and below terrain
   world.sunPosition.x = radius * Math.cos(world.sunAngle);
-  world.sunPosition.y = radius * Math.sin(world.sunAngle) * Math.sin(inclination);
-  world.sunPosition.z = radius * Math.sin(world.sunAngle) * Math.cos(inclination);
+  world.sunPosition.y =
+    radius * Math.sin(world.sunAngle) * Math.sin(inclination);
+  world.sunPosition.z =
+    radius * Math.sin(world.sunAngle) * Math.cos(inclination);
 };
 
 /**
  * Updates the sun's position in an orbit around the origin with inclination
  */
-const updateSunPosition = (world: GameWorldContext, scene: THREE.Scene): void => {
+const updateSunPosition = (
+  world: GameWorldContext,
+  scene: THREE.Scene,
+): void => {
   const sunLight = scene.getObjectByName("sun-light") as THREE.DirectionalLight;
   if (!sunLight) {
     return;
@@ -63,7 +68,10 @@ const updateSunPosition = (world: GameWorldContext, scene: THREE.Scene): void =>
  * Daytime colors when sun is above horizon (y > 0)
  * Nighttime colors when sun is below horizon (y <= 0)
  */
-const updateBackground = (world: GameWorldContext, scene: THREE.Scene): void => {
+const updateBackground = (
+  world: GameWorldContext,
+  scene: THREE.Scene,
+): void => {
   // Daytime colors (sun above horizon)
   const daySkyColor = new THREE.Color("#87CEEB"); // Sky blue
   const dayAmbientLight = 0.6;
@@ -78,8 +86,13 @@ const updateBackground = (world: GameWorldContext, scene: THREE.Scene): void => 
   const blend = Math.pow(sunHeight, 0.5); // Ease in for more dramatic transition
 
   // Interpolate between night and day colors
-  const skyColor = new THREE.Color().lerpColors(nightSkyColor, daySkyColor, blend);
-  const ambientIntensity = nightAmbientLight + (dayAmbientLight - nightAmbientLight) * blend;
+  const skyColor = new THREE.Color().lerpColors(
+    nightSkyColor,
+    daySkyColor,
+    blend,
+  );
+  const ambientIntensity =
+    nightAmbientLight + (dayAmbientLight - nightAmbientLight) * blend;
 
   scene.background = skyColor;
 

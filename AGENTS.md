@@ -44,7 +44,10 @@ type Counter = { count: number };
 
 const createCounter = (): Counter => ({ count: 0 });
 
-const increment = (counter: Counter): Counter => ({ ...counter, count: counter.count + 1 });
+const increment = (counter: Counter): Counter => ({
+  ...counter,
+  count: counter.count + 1,
+});
 
 const getCount = (counter: Counter): number => counter.count;
 ```
@@ -475,7 +478,11 @@ This is required for all code-changing tasks. The task is not complete until val
 // Correct - import from separate shader file
 import waterVelocityFragmentShader from "@/shaders/compute/water-velocity.frag?raw";
 
-const variable = gpuCompute.addVariable("waterVelocity", waterVelocityFragmentShader, texture);
+const variable = gpuCompute.addVariable(
+  "waterVelocity",
+  waterVelocityFragmentShader,
+  texture,
+);
 ```
 
 **Example - DON'T do this** (inline template literal):

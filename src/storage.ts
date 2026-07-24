@@ -1,17 +1,27 @@
-import { createSnapshotSerializer, createSnapshotDeserializer } from "bitecs/serialization";
+import {
+  createSnapshotSerializer,
+  createSnapshotDeserializer,
+} from "bitecs/serialization";
 
 import type { GameWorld } from "@/types";
 
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
-import { getCameraFromControls, getControls } from "@/renderer/systems/init/camera";
+import {
+  getCameraFromControls,
+  getControls,
+} from "@/renderer/systems/init/camera";
 import { logger } from "@/utils/logger";
 
 /**
  * Create a serializer for the ECS world
  */
-const components = Object.values(Components).filter((v) => !(v instanceof Function));
-let serializer: (selectedEntities?: readonly number[]) => ArrayBuffer | undefined;
+const components = Object.values(Components).filter(
+  (v) => !(v instanceof Function),
+);
+let serializer: (
+  selectedEntities?: readonly number[],
+) => ArrayBuffer | undefined;
 let deserializer: (
   packet: ArrayBuffer,
   idMapOverride?: Map<number, number>,
@@ -40,7 +50,10 @@ const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
   }
 
   const byteLength = buffer.byteLength;
-  logger.info({ byteLength }, "[serialize:ecs-buffer] ECS serialization complete");
+  logger.info(
+    { byteLength },
+    "[serialize:ecs-buffer] ECS serialization complete",
+  );
 
   // Convert ArrayBuffer to base64 for localStorage
   const ecsSerialized = arrayBufferToBase64(buffer);
@@ -68,15 +81,23 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
   logger.info("[deserialize:start] Starting ECS world deserialization");
 
   if (!base64String) {
-    logger.warn("[deserialize:skip] No base64 string provided, skipping deserialization");
+    logger.warn(
+      "[deserialize:skip] No base64 string provided, skipping deserialization",
+    );
     return;
   }
 
-  logger.info({ base64Length: base64String.length }, "[deserialize:base64] Received base64 string");
+  logger.info(
+    { base64Length: base64String.length },
+    "[deserialize:base64] Received base64 string",
+  );
 
   // Convert base64 to ArrayBuffer
   const buffer = base64ToArrayBuffer(base64String);
-  logger.info({ byteLength: buffer.byteLength }, "[deserialize:buffer] Converted to ArrayBuffer");
+  logger.info(
+    { byteLength: buffer.byteLength },
+    "[deserialize:buffer] Converted to ArrayBuffer",
+  );
 
   // Clear all existing entities before deserializing
   // This ensures we replace old component data with new serialized data
@@ -92,14 +113,23 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
   const idMapSize = (result as Map<number, number> | undefined)
     ? (result as Map<number, number>).size
     : 0;
-  logger.info({ idMapSize }, "[deserialize:end] ECS world deserialization complete");
+  logger.info(
+    { idMapSize },
+    "[deserialize:end] ECS world deserialization complete",
+  );
 };
 
 /**
  * Save ECS state and custom context to localStorage
  */
-export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
-  logger.info({ storageKey }, "[storage:save:start] Starting save to localStorage");
+export const saveToWorldStorage = (
+  world: GameWorld,
+  storageKey = "ecs-snapshot",
+): void => {
+  logger.info(
+    { storageKey },
+    "[storage:save:start] Starting save to localStorage",
+  );
 
   // Save current camera state to context before serialization
   const controls = getControls();
@@ -133,15 +163,24 @@ export const saveToWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"
   // Store custom context in localStorage (JSON string)
   localStorage.setItem(`${storageKey}-context`, serialized.context);
 
-  logger.info({ storageKey }, "[storage:save:end] Save to localStorage complete");
+  logger.info(
+    { storageKey },
+    "[storage:save:end] Save to localStorage complete",
+  );
 };
 
 /**
  * Load ECS state and custom context from localStorage
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapshot"): void => {
-  logger.info({ storageKey }, "[storage:load:start] Starting load from localStorage");
+export const loadFromWorldStorage = (
+  world: GameWorld,
+  storageKey = "ecs-snapshot",
+): void => {
+  logger.info(
+    { storageKey },
+    "[storage:load:start] Starting load from localStorage",
+  );
 
   const ecsSerialized = localStorage.getItem(`${storageKey}-ecs`);
   const contextSerialized = localStorage.getItem(`${storageKey}-context`);
@@ -154,7 +193,9 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
   // TODO: What's different the second time this is called?
 
   if (!ecsSerialized) {
-    logger.info("[storage:load:notfound] No saved ECS state found in localStorage");
+    logger.info(
+      "[storage:load:notfound] No saved ECS state found in localStorage",
+    );
     return;
   }
 
@@ -162,7 +203,9 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
   if (contextSerialized) {
     try {
       logger.info("[storage:load:context] Deserializing custom context...");
-      const deserializedContext = JSON.parse(contextSerialized) as GameWorldContext;
+      const deserializedContext = JSON.parse(
+        contextSerialized,
+      ) as GameWorldContext;
       // Merge with existing context to preserve any runtime properties
       Object.assign(world, deserializedContext);
       logger.info("[storage:load:context] Custom context loaded successfully");
@@ -173,7 +216,9 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
       );
     }
   } else {
-    logger.warn("[storage:load:context:missing] No context data found in localStorage");
+    logger.warn(
+      "[storage:load:context:missing] No context data found in localStorage",
+    );
   }
 
   logger.info("[storage:load:ecs] Deserializing ECS world...");
@@ -190,7 +235,11 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
       world.cameraPosition.y,
       world.cameraPosition.z,
     );
-    controls.target.set(world.cameraTarget.x, world.cameraTarget.y, world.cameraTarget.z);
+    controls.target.set(
+      world.cameraTarget.x,
+      world.cameraTarget.y,
+      world.cameraTarget.z,
+    );
     const camera = getCameraFromControls();
     if (camera) {
       camera.zoom = world.cameraZoom;
@@ -199,7 +248,10 @@ export const loadFromWorldStorage = (world: GameWorld, storageKey = "ecs-snapsho
     controls.update();
   }
 
-  logger.info({ storageKey }, "[storage:load:end] Load from localStorage complete");
+  logger.info(
+    { storageKey },
+    "[storage:load:end] Load from localStorage complete",
+  );
 };
 
 /**
@@ -227,7 +279,10 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     binary += String.fromCharCode(bytes[i]);
   }
   const result = btoa(binary);
-  logger.debug({ base64Length: result.length }, "[base64:convert] Conversion complete");
+  logger.debug(
+    { base64Length: result.length },
+    "[base64:convert] Conversion complete",
+  );
   return result;
 };
 
@@ -235,7 +290,10 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
  * Helper: Convert base64 to ArrayBuffer
  */
 const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
-  logger.debug({ base64Length: base64.length }, "[base64:parse] Parsing base64 string");
+  logger.debug(
+    { base64Length: base64.length },
+    "[base64:parse] Parsing base64 string",
+  );
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -243,6 +301,9 @@ const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
     bytes[i] = binaryString.charCodeAt(i);
   }
   const result = bytes.buffer;
-  logger.debug({ byteLength: result.byteLength }, "[base64:parse] Parsing complete");
+  logger.debug(
+    { byteLength: result.byteLength },
+    "[base64:parse] Parsing complete",
+  );
   return result;
 };

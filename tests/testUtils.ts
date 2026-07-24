@@ -13,7 +13,9 @@ interface BrowserConsoleFixtures {
   _consoleErrorState: { allowed: boolean };
 }
 
-export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtures>({
+export const test = baseTest.extend<
+  BrowserConsoleOptions & BrowserConsoleFixtures
+>({
   failOnPageError: [true, { option: true }],
   failOnConsoleError: [true, { option: true }],
   _pageErrorState: async ({ failOnPageError }, use) => {
@@ -32,7 +34,11 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
       _consoleErrorState.allowed = true;
     });
   },
-  page: async ({ page, _pageErrorState, _consoleErrorState }, use, testInfo) => {
+  page: async (
+    { page, _pageErrorState, _consoleErrorState },
+    use,
+    testInfo,
+  ) => {
     const errors: { type: string; message: string }[] = [];
 
     page.on("pageerror", (err) => {
@@ -53,13 +59,18 @@ export const test = baseTest.extend<BrowserConsoleOptions & BrowserConsoleFixtur
 
     await use(page);
 
-    const allErrorsAllowed = _pageErrorState.allowed && _consoleErrorState.allowed;
+    const allErrorsAllowed =
+      _pageErrorState.allowed && _consoleErrorState.allowed;
     const pageErrorsAllowed = _pageErrorState.allowed;
     const consoleErrorsAllowed = _consoleErrorState.allowed;
 
     if (!allErrorsAllowed && errors.length > 0) {
-      const pageErrorCount = errors.filter((e) => e.type === "pageerror").length;
-      const consoleErrorCount = errors.filter((e) => e.type === "console").length;
+      const pageErrorCount = errors.filter(
+        (e) => e.type === "pageerror",
+      ).length;
+      const consoleErrorCount = errors.filter(
+        (e) => e.type === "console",
+      ).length;
 
       let message = `Browser raised ${errors.length} error(s):`;
       if (pageErrorCount > 0 && !pageErrorsAllowed) {

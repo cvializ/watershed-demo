@@ -1,4 +1,7 @@
-import type { GPUComputationRenderer, Variable } from "three/addons/misc/GPUComputationRenderer.js";
+import type {
+  GPUComputationRenderer,
+  Variable,
+} from "three/addons/misc/GPUComputationRenderer.js";
 
 import * as THREE from "three";
 
@@ -62,7 +65,13 @@ const createInitialWaterTexture = (
     data[i * 4 + 3] = 1.0; // A: alpha
   }
 
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType);
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
   texture.needsUpdate = true;
   logger.debug(
     { size, firstValue: data[0], lastValue: data[data.length - 4] },
@@ -92,7 +101,9 @@ export const createGpuWaterHeight = (
     waterHeightVariable,
   ]);
 
-  const uniforms = getUniforms<WaterHeightUniforms>(waterHeightVariable.material);
+  const uniforms = getUniforms<WaterHeightUniforms>(
+    waterHeightVariable.material,
+  );
   uniforms.terrainHeightmap = { value: heightMapTexture };
   uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
   uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage

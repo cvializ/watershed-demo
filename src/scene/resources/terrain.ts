@@ -9,7 +9,12 @@ export const createTerrainGeometry = () => {
   // Create triangular terrain mesh
   const terrainSize = 12;
   const segments = 80;
-  const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
+  const geometry = new THREE.PlaneGeometry(
+    terrainSize,
+    terrainSize,
+    segments,
+    segments,
+  );
 
   // Convert plane to height-based terrain (flat slope)
   const positions = geometry.attributes.position;

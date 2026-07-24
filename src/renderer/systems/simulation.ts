@@ -5,8 +5,14 @@ import * as THREE from "three";
 
 import type { RendererSystem } from "@/renderer/types";
 
-import { MaterialRef, WaterSimulation as WaterSimulationComponent } from "@/components/components";
-import { cloudSphereSystem, waterSimulation } from "@/renderer/systems/init/simulation";
+import {
+  MaterialRef,
+  WaterSimulation as WaterSimulationComponent,
+} from "@/components/components";
+import {
+  cloudSphereSystem,
+  waterSimulation,
+} from "@/renderer/systems/init/simulation";
 import {
   getMaterial,
   MaterialEnum,
@@ -16,7 +22,12 @@ import {
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
-export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => {
+export const simulationSystem: RendererSystem = (
+  world,
+  scene,
+  renderer,
+  dt,
+) => {
   if (!waterSimulation) {
     return;
   }

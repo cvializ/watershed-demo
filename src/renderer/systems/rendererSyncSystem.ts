@@ -5,7 +5,12 @@ import { simulationSystem } from "@/renderer/systems/simulation";
 import { getCamera } from "@/scene/sceneUtils";
 import { logger } from "@/utils/logger";
 
-export const rendererSyncSystem: RendererSystem = (world, scene, renderer, dt) => {
+export const rendererSyncSystem: RendererSystem = (
+  world,
+  scene,
+  renderer,
+  dt,
+) => {
   simulationSystem(world, scene, renderer, dt);
   updateControls(dt);
 

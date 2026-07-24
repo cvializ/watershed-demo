@@ -13,7 +13,11 @@ import { waterSimulation } from "./simulation";
 const SIM_SIZE = 512;
 const terrainSize = 12;
 
-export const addWaterInitSystem: RendererInitSystem = (world, scene, renderer) => {
+export const addWaterInitSystem: RendererInitSystem = (
+  world,
+  scene,
+  renderer,
+) => {
   const canvas: HTMLElement = renderer.domElement;
 
   canvas.addEventListener("click", (event) => {

@@ -7,7 +7,8 @@ import { MaterialEnum } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 
 export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
-  const vizMode = world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
+  const vizMode =
+    world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
 
   // Handle downslope arrows visibility
   if (vizMode === 3) {
@@ -27,7 +28,9 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
   // Handle wireframe visibility based on visualization mode
   if (scene) {
     // Check for wireframe objects in scene
-    const wireframes = scene.children.filter((obj: any) => obj.name === "terrain-wireframe");
+    const wireframes = scene.children.filter(
+      (obj: any) => obj.name === "terrain-wireframe",
+    );
     if (wireframes.length > 0) {
       // Wireframe is visible in Water Flow mode (4) or when explicitly enabled
       const showWireframe = vizMode === 4;
@@ -44,7 +47,8 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
     const [terrain$] = query(world, [Terrain]);
     if (terrain$ !== undefined) {
       // Get current visualization mode
-      const vizMode = world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
+      const vizMode =
+        world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
 
       switch (vizMode) {
         case 0:

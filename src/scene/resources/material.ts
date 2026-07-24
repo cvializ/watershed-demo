@@ -207,7 +207,10 @@ export const initSceneMaterialResources = () => {
     }),
   );
   enumCache.set(MaterialEnum.Normal, createNormalMaterialResource());
-  enumCache.set(MaterialEnum.DownslopeArrows, createDownslopeArrowsMaterialResource());
+  enumCache.set(
+    MaterialEnum.DownslopeArrows,
+    createDownslopeArrowsMaterialResource(),
+  );
   enumCache.set(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
   enumCache.set(
     MaterialEnum.WaterFlow,
