@@ -7,7 +7,7 @@ import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getCamera } from "@/scene/sceneUtils";
 import { logger } from "@/utils/logger";
 
-export const cameraInitSystem: SceneInitSystem = (world, scene) => {
+export const cameraLookInitSystem: SceneInitSystem = (world, scene) => {
   observe(world, onAdd(Camera), () => {
     const camera = getCamera(scene);
     if (!camera) {

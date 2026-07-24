@@ -6,7 +6,7 @@ import { MeshRef, Renderable } from "@/components/components";
 import { initSceneMaterialResources } from "@/scene/resources/material";
 import { getMesh, initMeshes, MeshEnum } from "@/scene/resources/mesh";
 import { initTextures } from "@/scene/resources/texture";
-import { cameraInitSystem } from "@/scene/systems/init/camera";
+import { cameraLookInitSystem } from "@/scene/systems/init/cameraLook";
 import { hiddenInitSystem } from "@/scene/systems/init/hidden";
 import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation";
 import { logger } from "@/utils/logger";
@@ -33,5 +33,5 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
 
   waterSimulationInitSystem(world, scene);
 
-  cameraInitSystem(world, scene);
+  cameraLookInitSystem(world, scene);
 };
