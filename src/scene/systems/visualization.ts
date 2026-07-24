@@ -5,6 +5,7 @@ import type { SceneSystem } from "@/scene/types";
 import { MaterialRef, Terrain } from "@/components/components";
 import { MaterialEnum } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
+import { logger } from "@/utils/logger";
 
 export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
   const vizMode =
@@ -40,11 +41,15 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
     }
   }
 
+  logger.info(`[visualization:switch] vizMode ${vizMode}`);
   // Only update materials when visualization mode changes
-  if ((world as any).lastVizMode !== vizMode) {
-    (world as any).lastVizMode = vizMode;
-
+  if (world.lastVizMode !== vizMode) {
+    world.lastVizMode = vizMode;
+    logger.info(`[visualization:switch] lastVizMode ${world.lastVizMode}`);
     const [terrain$] = query(world, [Terrain]);
+    if (!terrain$) {
+      throw new Error("OH NO");
+    }
     if (terrain$ !== undefined) {
       // Get current visualization mode
       const vizMode =
@@ -73,7 +78,7 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
           break;
         case 5:
           // Water height visualization
-          MaterialRef.ref[terrain$] = MaterialEnum.WaterHeight;
+          MaterialRef.ref[terrain$] = MaterialEnum.WaterFlow;
           break;
         case 6:
           // Pulsing simulation

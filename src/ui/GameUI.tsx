@@ -5,6 +5,7 @@ import {
   loadFromWorldStorage,
   saveToWorldStorage,
 } from "@/storage";
+import { logger } from "@/utils/logger";
 
 type GameUiProps = {
   world: GameWorld;
@@ -28,6 +29,7 @@ export const GameUI = ({ world }: GameUiProps) => {
   const handleMaterialChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
+    logger.info(`[game-ui:handleMaterialChange] ${event.target.value}`);
     const value = parseInt(event.target.value, 10);
     world.visualizationMode = value;
 
