@@ -10,6 +10,7 @@ import { cloudSphereSystem, waterSimulation } from "@/renderer/systems/init/simu
 import {
   getMaterial,
   MaterialEnum,
+  type PulsingVisualizationUniforms,
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
 import { getUniforms } from "@/utils/uniformUtils";
@@ -31,12 +32,25 @@ export const simulationSystem: RendererSystem = (world, scene, renderer, dt) => 
   if (!materialId) {
     return;
   }
+  
   const material = getMaterial(materialId) as ShaderMaterial;
-  const uniforms = getUniforms<WaterVisualizationUniforms>(material);
-  uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
-  uniforms.uLightPosition.value.x = world.sunPosition.x;
-  uniforms.uLightPosition.value.y = world.sunPosition.y;
-  uniforms.uLightPosition.value.z = world.sunPosition.z;
+  
+  // Check if this is a pulsing simulation material
+  const isPulsingMaterial = materialId === MaterialEnum.PulsingSimulation;
+  
+  if (isPulsingMaterial) {
+    // Update pulsing simulation texture
+    const uniform = getUniforms<PulsingVisualizationUniforms>(material);
+    const pulsingTexture = waterSimulation.getPulsingTexture();
+    uniform.uPulsingTexture.value = pulsingTexture;
+  } else {
+    // Update water visualization uniforms
+    const uniforms = getUniforms<WaterVisualizationUniforms>(material);
+    uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
+    uniforms.uLightPosition.value.x = world.sunPosition.x;
+    uniforms.uLightPosition.value.y = world.sunPosition.y;
+    uniforms.uLightPosition.value.z = world.sunPosition.z;
+  }
 
   waterSimulation.compute(dt);
 
