@@ -5,6 +5,7 @@ import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuCl
 import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
+import { createPulsingTexture } from "@/gpu/pulsingSimulation/createPulsingTexture";
 import { logger } from "@/utils/logger";
 
 export type WaterFlowVisualization = {
@@ -43,6 +44,11 @@ export type WaterFlowVisualization = {
    * Get the surface material texture.
    */
   getSurfaceMaterialTexture: () => THREE.Texture;
+
+  /**
+   * Get the pulsing texture.
+   */
+  getPulsingTexture: () => THREE.Texture;
 
   setSunPosition: (position: THREE.Vector3) => void;
 };
@@ -111,6 +117,7 @@ export const createGpuWaterFlowSimulation = (
     heightMapTexture,
     waterHeightVariable,
   );
+  const { pulsingVariable, initPulsing, updatePulsing } = createPulsingTexture(gpuCompute, width);
 
   const error = gpuCompute.init();
   if (error) {
@@ -120,13 +127,18 @@ export const createGpuWaterFlowSimulation = (
   initWaterSources();
   initWaterHeight();
   initWaterVelocity();
+  initPulsing();
 
   return {
     compute: (deltaTime: number) => {
       updateClouds(deltaTime);
 
       updateWaterHeight();
-      // Compute all variables (velocity computation)
+      
+      // Update pulsing texture
+      updatePulsing(deltaTime);
+      
+      // Compute all variables (velocity computation, pulsing)
       gpuCompute.compute();
 
       clearWater();
@@ -142,5 +154,6 @@ export const createGpuWaterFlowSimulation = (
       // Placeholder - returns empty texture as surface materials are not yet implemented
       return new THREE.Texture();
     },
+    getPulsingTexture: () => gpuCompute.getCurrentRenderTarget(pulsingVariable).texture,
   };
 };

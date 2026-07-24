@@ -27,6 +27,10 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   const simulationTexture = waterSimulation.getSimulationTexture();
   setTexture(TextureEnum.WaterHeightMap, simulationTexture);
 
+  // Get pulsing texture from GPU simulation
+  const pulsingTexture = waterSimulation.getPulsingTexture();
+  setTexture(TextureEnum.PulsingTexture, pulsingTexture);
+
   // Create cloud sphere system using the cloud texture from GPU simulation
   const cloudTexture = waterSimulation.getCloudShadowTexture();
   const cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);

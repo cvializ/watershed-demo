@@ -3,6 +3,8 @@ import * as THREE from "three";
 import { getTexture, TextureEnum } from "@/scene/resources/texture";
 import heightVisualizationFrag from "@/shaders/height-visualization.frag?raw";
 import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
+import pulsingSimulationFrag from "@/shaders/pulsing-visualization.frag?raw";
+import pulsingSimulationVert from "@/shaders/pulsing-visualization.vert?raw";
 import slopeVisualizationFrag from "@/shaders/slope-visualization.frag?raw";
 import slopeVisualizationVert from "@/shaders/slope-visualization.vert?raw";
 import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
@@ -86,6 +88,33 @@ export const createNormalMaterialResource = () => {
 };
 
 /**
+ * Uniform structure for pulsing visualization shader.
+ */
+export type PulsingVisualizationUniforms = {
+  uPulsingTexture: THREE.IUniform<THREE.Texture>;
+};
+
+/**
+ * Create a shader material that visualizes the pulsing texture simulation
+ */
+export const createPulsingVisualizationMaterialResource = ({
+  pulsingTexture,
+}: {
+  pulsingTexture: THREE.Texture;
+}) => {
+  const uniforms: PulsingVisualizationUniforms = {
+    uPulsingTexture: { value: pulsingTexture },
+  };
+
+  return new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: pulsingSimulationVert,
+    fragmentShader: pulsingSimulationFrag,
+    side: THREE.DoubleSide,
+  });
+};
+
+/**
  * Uniform structure for water visualization shader.
  */
 export type WaterVisualizationUniforms = {
@@ -148,6 +177,7 @@ export const MaterialEnum = {
   DownslopeArrows: "DownslopeArrows",
   Slope: "Slope",
   WaterFlow: "WaterFlow",
+  PulsingSimulation: "PulsingSimulation",
 } as const;
 
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
@@ -187,6 +217,12 @@ export const initSceneMaterialResources = () => {
       cloudShadowMap: getTexture(TextureEnum.CloudShadowMap),
       velocityMap: getTexture(TextureEnum.VelocityMap),
       sunLightPosition: new THREE.Vector3(0, 0, 0),
+    }),
+  );
+  enumCache.set(
+    MaterialEnum.PulsingSimulation,
+    createPulsingVisualizationMaterialResource({
+      pulsingTexture: getTexture(TextureEnum.PulsingTexture),
     }),
   );
 };
