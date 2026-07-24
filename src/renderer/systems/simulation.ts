@@ -13,6 +13,7 @@ import {
   cloudSphereSystem,
   waterSimulation,
 } from "@/renderer/systems/init/simulation";
+import { getGameClock } from "@/renderer/resources/loop";
 import {
   getMaterial,
   MaterialEnum,
@@ -31,6 +32,9 @@ export const simulationSystem: RendererSystem = (
   if (!waterSimulation) {
     return;
   }
+
+  const clock = getGameClock();
+  const gameTime = clock ? clock.getTime() : 0;
 
   const [simulation$] = query(world, [WaterSimulationComponent]);
   const simulationExists = Boolean(simulation$);
@@ -63,7 +67,7 @@ export const simulationSystem: RendererSystem = (
     uniforms.uLightPosition.value.z = world.sunPosition.z;
   }
 
-  waterSimulation.compute(dt);
+  waterSimulation.compute(dt, gameTime);
 
   // Update cloud spheres if available
   if (cloudSphereSystem) {
@@ -71,7 +75,7 @@ export const simulationSystem: RendererSystem = (
       (renderer as any).getCurrentViewportCamera ||
       scene.children.find((c: THREE.Object3D) => (c as any).isCamera);
     if (camera) {
-      cloudSphereSystem.update(camera, dt);
+      cloudSphereSystem.update(camera, gameTime);
 
       // Add cloud sphere mesh to scene if not already added
       const cloudMesh = cloudSphereSystem.getMesh();
