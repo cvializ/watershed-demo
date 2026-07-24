@@ -120,12 +120,32 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
 };
 
 /**
+ * Get game time from the global loop clock.
+ */
+const getGameTime = async (): Promise<number> => {
+  const { getGameClock } = await import("@/renderer/resources/loop");
+  const clock = getGameClock();
+  return clock ? clock.getTime() : 0;
+};
+
+/**
+ * Set game time on the global loop clock (for restore).
+ */
+const setGameTime = async (time: number): Promise<void> => {
+  const { getGameClock } = await import("@/renderer/resources/loop");
+  const clock = getGameClock();
+  if (clock) {
+    clock.setTime(time);
+  }
+};
+
+/**
  * Save ECS state and custom context to localStorage
  */
-export const saveToWorldStorage = (
+export const saveToWorldStorage = async (
   world: GameWorld,
   storageKey = "ecs-snapshot",
-): void => {
+): Promise<void> => {
   logger.info(
     { storageKey },
     "[storage:save:start] Starting save to localStorage",
@@ -163,8 +183,12 @@ export const saveToWorldStorage = (
   // Store custom context in localStorage (JSON string)
   localStorage.setItem(`${storageKey}-context`, serialized.context);
 
+  // Store game time for deterministic restore
+  const gameTime = await getGameTime();
+  localStorage.setItem(`${storageKey}-gameTime`, JSON.stringify(gameTime));
+
   logger.info(
-    { storageKey },
+    { storageKey, gameTime },
     "[storage:save:end] Save to localStorage complete",
   );
 };
@@ -172,11 +196,10 @@ export const saveToWorldStorage = (
 /**
  * Load ECS state and custom context from localStorage
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const loadFromWorldStorage = (
+export const loadFromWorldStorage = async (
   world: GameWorld,
   storageKey = "ecs-snapshot",
-): void => {
+): Promise<void> => {
   logger.info(
     { storageKey },
     "[storage:load:start] Starting load from localStorage",
@@ -248,6 +271,25 @@ export const loadFromWorldStorage = (
     controls.update();
   }
 
+  // Restore game time for deterministic simulation
+  const gameTimeSerialized = localStorage.getItem(`${storageKey}-gameTime`);
+  if (gameTimeSerialized) {
+    try {
+      const gameTime = JSON.parse(gameTimeSerialized) as number;
+      await setGameTime(gameTime);
+      logger.info({ gameTime }, "[storage:load:gameTime] Game time restored");
+    } catch (error) {
+      logger.error(
+        { err: error, storageKey },
+        "[storage:load:gameTime:error] Failed to restore game time",
+      );
+    }
+  } else {
+    logger.warn(
+      "[storage:load:gameTime:missing] No game time data found in localStorage",
+    );
+  }
+
   logger.info(
     { storageKey },
     "[storage:load:end] Load from localStorage complete",
@@ -261,6 +303,7 @@ export const clearWorldStorage = (storageKey = "ecs-snapshot"): void => {
   logger.info({ storageKey }, "[storage:clear:start] Clearing localStorage");
   localStorage.removeItem(`${storageKey}-ecs`);
   localStorage.removeItem(`${storageKey}-context`);
+  localStorage.removeItem(`${storageKey}-gameTime`);
   logger.info({ storageKey }, "[storage:clear:end] Storage cleared");
 };
 

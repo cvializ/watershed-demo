@@ -35,12 +35,12 @@ export const GameUI = ({ world }: GameUiProps) => {
     world.showVelocity = value !== 5;
   };
 
-  const handleSaveClick = () => {
-    saveToWorldStorage(world);
+  const handleSaveClick = async () => {
+    await saveToWorldStorage(world);
   };
 
-  const handleLoadClick = () => {
-    loadFromWorldStorage(world);
+  const handleLoadClick = async () => {
+    await loadFromWorldStorage(world);
   };
 
   const handleClearClick = () => {
