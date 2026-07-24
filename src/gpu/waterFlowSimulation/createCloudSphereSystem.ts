@@ -6,9 +6,9 @@ export type CloudSphereSystem = {
   /**
    * Updates the cloud sphere system with current camera and time data.
    * @param camera - The camera object to get view position
-   * @param deltaTime - Time delta for animation
+   * @param gameTime - Current game time in seconds (from game clock)
    */
-  update: (camera: THREE.Camera, deltaTime: number) => void;
+  update: (camera: THREE.Camera, gameTime: number) => void;
 
   /**
    * Get the cloud spheres mesh for rendering.
@@ -146,12 +146,9 @@ void main() {
   cloudMesh.rotation.x = -Math.PI / 2;
   cloudMesh.renderOrder = 10; // Render after terrain (higher render order)
 
-  let currentTime = 0;
-
   // Update function
-  const update = (_camera: THREE.Camera, deltaTime: number): void => {
-    currentTime += deltaTime;
-    cloudMaterial.uniforms.uTime.value = currentTime;
+  const update = (_camera: THREE.Camera, gameTime: number): void => {
+    cloudMaterial.uniforms.uTime.value = gameTime;
   };
 
   const getMesh = (): THREE.Mesh => {

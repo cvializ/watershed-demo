@@ -11,10 +11,10 @@ import { logger } from "@/utils/logger";
 export type WaterFlowVisualization = {
   /**
    * Executes one step of the water flow simulation.
-   * @param cloudUniforms - Optional array of cloud data for shadow deposition
-   * @param cloudCount - Number of active clouds (up to 16)
+   * @param deltaTime - Time delta for animation
+   * @param gameTime - Current game time in seconds (from game clock)
    */
-  compute: (deltaTime: number) => void;
+  compute: (deltaTime: number, gameTime?: number) => void;
 
   /**
    * Adds water at a specific location on the terrain.
@@ -133,13 +133,13 @@ export const createGpuWaterFlowSimulation = (
   initPulsing();
 
   return {
-    compute: (deltaTime: number) => {
+    compute: (deltaTime: number, gameTime: number = 0) => {
       updateClouds(deltaTime);
 
       updateWaterHeight();
 
       // Update pulsing texture
-      updatePulsing(deltaTime);
+      updatePulsing(gameTime);
 
       // Compute all variables (velocity computation, pulsing)
       gpuCompute.compute();

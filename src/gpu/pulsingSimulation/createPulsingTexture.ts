@@ -49,7 +49,7 @@ export const createPulsingTexture = (
 ): {
   pulsingVariable: Variable;
   initPulsing: () => void;
-  updatePulsing: (deltaTime: number) => void;
+  updatePulsing: (gameTime: number) => void;
 } => {
   logger.info("[gpu:pulsing:create]");
 
@@ -68,8 +68,8 @@ export const createPulsingTexture = (
     initPulsing: () => {
       // Initial uniform setup
     },
-    updatePulsing: (deltaTime: number) => {
-      uniforms.uTime.value += deltaTime;
+    updatePulsing: (gameTime: number) => {
+      uniforms.uTime.value = gameTime;
     },
   };
 };
