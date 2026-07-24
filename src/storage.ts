@@ -87,17 +87,11 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
     return;
   }
 
-  logger.info(
-    { base64Length: base64String.length },
-    "[deserialize:base64] Received base64 string",
-  );
+  logger.info("[deserialize:base64] Received base64 string");
 
   // Convert base64 to ArrayBuffer
   const buffer = base64ToArrayBuffer(base64String);
-  logger.info(
-    { byteLength: buffer.byteLength },
-    "[deserialize:buffer] Converted to ArrayBuffer",
-  );
+  logger.info("[deserialize:buffer] Converted to ArrayBuffer");
 
   // Clear all existing entities before deserializing
   // This ensures we replace old component data with new serialized data
@@ -109,7 +103,7 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
 
   logger.info("[deserialize:apply] Calling deserializer...");
   // Deserialize into world - this creates new entities with serialized data
-  const result = deserializer(buffer);
+  const result = deserializer(buffer); // mutates world
   const idMapSize = (result as Map<number, number> | undefined)
     ? (result as Map<number, number>).size
     : 0;
