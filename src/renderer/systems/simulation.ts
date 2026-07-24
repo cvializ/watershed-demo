@@ -75,7 +75,7 @@ export const simulationSystem: RendererSystem = (
       (renderer as any).getCurrentViewportCamera ||
       scene.children.find((c: THREE.Object3D) => (c as any).isCamera);
     if (camera) {
-      cloudSphereSystem.update(camera, gameTime);
+      cloudSphereSystem.update(camera, dt);
 
       // Add cloud sphere mesh to scene if not already added
       const cloudMesh = cloudSphereSystem.getMesh();
