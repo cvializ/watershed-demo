@@ -1,3 +1,4 @@
+import { query, removeEntity } from "bitecs";
 import {
   createSnapshotSerializer,
   createSnapshotDeserializer,
@@ -77,7 +78,7 @@ const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
 /**
  * Deserialize ECS state from base64 string and apply to world
  */
-const deserializeWorld = (_world: GameWorld, base64String: string): void => {
+const deserializeWorld = (world: GameWorld, base64String: string): void => {
   logger.info("[deserialize:start] Starting ECS world deserialization");
 
   if (!base64String) {
@@ -95,11 +96,11 @@ const deserializeWorld = (_world: GameWorld, base64String: string): void => {
 
   // Clear all existing entities before deserializing
   // This ensures we replace old component data with new serialized data
-  // const entities$ = query(world, []);
-  // for (const entity$ of entities$) {
-  //   console.log("REMOVE");
-  //   removeEntity(world, entity$);
-  // }
+  const entities$ = query(world, []);
+  for (const entity$ of entities$) {
+    console.log("REMOVE");
+    removeEntity(world, entity$);
+  }
 
   logger.info("[deserialize:apply] Calling deserializer...");
   // Deserialize into world - this creates new entities with serialized data
