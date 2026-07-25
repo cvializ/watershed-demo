@@ -3,7 +3,7 @@ import * as THREE from "three";
 
 import type { SceneSystem } from "@/scene/types";
 
-import { MaterialRef, MeshRef } from "@/components/components";
+import { MaterialRef, MeshRef, Name } from "@/components/components";
 import { getMaterial, MaterialEnum } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
@@ -27,6 +27,12 @@ export const materialSystem: SceneSystem = (world) => {
     const materialId = MaterialRef.ref[mesh$];
     if (!materialId) {
       continue;
+    }
+
+    if (mesh.material !== getMaterial(materialId as MaterialEnum)) {
+      logger.info(
+        `[material] changing entity ${Name.value[mesh$]} changing to ${materialId}`,
+      );
     }
 
     mesh.material = getMaterial(materialId as MaterialEnum);

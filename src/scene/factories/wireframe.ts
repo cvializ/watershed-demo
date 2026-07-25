@@ -1,6 +1,6 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
-import { MeshRef, Renderable, Wireframe } from "@/components/components";
+import { MeshRef, Name, Renderable, Wireframe } from "@/components/components";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
 
@@ -11,8 +11,10 @@ export const createWireframe = (world: World): number => {
 
   addComponent(world, entity$, Wireframe);
   addComponent(world, entity$, MeshRef);
+  addComponent(world, entity$, Name);
 
   MeshRef.ref[entity$] = MeshEnum.Wireframe;
+  Name.value[entity$] = "Wireframe";
 
   addComponent(world, entity$, Renderable);
 

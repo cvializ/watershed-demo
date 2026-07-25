@@ -1,6 +1,6 @@
-import { addEntity, addComponent, type World } from "bitecs";
+import { addComponent, addEntity, type World } from "bitecs";
 
-import { Camera } from "@/components/components";
+import { Camera, Name } from "@/components/components";
 import { logger } from "@/utils/logger";
 
 export const createCamera = (world: World): number => {
@@ -8,6 +8,9 @@ export const createCamera = (world: World): number => {
 
   const cameraEid = addEntity(world);
   addComponent(world, cameraEid, Camera);
+  addComponent(world, cameraEid, Name);
+
+  Name.value[cameraEid] = "Camera";
 
   return cameraEid;
 };
