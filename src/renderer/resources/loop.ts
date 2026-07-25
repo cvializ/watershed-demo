@@ -33,13 +33,13 @@ export const createLoopResource = (cb: LoopFunction) => {
 
   // --- Animation Loop ---
   const animate: FrameRequestCallback = (rawTimeMs) => {
-    requestAnimationFrame(animate);
-
     // Update clock with raw performance time (milliseconds)
     gameClock.update(rawTimeMs);
 
     // Pass serializable gameTime and computed deltaTime to callback
     cb(gameClock.getTime(), gameClock.getDelta());
+
+    requestAnimationFrame(animate);
   };
 
   // Start the loop
