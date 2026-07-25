@@ -1,8 +1,9 @@
-import { addEntity, addComponent, type World } from "bitecs";
+import { addComponent, addEntity, type World } from "bitecs";
 
 import {
   MaterialRef,
   MeshRef,
+  Name,
   Renderable,
   Terrain,
 } from "@/components/components";
@@ -18,9 +19,11 @@ export function createTerrain(world: World): number {
   addComponent(world, entity$, Terrain);
   addComponent(world, entity$, MaterialRef);
   addComponent(world, entity$, MeshRef);
+  addComponent(world, entity$, Name);
 
   MaterialRef.ref[entity$] = MaterialEnum.Default;
   MeshRef.ref[entity$] = MeshEnum.Terrain;
+  Name.value[entity$] = "Terrain";
 
   logger.debug("RENDERABLE");
   addComponent(world, entity$, Renderable);

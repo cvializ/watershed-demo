@@ -9,9 +9,13 @@ export const Transform = {
   rz: f32([]),
 };
 
+export const Name = {
+  value: str([]),
+};
+
 /** Tag components */
 export const Camera = {};
-export const Terrain = {};
+export const Terrain = {};;
 
 export const Rotate = {};
 
