@@ -197,7 +197,7 @@ function extractExports(filePath: string): ExportInfo[] {
  */
 async function main() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const projectRoot = path.resolve(__dirname, "..");
+  const projectRoot = path.resolve(__dirname, "../..");
   const sourceDir = path.join(projectRoot, "src");
 
   console.log(`Scanning for TypeScript/TSX files in ${sourceDir}...`);

@@ -267,7 +267,7 @@ export {
 };
 
 // Run if executed directly (works with both node and tsx)
-const isMainModule = process.argv[1]?.endsWith("call-hierarchy.ts");
+const isMainModule = process.argv.length > 1 && process.argv[1].endsWith("call-hierarchy.ts");
 if (isMainModule) {
   main();
 }

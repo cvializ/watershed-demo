@@ -11,10 +11,10 @@ import { logger } from "@/utils/logger";
 export type WaterFlowVisualization = {
   /**
    * Executes one step of the water flow simulation.
-   * @param cloudUniforms - Optional array of cloud data for shadow deposition
-   * @param cloudCount - Number of active clouds (up to 16)
+   * @param deltaTime - Time elapsed since last frame
+   * @param gameTime - Total game time for pulsing effects
    */
-  compute: (deltaTime: number) => void;
+  compute: (deltaTime: number, gameTime?: number) => void;
 
   /**
    * Adds water at a specific location on the terrain.
