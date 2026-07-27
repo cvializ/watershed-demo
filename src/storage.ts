@@ -115,26 +115,6 @@ const deserializeWorld = (world: GameWorld, base64String: string): void => {
 };
 
 /**
- * Get game time from the global loop clock.
- */
-const getGameTime = async (): Promise<number> => {
-  const { getGameClock } = await import("@/renderer/resources/loop");
-  const clock = getGameClock();
-  return clock ? clock.getTime() : 0;
-};
-
-/**
- * Set game time on the global loop clock (for restore).
- */
-const setGameTime = async (time: number): Promise<void> => {
-  const { getGameClock } = await import("@/renderer/resources/loop");
-  const clock = getGameClock();
-  if (clock) {
-    clock.setTime(time);
-  }
-};
-
-/**
  * Save ECS state and custom context to localStorage
  */
 export const saveToWorldStorage = async (
@@ -178,12 +158,8 @@ export const saveToWorldStorage = async (
   // Store custom context in localStorage (JSON string)
   localStorage.setItem(`${storageKey}-context`, serialized.context);
 
-  // Store game time for deterministic restore
-  const gameTime = await getGameTime();
-  localStorage.setItem(`${storageKey}-gameTime`, JSON.stringify(gameTime));
-
   logger.info(
-    { storageKey, gameTime },
+    { storageKey },
     "[storage:save:end] Save to localStorage complete",
   );
 };
@@ -264,25 +240,6 @@ export const loadFromWorldStorage = async (
       camera.updateProjectionMatrix();
     }
     controls.update();
-  }
-
-  // Restore game time for deterministic simulation
-  const gameTimeSerialized = localStorage.getItem(`${storageKey}-gameTime`);
-  if (gameTimeSerialized) {
-    try {
-      const gameTime = JSON.parse(gameTimeSerialized) as number;
-      await setGameTime(gameTime);
-      logger.info({ gameTime }, "[storage:load:gameTime] Game time restored");
-    } catch (error) {
-      logger.error(
-        { err: error, storageKey },
-        "[storage:load:gameTime:error] Failed to restore game time",
-      );
-    }
-  } else {
-    logger.warn(
-      "[storage:load:gameTime:missing] No game time data found in localStorage",
-    );
   }
 
   logger.info(

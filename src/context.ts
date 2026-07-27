@@ -1,6 +1,5 @@
 export const createGameWorldContext = () => ({
   gameTime: 0,
-  time: 0,
   fps: 0,
   showVelocity: true,
   lastVizMode: 4, // Default to Water Flow mode

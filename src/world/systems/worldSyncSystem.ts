@@ -6,14 +6,9 @@ import { Camera, Position } from "@/components/components";
 import { fpsSystem } from "@/world/systems/fps";
 import { rotationSystem } from "@/world/systems/rotation";
 
-const timeSyncSystem: WorldSystem = (world, dt) => {
-  world.time += dt;
-};
-
 export const worldSyncSystem: WorldSystem = (world, dt) => {
   fpsSystem(world, dt);
   rotationSystem(world, dt);
-  timeSyncSystem(world, dt);
 
   const [entity$] = query(world, [Camera]);
   Position.x[entity$] = 0;
