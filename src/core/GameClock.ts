@@ -1,3 +1,5 @@
+import type { GameWorldContext } from "@/context";
+
 import { logger } from "@/utils/logger";
 
 /**
@@ -57,25 +59,27 @@ export type GameClockState = {
   gameTime: number;
 };
 
+const INITIAL_TIME = 0;
+
 /**
  * Create a game clock that maintains serializable time state.
  *
  * @param initialTime - Optional starting time in seconds (default: 0)
  * @returns GameClock instance
  */
-export const createGameClock = (initialTime: number = 0): GameClock => {
-  let gameTime = initialTime; // The "logical now" - serializable
+export const createGameClock = (world: GameWorldContext): GameClock => {
+  world.gameTime = INITIAL_TIME; // The "logical now" - serializable
   let lastRawTime: number | null = null; // Raw timestamp from previous frame
   let deltaTime = 0; // Computed delta from last frame
 
   const reset = (): void => {
-    gameTime = initialTime;
+    world.gameTime = INITIAL_TIME;
     lastRawTime = null;
     deltaTime = 0;
   };
 
   return {
-    getTime: (): number => gameTime,
+    getTime: (): number => world.gameTime,
 
     getDelta: (): number => deltaTime,
 
@@ -87,9 +91,9 @@ export const createGameClock = (initialTime: number = 0): GameClock => {
         lastRawTime = rawTime;
         deltaTime = 0;
 
-        if (gameTime !== initialTime) {
+        if (world.gameTime !== INITIAL_TIME) {
           logger.debug(
-            { gameTime, initialTime },
+            { gameTime: world.gameTime, INITIAL_TIME },
             "GameClock: Starting from restored time",
           );
         }
@@ -101,7 +105,7 @@ export const createGameClock = (initialTime: number = 0): GameClock => {
       deltaTime = Math.max(0, computedDelta); // Prevent negative deltas
 
       // Advance gameTime by the actual elapsed time
-      gameTime += deltaTime;
+      world.gameTime += deltaTime;
       lastRawTime = rawTime;
     },
 
@@ -114,8 +118,8 @@ export const createGameClock = (initialTime: number = 0): GameClock => {
 
       // When restoring, we set gameTime directly
       // The next update() will compute delta from this new time
-      const previousTime = gameTime;
-      gameTime = time;
+      const previousTime = world.gameTime;
+      world.gameTime = time;
 
       logger.debug(
         { previousTime, newTime: time },

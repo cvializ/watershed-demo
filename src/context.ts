@@ -1,4 +1,5 @@
 export const createGameWorldContext = () => ({
+  gameTime: 0,
   time: 0,
   fps: 0,
   showVelocity: true,
