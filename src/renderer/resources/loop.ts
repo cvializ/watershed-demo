@@ -1,3 +1,5 @@
+import type { GameWorldContext } from "@/context";
+
 import { createGameClock, type GameClock } from "@/core/GameClock";
 
 export type LoopFunction = (t: number, dt: number) => void;
@@ -23,10 +25,13 @@ export const getGameClock = (): GameClock | null => globalGameClock;
  * @param cb - Callback receiving (gameTime, deltaTime) in seconds
  * @returns Object with loop control methods and clock reference
  */
-export const createLoopResource = (cb: LoopFunction) => {
+export const createLoopResource = (
+  world: GameWorldContext,
+  cb: LoopFunction,
+) => {
   // Create or reuse the global game clock
   if (!globalGameClock) {
-    globalGameClock = createGameClock();
+    globalGameClock = createGameClock(world);
   }
 
   const gameClock = globalGameClock;
