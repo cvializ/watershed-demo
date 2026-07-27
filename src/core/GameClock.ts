@@ -47,16 +47,6 @@ export type GameClock = {
    * Reset the clock to initial state.
    */
   reset: () => void;
-
-  /**
-   * Serialize the game clock state for saving.
-   */
-  toJSON: () => GameClockState;
-
-  /**
-   * Restore the game clock state from a previous serialization.
-   */
-  fromJSON: (state: GameClockState) => void;
 };
 
 /**
@@ -84,8 +74,6 @@ export const createGameClock = (initialTime: number = 0): GameClock => {
     deltaTime = 0;
   };
 
-  reset();
-
   return {
     getTime: (): number => gameTime,
 
@@ -105,22 +93,23 @@ export const createGameClock = (initialTime: number = 0): GameClock => {
             "GameClock: Starting from restored time",
           );
         }
-      } else {
-        // Compute delta from raw time
-        const computedDelta = rawTime - lastRawTime;
-        deltaTime = Math.max(0, computedDelta); // Prevent negative deltas
-
-        // Advance gameTime by the actual elapsed time
-        gameTime += deltaTime;
-        lastRawTime = rawTime;
+        return;
       }
+
+      // Compute delta from raw time
+      const computedDelta = rawTime - lastRawTime;
+      deltaTime = Math.max(0, computedDelta); // Prevent negative deltas
+
+      // Advance gameTime by the actual elapsed time
+      gameTime += deltaTime;
+      lastRawTime = rawTime;
     },
 
     setTime: (time: number): void => {
       // Validate - time should be in the past relative to gameTime
       // or we're intentionally rewinding/pausing
       if (time < 0) {
-        logger.warn({ time }, "GameClock: Negative time value");
+        logger.error({ time }, "GameClock: Negative time value");
       }
 
       // When restoring, we set gameTime directly
@@ -142,19 +131,5 @@ export const createGameClock = (initialTime: number = 0): GameClock => {
     },
 
     reset,
-
-    /**
-     * Serialize the game clock state for saving.
-     */
-    toJSON: (): GameClockState => ({ gameTime }),
-
-    /**
-     * Restore the game clock state from a previous serialization.
-     */
-    fromJSON: (state: GameClockState): void => {
-      gameTime = state.gameTime;
-      lastRawTime = null; // Mark as initial update for delta computation
-      logger.debug({ gameTime }, "GameClock: State restored from serialization");
-    },
   };
 };
