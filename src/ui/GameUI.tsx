@@ -6,6 +6,7 @@ import {
   saveToWorldStorage,
 } from "@/storage";
 import { logger } from "@/utils/logger";
+import { togglePause } from "@/context";
 
 type GameUiProps = {
   world: GameWorld;
@@ -47,6 +48,10 @@ export const GameUI = ({ world }: GameUiProps) => {
 
   const handleClearClick = () => {
     clearWorldStorage();
+  };
+
+  const handlePauseClick = () => {
+    togglePause(world);
   };
 
   return (
@@ -98,6 +103,18 @@ export const GameUI = ({ world }: GameUiProps) => {
               style={styles.slider}
               title="Sun position angle"
             />
+          </div>
+          <div style={styles.pauseSection}>
+            <button
+              onClick={handlePauseClick}
+              style={{
+                ...styles.button,
+                backgroundColor: world.isPaused ? "#28a745" : "#ffc107",
+              }}
+              title={world.isPaused ? "Resume simulation" : "Pause simulation"}
+            >
+              {world.isPaused ? "Resume" : "Pause"}
+            </button>
           </div>
         </div>
       </div>
@@ -210,6 +227,11 @@ const styles = {
     cursor: "pointer",
   } satisfies React.CSSProperties,
   sunAngleSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  } satisfies React.CSSProperties,
+  pauseSection: {
     display: "flex",
     alignItems: "center",
     gap: "8px",

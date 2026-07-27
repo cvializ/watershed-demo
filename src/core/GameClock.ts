@@ -104,8 +104,11 @@ export const createGameClock = (world: GameWorldContext): GameClock => {
       const computedDelta = rawTime - lastRawTime;
       deltaTime = Math.max(0, computedDelta); // Prevent negative deltas
 
-      // Advance gameTime by the actual elapsed time
-      world.gameTime += deltaTime;
+      // If paused, don't advance gameTime but still update lastRawTime to avoid large delta jumps
+      if (!world.isPaused) {
+        // Advance gameTime by the actual elapsed time
+        world.gameTime += deltaTime;
+      }
       lastRawTime = rawTime;
     },
 

@@ -24,6 +24,12 @@ export const createGameWorldContext = () => ({
     z: 0,
   },
   cameraZoom: 2.5,
+  // Pause state
+  isPaused: false,
 });
+
+export const togglePause = (world: any): void => {
+  world.isPaused = !world.isPaused;
+};
 
 export type GameWorldContext = ReturnType<typeof createGameWorldContext>;
