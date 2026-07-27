@@ -7,9 +7,9 @@ export const fpsSystem: WorldSystem = (world) => {
   frameCount++;
 
   // Update FPS every 500ms for smoother readings
-  if (world.time - fpsUpdateTime >= 0.5) {
-    world.fps = frameCount / (world.time - fpsUpdateTime);
+  if (world.gameTime - fpsUpdateTime >= 0.5) {
+    world.fps = frameCount / (world.gameTime - fpsUpdateTime);
     frameCount = 0;
-    fpsUpdateTime = world.time;
+    fpsUpdateTime = world.gameTime;
   }
 };
