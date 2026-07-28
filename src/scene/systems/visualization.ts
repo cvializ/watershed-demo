@@ -27,42 +27,34 @@ export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
     }
   }
 
-  // Handle wireframe visibility based on visualization mode
-  if (scene) {
-    // Check for wireframe objects in scene
-    const wireframes = scene.children.filter(
-      (obj: any) => obj.name === "terrain-wireframe",
-    );
-    if (wireframes.length > 0) {
-      // Wireframe is visible in Water Flow mode (4) or when explicitly enabled
-      const showWireframe = vizMode === 4;
-      wireframes.forEach((wireframe: any) => {
-        (wireframe as any).visible = showWireframe;
-      });
-    }
-  }
+  // Check for wireframe objects in scene
+  const wireframe = getMesh(MeshEnum.Wireframe);
+  // Wireframe is visible in Water Flow mode (4) or when explicitly enabled
+  const showWireframe = vizMode === 4;
+  wireframe.visible = showWireframe;
 
   logger.info(`[visualization:switch] vizMode ${vizMode}`);
-  
+
   // Query for terrain mesh
   const [terrain$] = query(world, [Terrain]);
   if (!terrain$) {
     throw new Error("OH NO");
   }
-  
+
   // Check if material needs to be updated by comparing current material with expected
   const expectedMaterial = getExpectedMaterial(vizMode);
   const currentMaterialId = MaterialRef.ref[terrain$] as MaterialEnum;
-  
+
   // Update if mode changed OR material doesn't match expected
-  const shouldUpdate = world.lastVizMode !== vizMode || currentMaterialId !== expectedMaterial;
-  
+  const shouldUpdate =
+    world.lastVizMode !== vizMode || currentMaterialId !== expectedMaterial;
+
   if (shouldUpdate) {
     world.lastVizMode = vizMode;
     logger.info(
       `[visualization:switch] lastVizMode ${world.lastVizMode}, currentMaterialId ${currentMaterialId} expected ${expectedMaterial}`,
     );
-    
+
     switch (vizMode) {
       case 0:
         // Height-based visualization
