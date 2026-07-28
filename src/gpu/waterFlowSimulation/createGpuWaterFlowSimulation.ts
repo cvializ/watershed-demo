@@ -134,6 +134,11 @@ export const createGpuWaterFlowSimulation = (
 
   return {
     compute: (deltaTime: number, gameTime: number = 0) => {
+      logger.info(
+        { deltaTime, gameTime },
+        "[gpu:water-flow:compute] Running GPU simulation step",
+      );
+
       updateClouds(deltaTime);
 
       updateWaterHeight();
