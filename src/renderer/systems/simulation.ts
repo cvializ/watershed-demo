@@ -59,10 +59,12 @@ export const simulationSystem: RendererSystem = (
 
   if (isPulsingMaterial) {
     logger.debug("[simulation:pulsing] Using PulsingSimulation material");
-    // Update pulsing simulation texture
-    const uniform = getUniforms<PulsingVisualizationUniforms>(material);
+    const pulsingMaterial = getMaterial(
+      MaterialEnum.PulsingSimulation,
+    ) as ShaderMaterial;
+    const uniform = getUniforms<PulsingVisualizationUniforms>(pulsingMaterial);
     const pulsingTexture = waterSimulation.getPulsingTexture();
-    uniform.uPulsingTexture = { value: pulsingTexture };
+    uniform.uPulsingTexture.value = pulsingTexture;
   } else {
     // Update water visualization uniforms
     const uniforms = getUniforms<WaterVisualizationUniforms>(material);
