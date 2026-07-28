@@ -69,7 +69,6 @@ export const createPulsingTexture = (
       // Initial uniform setup
     },
     updatePulsing: (gameTime: number) => {
-      logger.info({ gameTime }, "[pulsing:update] Updating uTime uniform");
       uniforms.uTime.value = gameTime;
     },
   };

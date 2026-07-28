@@ -15,7 +15,7 @@ export const Name = {
 
 /** Tag components */
 export const Camera = {};
-export const Terrain = {};;
+export const Terrain = {};
 
 export const Rotate = {};
 
@@ -42,5 +42,3 @@ export const MaterialRef = {
 };
 
 export const Renderable = {};
-
-export const Wireframe = {};
