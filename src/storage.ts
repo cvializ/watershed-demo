@@ -1,4 +1,4 @@
-import { query, removeEntity } from "bitecs";
+import { resetWorld } from "bitecs";
 import {
   createSnapshotSerializer,
   createSnapshotDeserializer,
@@ -21,10 +21,6 @@ const components = Object.values(Components).filter(
 let serializer: (
   selectedEntities?: readonly number[],
 ) => ArrayBuffer | undefined;
-let deserializer: (
-  packet: ArrayBuffer,
-  idMapOverride?: Map<number, number>,
-) => Map<number, number> | undefined;
 
 // TODO: create serializer and deserializer right after world is initialized.
 // Initialize serializers on first use (after world is created)
@@ -32,7 +28,12 @@ export const initSerializers = (world: GameWorldContext) => {
   logger.info("[storage:serializer:init]");
 
   serializer = createSnapshotSerializer(world, components);
-  deserializer = createSnapshotDeserializer(world, components);
+};
+
+/** Create a fresh deserializer for deserialization */
+const createFreshDeserializer = (world: GameWorldContext) => {
+  logger.info("[storage:deserializer:refresh]");
+  return createSnapshotDeserializer(world, components);
 };
 
 /**
@@ -97,17 +98,16 @@ const deserializeWorld = (
   const buffer = base64ToArrayBuffer(base64String);
   logger.info("[deserialize:buffer] Converted to ArrayBuffer");
 
-  // Clear all existing entities before deserializing
-  // This ensures we replace old component data with new serialized data
-  const entities$ = query(world, []);
-  for (const entity$ of entities$) {
-    console.log("REMOVE");
-    removeEntity(world, entity$);
-  }
+  // Create fresh deserializer after resetWorld to ensure component registration is correct.
+  // The original deserializer might have captured stale state from before reset.
+  const freshDeserializer = createFreshDeserializer(world);
+
+  // Reset world before deserializing to prevent entity ID recycling issues across save/load cycles.
+  resetWorld(world);
 
   logger.info("[deserialize:apply] Calling deserializer...");
   // Deserialize into world - this creates new entities with serialized data
-  const result = deserializer(buffer); // mutates world
+  const result = freshDeserializer(buffer); // mutates world
   const idMapSize = (result as Map<number, number> | undefined)
     ? (result as Map<number, number>).size
     : 0;
@@ -186,8 +186,6 @@ export const loadFromWorldStorage = async (
     { ecsFound: !!ecsSerialized, contextFound: !!contextSerialized },
     "[storage:load:retrieve] Retrieved from localStorage",
   );
-
-  // TODO: What's different the second time this is called?
 
   if (!ecsSerialized) {
     logger.info(

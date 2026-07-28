@@ -2,7 +2,7 @@ import { query } from "bitecs";
 
 import type { SceneSystem } from "@/scene/types";
 
-import { MaterialRef, Terrain } from "@/components/components";
+import { MaterialRef, Name, Terrain } from "@/components/components";
 import { MaterialEnum } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
@@ -34,25 +34,31 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
   wireframe.visible = showWireframe;
 
   // Query for terrain mesh
+  const entities$ = query(world, []);
+  logger.info(`ENTITIES: ${entities$}`);
   const [terrain$] = query(world, [Terrain]);
   if (!terrain$) {
     throw new Error("OH NO");
   }
 
+  // Log terrain entity name for debugging - fixed by creating fresh deserializer in storage.ts
+  logger.info(`Viz mode Name ${Name.value[terrain$]}`);
+
   // Check if material needs to be updated by comparing current material with expected
-  const expectedMaterial = getExpectedMaterial(vizMode);
-  const currentMaterialId = MaterialRef.ref[terrain$] as MaterialEnum;
+  const currentMaterialId = getCurrentMaterial(vizMode);
+  const nextMaterialId = MaterialRef.ref[terrain$] as MaterialEnum;
 
   // Update if mode changed OR material doesn't match expected
   const shouldUpdate =
-    world.lastVizMode !== vizMode || currentMaterialId !== expectedMaterial;
+    world.lastVizMode !== vizMode || nextMaterialId !== currentMaterialId;
 
   if (shouldUpdate) {
     world.lastVizMode = vizMode;
     logger.info(
-      `[visualization:switch] lastVizMode ${world.lastVizMode}, currentMaterialId ${currentMaterialId} expected ${expectedMaterial}`,
+      `[visualization:switch] lastVizMode ${world.lastVizMode}, currentMaterialId ${nextMaterialId} expected ${currentMaterialId}`,
     );
 
+    logger.info("terrain set to viz mode");
     switch (vizMode) {
       case 0:
         // Height-based visualization
@@ -86,7 +92,7 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
 /**
  * Get the expected material ID for a given visualization mode
  */
-function getExpectedMaterial(mode: number): MaterialEnum {
+function getCurrentMaterial(mode: number): MaterialEnum {
   switch (mode) {
     case 0:
       return MaterialEnum.HeightVisualization;
