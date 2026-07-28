@@ -7,7 +7,7 @@ import { MaterialEnum } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
 
-export const visualizationSystem: SceneSystem = (world, scene, _dt) => {
+export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
   // Get current visualization mode
   const vizMode =
     world.visualizationMode !== undefined ? world.visualizationMode : 4; // Default to Water Flow
