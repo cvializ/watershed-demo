@@ -1,8 +1,7 @@
 import type { GameWorldContext } from "@/context";
-import type { GameWorld } from "@/types";
 
 export type RendererInitSystem = (
-  world: GameWorld,
+  world: GameWorldContext,
   scene: THREE.Scene,
   renderer: THREE.Renderer,
 ) => void;

@@ -1,7 +1,10 @@
+import type { EntityId } from "bitecs";
+
 export const createGameWorldContext = () => ({
   gameTime: 0,
   fps: 0,
   showVelocity: true,
+  erosionRate: 0.5,
   lastVizMode: 4, // Default to Water Flow mode
   visualizationMode: 4, // Default to Water Flow mode
   sunAngle: 0,
@@ -11,7 +14,7 @@ export const createGameWorldContext = () => ({
     y: 0,
     z: 0,
   },
-  pendingInit: [],
+  pendingInit: [] as EntityId[],
   // Camera state for serialization
   cameraPosition: {
     x: 15,
@@ -28,7 +31,7 @@ export const createGameWorldContext = () => ({
   isPaused: false,
 });
 
-export const togglePause = (world: any): void => {
+export const togglePause = (world: GameWorldContext): void => {
   world.isPaused = !world.isPaused;
 };
 

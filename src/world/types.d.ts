@@ -1,7 +1,7 @@
 import type { World } from "bitecs";
 
-import type { GameWorld } from "@/context";
+import type { GameWorldContext } from "@/context";
 
-export type WorldInitSystem = (world: GameWorld) => void;
+export type WorldInitSystem = (world: GameWorldContext) => void;
 
-export type WorldSystem = (world: GameWorld, dt: number) => void;
+export type WorldSystem = (world: GameWorldContext, dt: number) => void;
