@@ -5,15 +5,12 @@ import * as THREE from "three";
 
 import type { RendererSystem } from "@/renderer/types";
 
-import {
-  MaterialRef,
-  WaterSimulation as WaterSimulationComponent,
-} from "@/components/components";
+import { WaterSimulation as WaterSimulationComponent } from "@/components/components";
+import { getGameClock } from "@/renderer/resources/loop";
 import {
   cloudSphereSystem,
   waterSimulation,
 } from "@/renderer/systems/init/simulation";
-import { getGameClock } from "@/renderer/resources/loop";
 import {
   getMaterial,
   MaterialEnum,
@@ -30,34 +27,42 @@ export const simulationSystem: RendererSystem = (
   dt,
 ) => {
   if (!waterSimulation) {
+    logger.warn("[simulation:skip] waterSimulation not initialized");
     return;
   }
 
   const clock = getGameClock();
   const gameTime = clock ? clock.getTime() : 0;
 
+  logger.debug(
+    { gameTime },
+    "[simulation:gameTime] Current game time from clock",
+  );
+
   const [simulation$] = query(world, [WaterSimulationComponent]);
   const simulationExists = Boolean(simulation$);
   if (!simulationExists) {
+    logger.warn("[simulation:skip] WaterSimulationComponent entity not found");
     return;
   }
+
+  logger.debug(
+    { simulation$ },
+    "[simulation:entity] WaterSimulationComponent entity found",
+  );
 
   const { showVelocity } = world;
-  const materialId = MaterialRef.ref[simulation$] as MaterialEnum;
-  if (!materialId) {
-    return;
-  }
-
-  const material = getMaterial(materialId) as ShaderMaterial;
+  const material = getMaterial(MaterialEnum.WaterFlow) as ShaderMaterial;
 
   // Check if this is a pulsing simulation material
-  const isPulsingMaterial = materialId === MaterialEnum.PulsingSimulation;
+  const isPulsingMaterial = world.visualizationMode === 6;
 
   if (isPulsingMaterial) {
+    logger.debug("[simulation:pulsing] Using PulsingSimulation material");
     // Update pulsing simulation texture
     const uniform = getUniforms<PulsingVisualizationUniforms>(material);
     const pulsingTexture = waterSimulation.getPulsingTexture();
-    uniform.uPulsingTexture.value = pulsingTexture;
+    uniform.uPulsingTexture = { value: pulsingTexture };
   } else {
     // Update water visualization uniforms
     const uniforms = getUniforms<WaterVisualizationUniforms>(material);

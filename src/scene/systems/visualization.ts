@@ -33,8 +33,6 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
   const showWireframe = vizMode === 4;
   wireframe.visible = showWireframe;
 
-  logger.info(`[visualization:switch] vizMode ${vizMode}`);
-
   // Query for terrain mesh
   const [terrain$] = query(world, [Terrain]);
   if (!terrain$) {
