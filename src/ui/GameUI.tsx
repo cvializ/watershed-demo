@@ -37,11 +37,19 @@ export const GameUI = ({ world }: GameUiProps) => {
   };
 
   const handleSaveClick = async () => {
-    await saveToWorldStorage(world);
+    // Wait until after all systems have run this frame to save
+    // This ensures we capture a consistent world state where all systems have applied their updates
+    requestAnimationFrame(async () => {
+      await saveToWorldStorage(world);
+    });
   };
 
   const handleLoadClick = async () => {
-    await loadFromWorldStorage(world);
+    // Wait until after all systems have run this frame before loading
+    // This ensures the world is in a consistent state for deserialization
+    requestAnimationFrame(async () => {
+      await loadFromWorldStorage(world);
+    });
   };
 
   const handleClearClick = () => {

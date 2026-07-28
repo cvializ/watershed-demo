@@ -16,6 +16,8 @@ export function createTerrain(world: World): number {
 
   const entity$ = addEntity(world);
 
+  logger.info(`Adding Terrain entity: ${entity$}`);
+
   addComponent(world, entity$, Terrain);
   addComponent(world, entity$, MaterialRef);
   addComponent(world, entity$, MeshRef);
