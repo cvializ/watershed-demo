@@ -4,8 +4,6 @@ import {
   createSnapshotDeserializer,
 } from "bitecs/serialization";
 
-import type { GameWorld } from "@/types";
-
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import {
@@ -30,7 +28,7 @@ let deserializer: (
 
 // TODO: create serializer and deserializer right after world is initialized.
 // Initialize serializers on first use (after world is created)
-export const initSerializers = (world: GameWorld) => {
+export const initSerializers = (world: GameWorldContext) => {
   logger.info("[storage:serializer:init]");
 
   serializer = createSnapshotSerializer(world, components);
@@ -40,7 +38,9 @@ export const initSerializers = (world: GameWorld) => {
 /**
  * Serialize the ECS world state and custom context to strings
  */
-const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
+const serializeWorld = (
+  world: GameWorldContext,
+): { ecs: string; context: string } => {
   logger.info("[serialize:start] Starting ECS world serialization");
 
   // Serialize ECS components to ArrayBuffer (no args = serialize all entities)
@@ -78,7 +78,10 @@ const serializeWorld = (world: GameWorld): { ecs: string; context: string } => {
 /**
  * Deserialize ECS state from base64 string and apply to world
  */
-const deserializeWorld = (world: GameWorld, base64String: string): void => {
+const deserializeWorld = (
+  world: GameWorldContext,
+  base64String: string,
+): void => {
   logger.info("[deserialize:start] Starting ECS world deserialization");
 
   if (!base64String) {
@@ -118,7 +121,7 @@ const deserializeWorld = (world: GameWorld, base64String: string): void => {
  * Save ECS state and custom context to localStorage
  */
 export const saveToWorldStorage = async (
-  world: GameWorld,
+  world: GameWorldContext,
   storageKey = "ecs-snapshot",
 ): Promise<void> => {
   logger.info(
@@ -168,7 +171,7 @@ export const saveToWorldStorage = async (
  * Load ECS state and custom context from localStorage
  */
 export const loadFromWorldStorage = async (
-  world: GameWorld,
+  world: GameWorldContext,
   storageKey = "ecs-snapshot",
 ): Promise<void> => {
   logger.info(
