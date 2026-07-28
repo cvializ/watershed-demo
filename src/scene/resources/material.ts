@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { getObject, setObject } from "@/scene/resources/objectCache";
 import { getTexture, TextureEnum } from "@/scene/resources/texture";
 import heightVisualizationFrag from "@/shaders/height-visualization.frag?raw";
 import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
@@ -10,7 +11,6 @@ import slopeVisualizationVert from "@/shaders/slope-visualization.vert?raw";
 import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
 import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 import { logger } from "@/utils/logger";
-import { getObject, setObject } from "@/scene/resources/objectCache";
 
 export const createDefaultMaterialResource = () => {
   return new THREE.MeshPhongMaterial({
@@ -184,7 +184,7 @@ export const MaterialEnum = {
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
 
 export const getMaterial = (id: MaterialEnum) => {
-  return getObject(id);
+  return getObject(id) as THREE.Material;
 };
 
 export const setMaterial = (id: MaterialEnum, value: THREE.Material) => {
