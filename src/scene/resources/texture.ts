@@ -1,8 +1,8 @@
 import * as THREE from "three";
 
+import { getObject, setObject } from "@/scene/resources/objectCache";
 import { calculateHeight } from "@/terrainUtils";
 import { logger } from "@/utils/logger";
-import { getObject, setObject } from "@/scene/resources/objectCache";
 
 /**
  * Create a displacement map texture from the terrain height function
@@ -50,14 +50,11 @@ export const setTexture = (id: TextureEnum, value: THREE.Texture) => {
 };
 
 export const getTexture = (id: TextureEnum) => {
-  return getObject(id);
+  return getObject(id) as THREE.Texture;
 };
 
 export const initTextures = () => {
   logger.info("[texture:init]");
 
-  setObject(
-    TextureEnum.DefaultHeightMap,
-    createDisplacementTexture(512, 12),
-  );
+  setObject(TextureEnum.DefaultHeightMap, createDisplacementTexture(512, 12));
 };

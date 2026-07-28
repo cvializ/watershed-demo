@@ -3,10 +3,10 @@ import * as THREE from "three";
 import type { SceneInitSystem } from "@/scene/types";
 
 import { createDownslopeArrowsMeshResource } from "@/scene/resources/downslopeArrows";
+import { getObject, setObject } from "@/scene/resources/objectCache";
 import { createTerrainResource } from "@/scene/resources/terrain";
 import { createWireframeResource } from "@/scene/resources/wireframe";
 import { logger } from "@/utils/logger";
-import { getObject, setObject } from "@/scene/resources/objectCache";
 
 export const MeshEnum = {
   Terrain: "Terrain",
@@ -20,13 +20,13 @@ export type MeshEnum = (typeof MeshEnum)[keyof typeof MeshEnum];
  * Get a mesh geometry by ID from the cache
  */
 export const getMesh = (id: MeshEnum) => {
-  return getObject(id);
+  return getObject(id) as THREE.Mesh;
 };
 
 /**
  * Set a mesh geometry in the cache
  */
-export const setMesh = (id: MeshEnum, value: THREE.Object3D) => {
+export const setMesh = (id: MeshEnum, value: THREE.Mesh) => {
   setObject(id, value);
 };
 
