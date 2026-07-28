@@ -10,6 +10,7 @@ import slopeVisualizationVert from "@/shaders/slope-visualization.vert?raw";
 import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
 import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 import { logger } from "@/utils/logger";
+import { getObject, setObject } from "@/scene/resources/objectCache";
 
 export const createDefaultMaterialResource = () => {
   return new THREE.MeshPhongMaterial({
@@ -174,7 +175,7 @@ export const MaterialEnum = {
   Default: "Default",
   HeightVisualization: "HeightVisualization",
   Normal: "Normal",
-  DownslopeArrows: "DownslopeArrows",
+  DownslopeArrowsMaterial: "DownslopeArrowsMaterial",
   Slope: "Slope",
   WaterFlow: "WaterFlow",
   PulsingSimulation: "PulsingSimulation",
@@ -182,37 +183,31 @@ export const MaterialEnum = {
 
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
 
-const enumCache = new Map<MaterialEnum, THREE.Material>();
-
 export const getMaterial = (id: MaterialEnum) => {
-  const material = enumCache.get(id);
-  if (!material) {
-    throw new Error(`Could not find material ${id}`);
-  }
-  return material;
+  return getObject(id);
 };
 
 export const setMaterial = (id: MaterialEnum, value: THREE.Material) => {
-  enumCache.set(id, value);
+  setObject(id, value);
 };
 
 export const initSceneMaterialResources = () => {
   logger.info("[material:init]");
 
-  enumCache.set(MaterialEnum.Default, createDefaultMaterialResource());
-  enumCache.set(
+  setObject(MaterialEnum.Default, createDefaultMaterialResource());
+  setObject(
     MaterialEnum.HeightVisualization,
     createHeightVisualizationMaterialResource({
       heightmap: getTexture(TextureEnum.DefaultHeightMap),
     }),
   );
-  enumCache.set(MaterialEnum.Normal, createNormalMaterialResource());
-  enumCache.set(
-    MaterialEnum.DownslopeArrows,
+  setObject(MaterialEnum.Normal, createNormalMaterialResource());
+  setObject(
+    MaterialEnum.DownslopeArrowsMaterial,
     createDownslopeArrowsMaterialResource(),
   );
-  enumCache.set(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
-  enumCache.set(
+  setObject(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
+  setObject(
     MaterialEnum.WaterFlow,
     createWaterVisualizationMaterialResource({
       heightmap: getTexture(TextureEnum.DefaultHeightMap),
@@ -222,7 +217,7 @@ export const initSceneMaterialResources = () => {
       sunLightPosition: new THREE.Vector3(0, 0, 0),
     }),
   );
-  enumCache.set(
+  setObject(
     MaterialEnum.PulsingSimulation,
     createPulsingVisualizationMaterialResource({
       pulsingTexture: getTexture(TextureEnum.PulsingTexture),

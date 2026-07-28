@@ -6,6 +6,7 @@ import { createDownslopeArrowsMeshResource } from "@/scene/resources/downslopeAr
 import { createTerrainResource } from "@/scene/resources/terrain";
 import { createWireframeResource } from "@/scene/resources/wireframe";
 import { logger } from "@/utils/logger";
+import { getObject, setObject } from "@/scene/resources/objectCache";
 
 export const MeshEnum = {
   Terrain: "Terrain",
@@ -15,24 +16,18 @@ export const MeshEnum = {
 
 export type MeshEnum = (typeof MeshEnum)[keyof typeof MeshEnum];
 
-const enumCache = new Map<MeshEnum, THREE.Object3D>();
-
 /**
  * Get a mesh geometry by ID from the cache
  */
 export const getMesh = (id: MeshEnum) => {
-  const mesh = enumCache.get(id);
-  if (!mesh) {
-    throw new Error(`Mesh geometry not found: ${id}`);
-  }
-  return mesh;
+  return getObject(id);
 };
 
 /**
  * Set a mesh geometry in the cache
  */
 export const setMesh = (id: MeshEnum, value: THREE.Object3D) => {
-  enumCache.set(id, value);
+  setObject(id, value);
 };
 
 /**
@@ -41,7 +36,7 @@ export const setMesh = (id: MeshEnum, value: THREE.Object3D) => {
 export const initMeshes: SceneInitSystem = (_world, _scene) => {
   logger.info("[mesh:init]");
 
-  enumCache.set(MeshEnum.Terrain, createTerrainResource());
-  enumCache.set(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
-  enumCache.set(MeshEnum.Wireframe, createWireframeResource());
+  setObject(MeshEnum.Terrain, createTerrainResource());
+  setObject(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
+  setObject(MeshEnum.Wireframe, createWireframeResource());
 };

@@ -8,7 +8,7 @@ export const createDownslopeArrowsMeshResource = () => {
   const terrainGeometry = createTerrainGeometry();
   const arrowGeometry = createDownslopeArrowsGeometry(terrainGeometry, 0.3);
 
-  const arrowMaterial = getMaterial(MaterialEnum.DownslopeArrows);
+  const arrowMaterial = getMaterial(MaterialEnum.DownslopeArrowsMaterial);
 
   // Create LineSegments
   const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
