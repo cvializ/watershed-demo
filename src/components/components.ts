@@ -17,6 +17,8 @@ export const Name = {
 export const Camera = {};
 export const Terrain = {};
 
+export const SunSphere = {};
+
 export const Rotate = {};
 
 export const Default = {};
