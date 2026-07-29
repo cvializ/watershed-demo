@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import { createCloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
 import { createGpuWaterFlowSimulation } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
+import { MeshEnum, setMesh } from "@/scene/resources/mesh";
 import {
   createDisplacementTexture,
   setTexture,
@@ -38,6 +39,12 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   // Create cloud sphere system using the cloud texture from GPU simulation
   const cloudTexture = waterSimulation.getCloudShadowTexture();
   const cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);
+
+  // Store cloud mesh in cache for type-safe access
+  const cloudMesh = cloudSphereSystem.getMesh();
+  if (cloudMesh) {
+    setMesh(MeshEnum.CloudMesh, cloudMesh);
+  }
 
   return { waterSimulation, cloudSphereSystem };
 };

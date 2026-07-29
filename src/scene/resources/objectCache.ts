@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { TextureEnum } from "@/scene/resources/texture";
@@ -13,7 +14,8 @@ import { TextureEnum } from "@/scene/resources/texture";
 export type ResourceEnum =
   | (typeof MeshEnum)[keyof typeof MeshEnum]
   | (typeof TextureEnum)[keyof typeof TextureEnum]
-  | (typeof MaterialEnum)[keyof typeof MaterialEnum];
+  | (typeof MaterialEnum)[keyof typeof MaterialEnum]
+  | (typeof GeneralObjectEnum)[keyof typeof GeneralObjectEnum];
 
 // Maps each enum to its value type
 export type ResourceValue<T extends ResourceEnum> =
@@ -23,7 +25,9 @@ export type ResourceValue<T extends ResourceEnum> =
       ? THREE.Texture
       : T extends (typeof MaterialEnum)[keyof typeof MaterialEnum]
         ? THREE.Material
-        : never;
+        : T extends (typeof GeneralObjectEnum)[keyof typeof GeneralObjectEnum]
+          ? THREE.Object3D
+          : never;
 
 // Global cache instance - provides type-safe access via getObject/setObject
 const objectCache = new Map<
