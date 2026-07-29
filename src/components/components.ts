@@ -30,6 +30,8 @@ export const Hidden = {};
 
 export const WaterSimulation = {};
 
+export const CloudSimulation = {};
+
 export const Position = {
   x: f32([]),
   y: f32([]),
