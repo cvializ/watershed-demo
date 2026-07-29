@@ -116,9 +116,7 @@ function parseFile(filePath: string): FunctionInfo[] {
 
   // Remove duplicates and clean up
   for (const func of functions) {
-    func.calls = [...new Set(func.calls)].filter(
-      (call) => call !== func.name,
-    );
+    func.calls = [...new Set(func.calls)].filter((call) => call !== func.name);
   }
 
   return functions;
@@ -127,9 +125,7 @@ function parseFile(filePath: string): FunctionInfo[] {
 /**
  * Build a call hierarchy tree from function information
  */
-function buildCallHierarchy(
-  functions: FunctionInfo[],
-): Map<string, string[]> {
+function buildCallHierarchy(functions: FunctionInfo[]): Map<string, string[]> {
   const callMap = new Map<string, string[]>();
 
   for (const func of functions) {
@@ -267,7 +263,8 @@ export {
 };
 
 // Run if executed directly (works with both node and tsx)
-const isMainModule = process.argv.length > 1 && process.argv[1].endsWith("call-hierarchy.ts");
+const isMainModule =
+  process.argv.length > 1 && process.argv[1].endsWith("call-hierarchy.ts");
 if (isMainModule) {
   main();
 }
