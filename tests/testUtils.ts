@@ -13,6 +13,12 @@ interface BrowserConsoleFixtures {
   _consoleErrorState: { allowed: boolean };
 }
 
+interface TestError {
+  type: string;
+  message: string;
+  stack?: string;
+}
+
 export const test = baseTest.extend<
   BrowserConsoleOptions & BrowserConsoleFixtures
 >({
@@ -39,13 +45,17 @@ export const test = baseTest.extend<
     use,
     testInfo,
   ) => {
-    const errors: { type: string; message: string }[] = [];
+    const errors: TestError[] = [];
 
     page.on("pageerror", (err) => {
       const where = `${basename(testInfo.file)}:${testInfo.line}`;
       // eslint-disable-next-line no-console
       console.log(`BROWSER ERROR: ${where} ${err.message}`);
-      errors.push({ type: "pageerror", message: err.message });
+      if (err.stack) {
+        // eslint-disable-next-line no-console
+        console.log(err.stack);
+      }
+      errors.push({ type: "pageerror", message: err.message, stack: err.stack });
     });
 
     page.on("console", (msg) => {
@@ -53,6 +63,14 @@ export const test = baseTest.extend<
         const where = `${basename(testInfo.file)}:${testInfo.line}`;
         // eslint-disable-next-line no-console
         console.log(`BROWSER CONSOLE ERROR: ${where} ${msg.text()}`);
+        // Try to log stack trace if available
+        const stackTrace = msg.stackTrace();
+        if (stackTrace && stackTrace.length > 0) {
+          for (const frame of stackTrace) {
+            // eslint-disable-next-line no-console
+            console.log(`  at ${frame.url}:${frame.lineNumber}:${frame.columnNumber}`);
+          }
+        }
         errors.push({ type: "console", message: msg.text() });
       }
     });
@@ -74,12 +92,21 @@ export const test = baseTest.extend<
 
       let message = `Browser raised ${errors.length} error(s):`;
       if (pageErrorCount > 0 && !pageErrorsAllowed) {
-        message += `\n  - ${pageErrorCount} page error(s)`;
+        message += `
+  - ${pageErrorCount} page error(s)`;
       }
       if (consoleErrorCount > 0 && !consoleErrorsAllowed) {
-        message += `\n  - ${consoleErrorCount} console error(s)`;
+        message += `
+  - ${consoleErrorCount} console error(s)`;
       }
-      message += `\n${errors.map((e) => e.message).join("\n")}`;
+      message += `
+${errors.map((e) => e.message).join("\n")}`;
+
+      // Get the original error to access its stack trace
+      const originalError = errors.find((e) => e.type === "pageerror");
+      if (originalError && originalError.stack) {
+        message += `\n\nStack Trace:\n${originalError.stack}`;
+      }
 
       throw new Error(message);
     }
