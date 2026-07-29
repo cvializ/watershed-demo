@@ -6,6 +6,7 @@ import { createSunSphere } from "@/scene/factories/sunSphere";
 import { createWaterSimulation } from "@/scene/factories/simulation";
 import { createTerrain } from "@/scene/factories/terrain";
 import { createWireframe } from "@/scene/factories/wireframe";
+import { createDownslopeArrows } from "@/scene/factories/downslopeArrows";
 import { logger } from "@/utils/logger";
 
 export const worldInitSystem: WorldInitSystem = (world) => {
@@ -17,4 +18,5 @@ export const worldInitSystem: WorldInitSystem = (world) => {
   createSunSphere(world);
   createWaterSimulation(world);
   createWireframe(world);
+  createDownslopeArrows(world);
 };

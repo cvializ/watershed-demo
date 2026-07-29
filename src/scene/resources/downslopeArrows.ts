@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import { getMaterial, MaterialEnum } from "@/scene/resources/material";
+import { MeshEnum } from "@/scene/resources/mesh";
 import { createTerrainGeometry } from "@/scene/resources/terrain";
 import { createDownslopeArrowsGeometry } from "@/shaders/visualizer/createDownslopeArrowsGeometry";
 
@@ -12,7 +13,7 @@ export const createDownslopeArrowsMeshResource = () => {
 
   // Create LineSegments
   const arrows = new THREE.LineSegments(arrowGeometry, arrowMaterial);
-  arrows.name = "downslope-arrows";
+  arrows.name = MeshEnum.DownslopeArrows;
   arrows.rotation.x = -Math.PI / 2;
 
   return arrows;
