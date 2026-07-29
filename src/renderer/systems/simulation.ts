@@ -24,7 +24,7 @@ import { getUniforms } from "@/utils/uniformUtils";
 export const simulationSystem: RendererSystem = (
   world,
   scene,
-  renderer,
+  _renderer,
   dt,
 ) => {
   if (!waterSimulation) {
@@ -79,9 +79,9 @@ export const simulationSystem: RendererSystem = (
 
   // Update cloud spheres if available
   if (cloudSphereSystem) {
-    const camera =
-      (renderer as any).getCurrentViewportCamera ||
-      scene.children.find((c: THREE.Object3D) => (c as any).isCamera);
+    const camera = scene.children.find(
+      (c: THREE.Object3D) => (c as THREE.Camera).isCamera,
+    ) as THREE.Camera;
     if (camera) {
       cloudSphereSystem.update(camera, dt);
 
