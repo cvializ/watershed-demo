@@ -5,6 +5,7 @@ import type { SceneSystem } from "@/scene/types";
 
 import { getObject } from "@/scene/resources/objectCache";
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { MeshEnum, getMesh } from "@/scene/resources/mesh";
 
 /**
  * Updates the sun angle based on elapsed time
@@ -31,7 +32,6 @@ const updateSunAngle = (world: GameWorldContext, dt: number): void => {
  */
 const updateSunPosition = (
   world: GameWorldContext,
-  scene: THREE.Scene,
 ): void => {
   const sunLight = getObject(GeneralObjectEnum.SunLight) as THREE.DirectionalLight;
   if (!sunLight) {
@@ -43,7 +43,7 @@ const updateSunPosition = (
   sunLight.position.set(x, y, z);
 
   // Update sun sphere to follow the light
-  const sunSphere = (scene as any).sunSphere as THREE.Mesh;
+  const sunSphere = getMesh(MeshEnum.SunSphere) as THREE.Mesh;
   if (sunSphere) {
     sunSphere.position.set(x, y, z);
   }
@@ -114,7 +114,7 @@ const updateBackground = (
 export const sunBackgroundSystem: SceneSystem = (world, scene, dt): void => {
   updateSunAngle(world, dt);
 
-  updateSunPosition(world, scene);
+  updateSunPosition(world);
 
   updateBackground(world, scene);
 };
