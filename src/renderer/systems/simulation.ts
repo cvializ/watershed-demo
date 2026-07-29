@@ -17,6 +17,7 @@ import {
   type PulsingVisualizationUniforms,
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
+import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
@@ -85,11 +86,10 @@ export const simulationSystem: RendererSystem = (
       cloudSphereSystem.update(camera, dt);
 
       // Add cloud sphere mesh to scene if not already added
-      const cloudMesh = cloudSphereSystem.getMesh();
+      const cloudMesh = getMesh(MeshEnum.CloudMesh);
 
-      // Check if mesh is already in scene
-      const existingCloudMesh = scene.getObjectByName("volumetric-clouds");
-      if (!existingCloudMesh && cloudMesh) {
+      // Check if mesh is already in scene by checking its parent
+      if (!cloudMesh.parent) {
         logger.info("Adding volumetric clouds to scene");
         cloudMesh.name = "volumetric-clouds";
         scene.add(cloudMesh);

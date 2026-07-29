@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { setObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 
 export const createSceneResource = () => {
@@ -13,7 +15,6 @@ export const createSceneResource = () => {
 
   // Sun light (directional) with shadows
   const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  sunLight.name = "sun-light";
   sunLight.position.set(10, 20, 10);
   sunLight.castShadow = true;
 
@@ -29,7 +30,8 @@ export const createSceneResource = () => {
 
   scene.add(sunLight);
 
-  // Yellow sphere at sun position for visualization
+  // Store sun light in cache for type-safe access
+  setObject(GeneralObjectEnum.SunLight, sunLight);
   const sunSphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
   const sunSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
   const sunSphere = new THREE.Mesh(sunSphereGeometry, sunSphereMaterial);
