@@ -10,28 +10,6 @@ import * as path from "path";
 import * as ts from "typescript";
 
 /**
- * Check if a node is a dynamic import expression (CallExpression with 'import' callee)
- */
-function hasDynamicImport(node: ts.Node): boolean {
-  // Check for CallExpression with 'import' as callee (dynamic import())
-  if (
-    ts.isCallExpression(node) &&
-    node.expression.kind === ts.SyntaxKind.ImportKeyword
-  ) {
-    return true;
-  }
-
-  // Recursively check children
-  let found = false;
-  ts.forEachChild(node, (child) => {
-    if (hasDynamicImport(child)) {
-      found = true;
-    }
-  });
-  return found;
-}
-
-/**
  * Analyze a source file for dynamic imports
  */
 function analyzeFile(filePath: string): {
