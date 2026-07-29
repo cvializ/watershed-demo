@@ -19,7 +19,7 @@ const world = createWorld(gameWorldContext);
 
 initSerializers(world);
 
-const { scene } = createSceneResource();
+const scene = createSceneResource();
 const renderer = createRendererResource();
 
 rendererInitSystem(world, scene, renderer);
