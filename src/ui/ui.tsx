@@ -1,7 +1,8 @@
 import { createRoot } from "react-dom/client";
 
-import { GameUI } from "@/ui/GameUI";
 import type { GameWorldContext } from "@/context";
+
+import { GameUI } from "@/ui/GameUI";
 
 const uiContainer = document.getElementById("ui-root");
 

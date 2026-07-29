@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Checks that all exports in the project have globally unique identifiers.
- * 
+ *
  * This script parses all TypeScript/TSX files, extracts export declarations,
  * and checks for duplicate export names across the entire project.
  */
@@ -292,7 +292,9 @@ async function main() {
 
   // Report inter-file duplicates
   if (duplicateMap.size > 0) {
-    console.log("❌ Inter-file duplicate exports (same name, different files):");
+    console.log(
+      "❌ Inter-file duplicate exports (same name, different files):",
+    );
     console.log();
 
     for (const [name, exports] of duplicateMap) {

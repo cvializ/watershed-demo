@@ -1,10 +1,10 @@
+import { togglePause, type GameWorldContext } from "@/context";
 import {
   clearWorldStorage,
   loadFromWorldStorage,
   saveToWorldStorage,
 } from "@/storage";
 import { logger } from "@/utils/logger";
-import { togglePause, type GameWorldContext } from "@/context";
 
 type GameUiProps = {
   world: GameWorldContext;

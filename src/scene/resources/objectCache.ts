@@ -1,8 +1,8 @@
 import * as THREE from "three";
 
+import { MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { TextureEnum } from "@/scene/resources/texture";
-import { MaterialEnum } from "@/scene/resources/material";
 
 /**
  * Global object cache that holds all resource objects indexed by their type and ID.
@@ -10,19 +10,26 @@ import { MaterialEnum } from "@/scene/resources/material";
  */
 
 // Union of all enum types
-export type ResourceEnum = typeof MeshEnum[keyof typeof MeshEnum] |
-  typeof TextureEnum[keyof typeof TextureEnum] |
-  typeof MaterialEnum[keyof typeof MaterialEnum];
+export type ResourceEnum =
+  | (typeof MeshEnum)[keyof typeof MeshEnum]
+  | (typeof TextureEnum)[keyof typeof TextureEnum]
+  | (typeof MaterialEnum)[keyof typeof MaterialEnum];
 
 // Maps each enum to its value type
 export type ResourceValue<T extends ResourceEnum> =
-  T extends typeof MeshEnum[keyof typeof MeshEnum] ? THREE.Object3D :
-  T extends typeof TextureEnum[keyof typeof TextureEnum] ? THREE.Texture :
-  T extends typeof MaterialEnum[keyof typeof MaterialEnum] ? THREE.Material :
-  never;
+  T extends (typeof MeshEnum)[keyof typeof MeshEnum]
+    ? THREE.Object3D
+    : T extends (typeof TextureEnum)[keyof typeof TextureEnum]
+      ? THREE.Texture
+      : T extends (typeof MaterialEnum)[keyof typeof MaterialEnum]
+        ? THREE.Material
+        : never;
 
 // Global cache instance - provides type-safe access via getObject/setObject
-const objectCache = new Map<ResourceEnum, THREE.Object3D | THREE.Texture | THREE.Material>();
+const objectCache = new Map<
+  ResourceEnum,
+  THREE.Object3D | THREE.Texture | THREE.Material
+>();
 
 /**
  * Get a resource from the cache by its enum ID
@@ -38,7 +45,10 @@ export const getObject = <T extends ResourceEnum>(id: T): ResourceValue<T> => {
 /**
  * Set a resource in the cache by its enum ID
  */
-export const setObject = <T extends ResourceEnum>(id: T, value: ResourceValue<T>): void => {
+export const setObject = <T extends ResourceEnum>(
+  id: T,
+  value: ResourceValue<T>,
+): void => {
   objectCache.set(id, value);
 };
 
@@ -52,7 +62,9 @@ export const hasObject = (id: ResourceEnum): boolean => {
 /**
  * Get all entries in the cache
  */
-export const getEntries = (): Array<[ResourceEnum, THREE.Object3D | THREE.Texture | THREE.Material]> => {
+export const getEntries = (): Array<
+  [ResourceEnum, THREE.Object3D | THREE.Texture | THREE.Material]
+> => {
   return Array.from(objectCache.entries());
 };
 

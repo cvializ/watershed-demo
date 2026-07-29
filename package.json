@@ -2,10 +2,10 @@
   "name": "myapp",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "bin": {
     "call-hierarchy": "./bin/call-hierarchy"
   },
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "test": "playwright test",
