@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 import { observe, onAdd, onRemove } from "bitecs";
 
 import type { SceneInitSystem } from "@/scene/types";
@@ -19,7 +21,7 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   // Handle MeshRef + Renderable entities
   observe(world, onAdd(MeshRef, Renderable), (entity$) => {
     logger.debug("RENDERABLE ADDED");
-    world.pendingInit.push(entity$);
+    scene.add(getMesh(MeshRef.ref[entity$] as MeshEnum));
   });
 
   observe(world, onRemove(MeshRef, Renderable), (eid$) => {
@@ -31,7 +33,10 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   // Handle ObjectRef + Renderable entities
   observe(world, onAdd(ObjectRef, Renderable), (entity$) => {
     logger.debug("OBJECTREF RENDERABLE ADDED");
-    world.pendingInit.push(entity$);
+    const objectRef = ObjectRef.ref[entity$];
+    if (objectRef) {
+      scene.add(getObject(objectRef as GeneralObjectEnum) as THREE.Object3D);
+    }
   });
 
   observe(world, onRemove(ObjectRef, Renderable), (eid$) => {

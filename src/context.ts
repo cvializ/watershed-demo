@@ -1,5 +1,3 @@
-import type { EntityId } from "bitecs";
-
 export const createGameWorldContext = () => ({
   gameTime: 0,
   fps: 0,
@@ -14,8 +12,6 @@ export const createGameWorldContext = () => ({
     y: 0,
     z: 0,
   },
-  pendingInit: [] as EntityId[],
-  // Camera state for serialization
   cameraPosition: {
     x: 15,
     y: 12,

@@ -10,12 +10,12 @@ export const createWireframe = (world: World): number => {
   const entity$ = addEntity(world);
 
   addComponent(world, entity$, MeshRef);
-  addComponent(world, entity$, Name);
-
   MeshRef.ref[entity$] = MeshEnum.Wireframe;
-  Name.value[entity$] = "Wireframe";
 
   addComponent(world, entity$, Renderable);
+  addComponent(world, entity$, Name);
+
+  Name.value[entity$] = "Wireframe";
 
   return entity$;
 };
