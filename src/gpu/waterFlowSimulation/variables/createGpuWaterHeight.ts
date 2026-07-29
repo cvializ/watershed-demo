@@ -19,6 +19,7 @@ export type WaterHeightUniforms = {
   waterSourcesMap: THREE.IUniform<THREE.Texture | null>;
   cloudShadowMap: THREE.IUniform<THREE.Texture | null>;
   surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+  uTime: THREE.IUniform<number>;
 };
 
 /**
@@ -110,6 +111,7 @@ export const createGpuWaterHeight = (
   uniforms.waterSourcesMap = { value: null };
   uniforms.cloudShadowMap = { value: null };
   uniforms.surfaceMaterialMap = { value: null }; // Surface material texture
+  uniforms.uTime = { value: 0.0 }; // Global time reference for save/load support
 
   return {
     waterHeightVariable,
@@ -121,9 +123,10 @@ export const createGpuWaterHeight = (
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
       uniforms.surfaceMaterialMap.value = null;
     },
-    updateWaterHeight: () => {
+    updateWaterHeight: (time: number) => {
       uniforms.waterSourcesMap.value =
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
+      uniforms.uTime.value = time; // Update with global time reference
     },
   };
 };
