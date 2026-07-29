@@ -22,7 +22,7 @@ export type DriftingCloudUniforms = {
 
 export type GpuClouds = {
   cloudVariable: Variable;
-  updateClouds: (deltaTime: number) => void;
+  updateClouds: (gameTime: number) => void;
   getCloudTexture: () => THREE.Texture;
 };
 
@@ -103,26 +103,14 @@ export const createGpuClouds = (
   cloudUniforms.uScale = { value: config.scale };
   cloudUniforms.uDensity = { value: config.density };
 
-  let currentTime = 0;
-
-  // Update clouds
-  const updateClouds = (deltaTime: number): void => {
-    currentTime += deltaTime;
-
-    // Update uniforms for cloud animation using typed interface
-    cloudUniforms.uTime.value = currentTime;
-  };
-
-  // Get the cloud texture from GPU computation render target
-  const getCloudTexture = (): THREE.Texture => {
-    return gpuCompute.getCurrentRenderTarget(cloudVariable).texture;
-  };
-
   return {
     cloudVariable,
-    updateClouds: (deltaTime: number) => {
-      updateClouds(deltaTime);
+    updateClouds: (gameTime: number): void => {
+      // Use global gameTime directly for save/load support
+      cloudUniforms.uTime.value = gameTime;
     },
-    getCloudTexture,
+    getCloudTexture: (): THREE.Texture => {
+      return gpuCompute.getCurrentRenderTarget(cloudVariable).texture;
+    },
   };
 };

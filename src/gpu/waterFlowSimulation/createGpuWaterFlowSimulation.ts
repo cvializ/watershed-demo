@@ -133,12 +133,14 @@ export const createGpuWaterFlowSimulation = (
   initPulsing();
 
   return {
-    compute: (deltaTime: number, gameTime: number = 0) => {
-      updateClouds(deltaTime);
+    compute: (_deltaTime: number, gameTime: number = 0) => {
+      // Update clouds with global time reference for save/load support
+      updateClouds(gameTime);
 
-      updateWaterHeight();
+      // Update water height with global time reference for save/load support
+      updateWaterHeight(gameTime);
 
-      // Update pulsing texture
+      // Update pulsing texture with global time reference
       updatePulsing(gameTime);
 
       // Compute all variables (velocity computation, pulsing)
