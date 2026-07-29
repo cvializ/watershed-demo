@@ -13,10 +13,11 @@ export function createSunSphere(world: World): number {
 
   addComponent(world, entity$, SunSphere);
   addComponent(world, entity$, MeshRef);
+  MeshRef.ref[entity$] = MeshEnum.SunSphere;
+
   addComponent(world, entity$, Renderable);
   addComponent(world, entity$, Name);
 
-  MeshRef.ref[entity$] = MeshEnum.SunSphere;
   Name.value[entity$] = "SunSphere";
 
   return entity$;

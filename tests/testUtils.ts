@@ -63,13 +63,11 @@ export const test = baseTest.extend<
         const where = `${basename(testInfo.file)}:${testInfo.line}`;
         // eslint-disable-next-line no-console
         console.log(`BROWSER CONSOLE ERROR: ${where} ${msg.text()}`);
-        // Try to log stack trace if available
-        const stackTrace = msg.stackTrace();
-        if (stackTrace && stackTrace.length > 0) {
-          for (const frame of stackTrace) {
-            // eslint-disable-next-line no-console
-            console.log(`  at ${frame.url}:${frame.lineNumber}:${frame.columnNumber}`);
-          }
+        // Log location if available
+        const location = msg.location();
+        if (location) {
+          // eslint-disable-next-line no-console
+          console.log(`  at ${location.url}:${location.lineNumber}:${location.columnNumber}`);
         }
         errors.push({ type: "console", message: msg.text() });
       }

@@ -20,11 +20,12 @@ export function createTerrain(world: World): number {
 
   addComponent(world, entity$, Terrain);
   addComponent(world, entity$, MaterialRef);
-  addComponent(world, entity$, MeshRef);
-  addComponent(world, entity$, Name);
-
   MaterialRef.ref[entity$] = MaterialEnum.Default;
+
+  addComponent(world, entity$, MeshRef);
   MeshRef.ref[entity$] = MeshEnum.Terrain;
+
+  addComponent(world, entity$, Name);
   Name.value[entity$] = "Terrain";
 
   logger.debug("RENDERABLE");

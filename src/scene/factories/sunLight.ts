@@ -13,9 +13,9 @@ export function createSunLight(world: World): number {
 
   addComponent(world, entity$, Name);
   addComponent(world, entity$, ObjectRef);
-  addComponent(world, entity$, Renderable);
-
   ObjectRef.ref[entity$] = GeneralObjectEnum.SunLight;
+
+  addComponent(world, entity$, Renderable);
   Name.value[entity$] = "SunLight";
 
   return entity$;

@@ -1,7 +1,5 @@
 import * as THREE from "three";
 
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
-import { setObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 
 export const createSunLightResource = () => {
