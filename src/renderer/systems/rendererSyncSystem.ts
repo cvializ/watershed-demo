@@ -1,6 +1,6 @@
 import type { RendererSystem } from "@/renderer/types";
 
-import { updateControls } from "@/renderer/systems/init/camera";
+import { updateControls } from "@/renderer/resources/camera";
 import { simulationSystem } from "@/renderer/systems/simulation";
 import { getCamera } from "@/scene/sceneUtils";
 import { logger } from "@/utils/logger";
