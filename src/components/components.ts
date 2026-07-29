@@ -44,3 +44,7 @@ export const MaterialRef = {
 };
 
 export const Renderable = {};
+
+export const ObjectRef = {
+  ref: str([]),
+};

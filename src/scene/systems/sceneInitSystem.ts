@@ -2,9 +2,11 @@ import { observe, onAdd, onRemove } from "bitecs";
 
 import type { SceneInitSystem } from "@/scene/types";
 
-import { MeshRef, Renderable } from "@/components/components";
+import { MeshRef, ObjectRef, Renderable } from "@/components/components";
 import { initSceneMaterialResources } from "@/scene/resources/material";
 import { getMesh, initMeshes, MeshEnum } from "@/scene/resources/mesh";
+import { getObject, initObjects } from "@/scene/resources/objectCache";
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { initTextures } from "@/scene/resources/texture";
 import { cameraLookInitSystem } from "@/scene/systems/init/cameraLook";
 import { hiddenInitSystem } from "@/scene/systems/init/hidden";
@@ -14,6 +16,7 @@ import { logger } from "@/utils/logger";
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   logger.info("[scene:init]");
 
+  // Handle MeshRef + Renderable entities
   observe(world, onAdd(MeshRef, Renderable), (entity$) => {
     logger.debug("RENDERABLE ADDED");
     world.pendingInit.push(entity$);
@@ -25,9 +28,25 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
     scene.remove(getMesh(MeshRef.ref[eid$] as MeshEnum));
   });
 
+  // Handle ObjectRef + Renderable entities
+  observe(world, onAdd(ObjectRef, Renderable), (entity$) => {
+    logger.debug("OBJECTREF RENDERABLE ADDED");
+    world.pendingInit.push(entity$);
+  });
+
+  observe(world, onRemove(ObjectRef, Renderable), (eid$) => {
+    logger.debug("OBJECTREF RENDERABLE REMOVED");
+    const objectRef = ObjectRef.ref[eid$];
+    if (objectRef) {
+      logger.debug(`Remove object ${objectRef}`);
+      scene.remove(getObject(objectRef as GeneralObjectEnum));
+    }
+  });
+
   initTextures();
   initSceneMaterialResources();
   initMeshes(world, scene);
+  initObjects();
 
   hiddenInitSystem(world, scene);
 

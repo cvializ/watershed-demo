@@ -3,7 +3,9 @@ import * as THREE from "three";
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
+import { createSunLightResource } from "@/scene/resources/sunLight";
 import { TextureEnum } from "@/scene/resources/texture";
+import { logger } from "@/utils/logger";
 
 /**
  * Global object cache that holds all resource objects indexed by their type and ID.
@@ -77,4 +79,13 @@ export const getEntries = (): Array<
  */
 export const clear = (): void => {
   objectCache.clear();
+};
+
+/**
+ * Initialize all objects in the cache into the scene
+ */
+export const initObjects = (): void => {
+  logger.debug(`[objectCache:init] ${objectCache.size} objects`);
+
+  setObject(GeneralObjectEnum.SunLight, createSunLightResource());
 };
