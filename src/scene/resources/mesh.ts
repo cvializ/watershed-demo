@@ -32,6 +32,16 @@ export const setMesh = (id: MeshEnum, value: THREE.Mesh) => {
   setObject(id, value);
 };
 
+export const createSunSphereResource = () => {
+  logger.info("[sunSphere:resource]");
+
+  const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
+  const sunSphere = new THREE.Mesh(geometry, material);
+
+  return sunSphere;
+};
+
 /**
  * Initialize all mesh geometries and add them to the cache
  */
@@ -41,4 +51,5 @@ export const initMeshes: SceneInitSystem = (_world, _scene) => {
   setObject(MeshEnum.Terrain, createTerrainResource());
   setObject(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
   setObject(MeshEnum.Wireframe, createWireframeResource());
+  setObject(MeshEnum.SunSphere, createSunSphereResource());
 };

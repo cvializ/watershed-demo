@@ -1,7 +1,6 @@
 import * as THREE from "three";
 
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
-import { MeshEnum, setMesh } from "@/scene/resources/mesh";
 import { setObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 
@@ -33,15 +32,6 @@ export const createSceneResource = () => {
 
   // Store sun light in cache for type-safe access
   setObject(GeneralObjectEnum.SunLight, sunLight);
-  const sunSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffff00 }), // Yellow
-  );
-  sunSphere.position.copy(sunLight.position);
-  scene.add(sunSphere);
-
-  // Store sun sphere in mesh cache for type-safe access
-  setMesh(MeshEnum.SunSphere, sunSphere);
 
   return { scene, sunLight };
 };
