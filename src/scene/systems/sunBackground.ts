@@ -112,6 +112,11 @@ const updateBackground = (
  * Updates sun angle, position, and background color based on time of day
  */
 export const sunBackgroundSystem: SceneSystem = (world, scene, dt): void => {
+  // Skip updates when game is paused
+  if (world.isPaused) {
+    return;
+  }
+
   updateSunAngle(world, dt);
 
   updateSunPosition(world);

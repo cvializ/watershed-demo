@@ -12,6 +12,8 @@ export const rendererSyncSystem: RendererSystem = (
   dt,
 ) => {
   simulationSystem(world, scene, renderer, dt);
+
+  // Update camera controls (auto-rotate and input handling)
   updateControls(dt);
 
   const camera = getCamera(scene);

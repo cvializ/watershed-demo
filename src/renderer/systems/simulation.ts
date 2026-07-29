@@ -27,6 +27,11 @@ export const simulationSystem: RendererSystem = (
   _renderer,
   dt,
 ) => {
+  // Skip updates when game is paused
+  if (world.isPaused) {
+    return;
+  }
+
   if (!waterSimulation) {
     logger.warn("[simulation:skip] waterSimulation not initialized");
     return;
