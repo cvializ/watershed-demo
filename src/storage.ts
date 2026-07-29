@@ -3,13 +3,13 @@ import {
   createSnapshotSerializer,
   createSnapshotDeserializer,
 } from "bitecs/serialization";
+import * as THREE from "three";
 
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
-import {
-  getCameraFromControls,
-  getControls,
-} from "@/renderer/systems/init/camera";
+import { getControls } from "@/renderer/resources/camera";
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 
 /**
@@ -138,7 +138,9 @@ export const saveToWorldStorage = async (
     world.cameraTarget.x = controls.target.x;
     world.cameraTarget.y = controls.target.y;
     world.cameraTarget.z = controls.target.z;
-    const camera = getCameraFromControls();
+    const camera = getObject(
+      GeneralObjectEnum.Camera,
+    ) as THREE.OrthographicCamera;
     if (camera) {
       world.cameraZoom = camera.zoom;
     }
@@ -235,7 +237,9 @@ export const loadFromWorldStorage = async (
       world.cameraTarget.y,
       world.cameraTarget.z,
     );
-    const camera = getCameraFromControls();
+    const camera = getObject(
+      GeneralObjectEnum.Camera,
+    ) as THREE.OrthographicCamera;
     if (camera) {
       camera.zoom = world.cameraZoom;
       camera.updateProjectionMatrix();

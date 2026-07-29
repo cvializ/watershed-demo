@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import { createCameraResource } from "@/renderer/resources/camera";
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
@@ -87,5 +88,6 @@ export const clear = (): void => {
 export const initObjects = (): void => {
   logger.debug(`[objectCache:init] ${objectCache.size} objects`);
 
+  setObject(GeneralObjectEnum.Camera, createCameraResource());
   setObject(GeneralObjectEnum.SunLight, createSunLightResource());
 };

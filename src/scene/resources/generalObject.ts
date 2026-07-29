@@ -1,4 +1,5 @@
 export const GeneralObjectEnum = {
+  Camera: "Camera",
   SunLight: "SunLight",
 } as const;
 
