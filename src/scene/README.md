@@ -21,14 +21,13 @@ The `src/scene` directory serves as the **renderer layer** that:
 
 ## Components
 
-| File                  | Description                                                |
-| --------------------- | ---------------------------------------------------------- |
-| `initSystem.ts`       | Initializes scene resources when ECS entities are added    |
-| `syncSystem.ts`       | Syncs ECS component data to Three.js objects each frame    |
-| `resources.ts`        | Creates the base scene with lighting and configuration     |
-| `sceneUtils.ts`       | Utility functions for scene queries (e.g., getting camera) |
-| `resources/camera.ts` | Creates Three.js camera objects                            |
-| `resources/cube.ts`   | Creates Three.js mesh objects for cubes                    |
+| File                  | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `initSystem.ts`       | Initializes scene resources when ECS entities are added |
+| `syncSystem.ts`       | Syncs ECS component data to Three.js objects each frame |
+| `resources.ts`        | Creates the base scene with lighting and configuration  |
+| `resources/camera.ts` | Creates Three.js camera objects                         |
+| `resources/cube.ts`   | Creates Three.js mesh objects for cubes                 |
 
 ## Systems
 

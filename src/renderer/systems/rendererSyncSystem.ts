@@ -2,8 +2,8 @@ import type { RendererSystem } from "@/renderer/types";
 
 import { updateControls } from "@/renderer/resources/camera";
 import { simulationSystem } from "@/renderer/systems/simulation";
-import { getCamera } from "@/scene/sceneUtils";
-import { logger } from "@/utils/logger";
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { getObject } from "@/scene/resources/objectCache";
 
 export const rendererSyncSystem: RendererSystem = (
   world,
@@ -16,10 +16,6 @@ export const rendererSyncSystem: RendererSystem = (
   // Update camera controls (auto-rotate and input handling)
   updateControls(dt);
 
-  const camera = getCamera(scene);
-  if (!camera) {
-    logger.warn("no camera in scene");
-    return;
-  }
+  const camera = getObject(GeneralObjectEnum.Camera);
   renderer.render(scene, camera);
 };

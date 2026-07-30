@@ -4,8 +4,9 @@ import * as THREE from "three";
 import type { RendererInitSystem } from "@/renderer/types";
 
 import { Terrain, MeshRef } from "@/components/components";
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
-import { getCamera } from "@/scene/sceneUtils";
+import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 
 import { waterSimulation } from "./simulation";
@@ -15,7 +16,7 @@ const terrainSize = 12;
 
 export const addWaterInitSystem: RendererInitSystem = (
   world,
-  scene,
+  _scene,
   renderer,
 ) => {
   const canvas: HTMLElement = renderer.domElement;
@@ -29,7 +30,9 @@ export const addWaterInitSystem: RendererInitSystem = (
     const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
     const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    const camera = getCamera(scene);
+    const camera = getObject(
+      GeneralObjectEnum.Camera,
+    ) as THREE.OrthographicCamera;
     const [terrainEid] = query(world, [Terrain, MeshRef]);
     const terrainMesh = getMesh(MeshRef.ref[terrainEid] as MeshEnum);
 
