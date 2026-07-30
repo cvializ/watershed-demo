@@ -2,7 +2,8 @@ import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
 
-import { getCamera } from "@/scene/sceneUtils";
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { getObject } from "@/scene/resources/objectCache";
 
 export const resizeInitSystem: RendererInitSystem = (
   _world,
@@ -11,10 +12,9 @@ export const resizeInitSystem: RendererInitSystem = (
 ) => {
   // Handle window resize
   window.addEventListener("resize", () => {
-    const camera = getCamera(scene) as THREE.OrthographicCamera;
-    if (!camera) {
-      return;
-    }
+    const camera = getObject(
+      GeneralObjectEnum.Camera,
+    ) as THREE.OrthographicCamera;
 
     const frustumSize = 20;
     const aspect = window.innerWidth / window.innerHeight;

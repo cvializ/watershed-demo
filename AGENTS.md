@@ -113,7 +113,6 @@ arr.map(e => e * 2);         // Use descriptive names
 ```ts
 // Use $ suffix for entity IDs
 const entity$ = addEntity(world);
-const cameraEntity$ = getCameraEntity(world);
 
 // In loops, use $ suffix for iteration variables
 for (const entity$ of entities) {
