@@ -28,8 +28,6 @@ export const Hidden = {};
 
 // Simple relation with no data
 
-export const WaterSimulation = {};
-
 export const CloudSimulation = {};
 
 export const Position = {
