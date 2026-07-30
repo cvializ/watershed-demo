@@ -3,9 +3,9 @@ import * as THREE from "three";
 import type { GameWorldContext } from "@/context";
 import type { SceneSystem } from "@/scene/types";
 
-import { getObject } from "@/scene/resources/objectCache";
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { MeshEnum, getMesh } from "@/scene/resources/mesh";
+import { getObject } from "@/scene/resources/objectCache";
 
 /**
  * Updates the sun angle based on elapsed time
@@ -30,10 +30,10 @@ const updateSunAngle = (world: GameWorldContext, dt: number): void => {
 /**
  * Updates the sun's position in an orbit around the origin with inclination
  */
-const updateSunPosition = (
-  world: GameWorldContext,
-): void => {
-  const sunLight = getObject(GeneralObjectEnum.SunLight) as THREE.DirectionalLight;
+const updateSunPosition = (world: GameWorldContext): void => {
+  const sunLight = getObject(
+    GeneralObjectEnum.SunLight,
+  ) as THREE.DirectionalLight;
   if (!sunLight) {
     return;
   }

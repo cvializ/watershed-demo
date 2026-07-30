@@ -55,7 +55,11 @@ export const test = baseTest.extend<
         // eslint-disable-next-line no-console
         console.log(err.stack);
       }
-      errors.push({ type: "pageerror", message: err.message, stack: err.stack });
+      errors.push({
+        type: "pageerror",
+        message: err.message,
+        stack: err.stack,
+      });
     });
 
     page.on("console", (msg) => {
@@ -67,7 +71,9 @@ export const test = baseTest.extend<
         const location = msg.location();
         if (location) {
           // eslint-disable-next-line no-console
-          console.log(`  at ${location.url}:${location.lineNumber}:${location.columnNumber}`);
+          console.log(
+            `  at ${location.url}:${location.lineNumber}:${location.columnNumber}`,
+          );
         }
         errors.push({ type: "console", message: msg.text() });
       }
