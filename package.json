@@ -13,11 +13,12 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "knip": "knip",
-    "lint": "oxlint . && npm run lint:underscore-check && npm run lint:unique-exports && npm run lint:async-imports && npm run lint:as-any",
+    "lint": "oxlint . && npm run lint:underscore-check && npm run lint:unique-exports && npm run lint:async-imports && npm run lint:as-any && npm run lint:component-imports",
     "lint:as-any": "tsx scripts/constraints/check-as-any.ts",
     "lint:underscore-check": "tsx scripts/constraints/check-underscore-vars.ts",
     "lint:unique-exports": "tsx scripts/constraints/check-unique-exports.ts",
     "lint:async-imports": "tsx scripts/constraints/check-async-imports.ts",
+    "lint:component-imports": "tsx scripts/constraints/check-component-imports.ts",
     "format": "oxfmt --check",
     "validate": "npm run lint && npm run typecheck && npm run test && npm run build",
     "pre-commit": "npm run validate && npm run knip && npm run format"

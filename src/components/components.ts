@@ -11,6 +11,8 @@ export const Name = {
   value: str([]),
 };
 
+export const CloudSimulation = {};
+
 export const Position = {
   x: f32([]),
   y: f32([]),
