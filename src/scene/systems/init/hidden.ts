@@ -28,7 +28,7 @@ const showSystem: SceneInitSystem = (world) => {
   observe(world, onRemove(Hidden, MeshRef), (entity$) => {
     // Get all material meshes
 
-    const meshId = MeshRef.ref[entity$] as string;
+    const meshId = MeshRef.ref[entity$] as MeshEnum;
     if (!meshId) {
       logger.error(`entity ${entity$} MeshRef not found in world`);
       return;

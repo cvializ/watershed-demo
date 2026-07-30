@@ -7,7 +7,7 @@ import { getObject } from "@/scene/resources/objectCache";
 
 export const resizeInitSystem: RendererInitSystem = (
   _world,
-  scene,
+  _scene,
   renderer,
 ) => {
   // Handle window resize
@@ -15,6 +15,9 @@ export const resizeInitSystem: RendererInitSystem = (
     const camera = getObject(
       GeneralObjectEnum.Camera,
     ) as THREE.OrthographicCamera;
+    if (!camera) {
+      return;
+    }
 
     const frustumSize = 20;
     const aspect = window.innerWidth / window.innerHeight;

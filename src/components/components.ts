@@ -17,14 +17,9 @@ export const Name = {
 export const Camera = {};
 export const Terrain = {};
 
-export const SunSphere = {};
-
-export const Rotate = {};
-
-export const Default = {};
-export const HeightMap = {};
-
 export const Hidden = {};
+
+export const Renderable = {};
 
 // Simple relation with no data
 
@@ -42,8 +37,6 @@ export const MeshRef = {
 export const MaterialRef = {
   ref: str([]),
 };
-
-export const Renderable = {};
 
 export const ObjectRef = {
   ref: str([]),
