@@ -12,23 +12,38 @@ import waterVisualizationFrag from "@/shaders/water-visualization.frag?raw";
 import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 import { logger } from "@/utils/logger";
 
-export const createDefaultMaterialResource = () => {
-  return new THREE.MeshPhongMaterial({
-    color: 0x8b4513, // Brownish terrain color
-    flatShading: false,
-  }) as THREE.MeshPhongMaterial;
-};
-
 type HeightVisualizationUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
   uMinHeight: THREE.IUniform<number>;
   uMaxHeight: THREE.IUniform<number>;
 };
 
+type SlopeVisualizationUniforms = {
+  uMinSlope: THREE.IUniform<number>;
+  uMaxSlope: THREE.IUniform<number>;
+};
+
+export type PulsingVisualizationUniforms = {
+  uPulsingTexture: THREE.IUniform<THREE.Texture>;
+};
+
+export type WaterVisualizationUniforms = {
+  uHeightMap: THREE.IUniform<THREE.Texture>;
+  uWaterHeightmap: THREE.IUniform<THREE.Texture>;
+  uCloudShadowMap: THREE.IUniform<THREE.Texture>;
+  uVelocityMap: THREE.IUniform<THREE.Texture>;
+  uMinHeight: THREE.IUniform<number>;
+  uMaxHeight: THREE.IUniform<number>;
+  uShowVelocity: THREE.IUniform<number>;
+  uSurfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+  uLightPosition: THREE.IUniform<THREE.Vector3>;
+  uLightSpaceMatrix: THREE.IUniform<THREE.Matrix4>;
+};
+
 /**
  * Create a shader material that visualizes terrain height using a color palette
  */
-export const createHeightVisualizationMaterialResource = ({
+const createHeightVisualizationMaterialResource = ({
   heightmap,
 }: {
   heightmap: THREE.Texture;
@@ -47,15 +62,10 @@ export const createHeightVisualizationMaterialResource = ({
   });
 };
 
-type SlopeVisualizationUniforms = {
-  uMinSlope: THREE.IUniform<number>;
-  uMaxSlope: THREE.IUniform<number>;
-};
-
 /**
  * Create a shader material that visualizes terrain slope using surface normals
  */
-export const createSlopeVisualizationMaterialResource = () => {
+const createSlopeVisualizationMaterialResource = () => {
   const uniforms: SlopeVisualizationUniforms = {
     uMinSlope: { value: 0.0 },
     uMaxSlope: { value: 2.0 },
@@ -72,7 +82,7 @@ export const createSlopeVisualizationMaterialResource = () => {
 /**
  * Create a line basic material for downslope arrows visualization
  */
-export const createDownslopeArrowsMaterialResource = () => {
+const createDownslopeArrowsMaterialResource = () => {
   return new THREE.LineBasicMaterial({
     color: 0xffffff,
     linewidth: 1,
@@ -84,21 +94,14 @@ export const createDownslopeArrowsMaterialResource = () => {
 /**
  * Create a mesh normal material for verification/debugging
  */
-export const createNormalMaterialResource = () => {
+const createNormalMaterialResource = () => {
   return new THREE.MeshNormalMaterial({});
-};
-
-/**
- * Uniform structure for pulsing visualization shader.
- */
-export type PulsingVisualizationUniforms = {
-  uPulsingTexture: THREE.IUniform<THREE.Texture>;
 };
 
 /**
  * Create a shader material that visualizes the pulsing texture simulation
  */
-export const createPulsingVisualizationMaterialResource = ({
+const createPulsingVisualizationMaterialResource = ({
   pulsingTexture,
 }: {
   pulsingTexture: THREE.Texture;
@@ -113,22 +116,6 @@ export const createPulsingVisualizationMaterialResource = ({
     fragmentShader: pulsingSimulationFrag,
     side: THREE.DoubleSide,
   });
-};
-
-/**
- * Uniform structure for water visualization shader.
- */
-export type WaterVisualizationUniforms = {
-  uHeightMap: THREE.IUniform<THREE.Texture>;
-  uWaterHeightmap: THREE.IUniform<THREE.Texture>;
-  uCloudShadowMap: THREE.IUniform<THREE.Texture>;
-  uVelocityMap: THREE.IUniform<THREE.Texture>;
-  uMinHeight: THREE.IUniform<number>;
-  uMaxHeight: THREE.IUniform<number>;
-  uShowVelocity: THREE.IUniform<number>;
-  uSurfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
-  uLightPosition: THREE.IUniform<THREE.Vector3>;
-  uLightSpaceMatrix: THREE.IUniform<THREE.Matrix4>;
 };
 
 /**
@@ -187,12 +174,15 @@ export const getMaterial = (id: MaterialEnum) => {
   return getObject(id) as THREE.Material;
 };
 
-export const setMaterial = (id: MaterialEnum, value: THREE.Material) => {
-  setObject(id, value);
-};
-
 export const initSceneMaterialResources = () => {
   logger.info("[material:init]");
+
+  const createDefaultMaterialResource = () => {
+    return new THREE.MeshPhongMaterial({
+      color: 0x8b4513, // Brownish terrain color
+      flatShading: false,
+    }) as THREE.MeshPhongMaterial;
+  };
 
   setObject(MaterialEnum.Default, createDefaultMaterialResource());
   setObject(
