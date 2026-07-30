@@ -1,11 +1,9 @@
 import type { ShaderMaterial } from "three";
 
-import { query } from "bitecs";
 import * as THREE from "three";
 
 import type { RendererSystem } from "@/renderer/types";
 
-import { WaterSimulation as WaterSimulationComponent } from "@/components/components";
 import { getGameClock } from "@/renderer/resources/loop";
 import {
   cloudSphereSystem,
@@ -43,18 +41,6 @@ export const simulationSystem: RendererSystem = (
   logger.debug(
     { gameTime },
     "[simulation:gameTime] Current game time from clock",
-  );
-
-  const [simulation$] = query(world, [WaterSimulationComponent]);
-  const simulationExists = Boolean(simulation$);
-  if (!simulationExists) {
-    logger.warn("[simulation:skip] WaterSimulationComponent entity not found");
-    return;
-  }
-
-  logger.debug(
-    { simulation$ },
-    "[simulation:entity] WaterSimulationComponent entity found",
   );
 
   const { showVelocity } = world;

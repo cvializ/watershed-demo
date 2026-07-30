@@ -1,18 +1,16 @@
-import * as THREE from "three";
-
 import { observe, onAdd, onRemove } from "bitecs";
+import * as THREE from "three";
 
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, ObjectRef, Renderable } from "@/components/components";
+import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { initSceneMaterialResources } from "@/scene/resources/material";
 import { getMesh, initMeshes, MeshEnum } from "@/scene/resources/mesh";
 import { getObject, initObjects } from "@/scene/resources/objectCache";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { initTextures } from "@/scene/resources/texture";
 import { cameraLookInitSystem } from "@/scene/systems/init/cameraLook";
 import { hiddenInitSystem } from "@/scene/systems/init/hidden";
-import { waterSimulationInitSystem } from "@/scene/systems/init/waterSimulation";
 import { logger } from "@/utils/logger";
 
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
@@ -54,8 +52,6 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
   initObjects();
 
   hiddenInitSystem(world, scene);
-
-  waterSimulationInitSystem(world, scene);
 
   cameraLookInitSystem(world, scene);
 };
