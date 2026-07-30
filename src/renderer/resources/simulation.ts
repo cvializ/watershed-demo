@@ -8,7 +8,6 @@ import {
   setTexture,
   TextureEnum,
 } from "@/scene/resources/texture";
-import { setCloudSphereSystem } from "@/scene/resources/cloudSphereSystem";
 import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
@@ -46,9 +45,6 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   if (cloudMesh) {
     setMesh(MeshEnum.CloudMesh, cloudMesh);
   }
-
-  // Store cloud sphere system for use in systems
-  setCloudSphereSystem(cloudSphereSystem);
 
   return { waterSimulation, cloudSphereSystem };
 };

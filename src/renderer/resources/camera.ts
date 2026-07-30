@@ -51,7 +51,7 @@ export const createCameraControlsResource = (
   return controls;
 };
 
-export const getCameraControls = () => controls;
+
 
 export const disposeCameraControls = () => {
   if (!controls) {

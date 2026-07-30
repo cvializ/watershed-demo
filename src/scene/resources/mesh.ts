@@ -32,7 +32,10 @@ export const setMesh = (id: MeshEnum, value: THREE.Mesh) => {
   setObject(id, value);
 };
 
-export const createSunSphereResource = () => {
+/**
+ * Create a sphere mesh for the sun
+ */
+const createSunSphereResource = () => {
   logger.info("[sunSphere:resource]");
 
   const geometry = new THREE.SphereGeometry(0.5, 32, 32);

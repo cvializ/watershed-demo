@@ -60,29 +60,6 @@ export const setObject = <T extends ResourceEnum>(
 };
 
 /**
- * Check if a resource exists in the cache
- */
-export const hasObject = (id: ResourceEnum): boolean => {
-  return objectCache.has(id);
-};
-
-/**
- * Get all entries in the cache
- */
-export const getEntries = (): Array<
-  [ResourceEnum, THREE.Object3D | THREE.Texture | THREE.Material]
-> => {
-  return Array.from(objectCache.entries());
-};
-
-/**
- * Clear all resources from the cache
- */
-export const clear = (): void => {
-  objectCache.clear();
-};
-
-/**
  * Initialize all objects in the cache into the scene
  */
 export const initObjects = (): void => {
