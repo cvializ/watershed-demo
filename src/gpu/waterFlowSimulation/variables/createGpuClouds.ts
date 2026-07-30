@@ -12,7 +12,7 @@ import { getUniforms } from "@/utils/uniformUtils";
 /**
  * Uniform structure for drifting cloud computation shader.
  */
-export type DriftingCloudUniforms = {
+type DriftingCloudUniforms = {
   uTime: THREE.IUniform<number>;
   uDriftSpeed: THREE.IUniform<THREE.Vector2>;
   uSpeed: THREE.IUniform<number>;

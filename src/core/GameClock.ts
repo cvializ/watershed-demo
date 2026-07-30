@@ -51,13 +51,7 @@ export type GameClock = {
   reset: () => void;
 };
 
-/**
- * Serialized state of the game clock.
- */
-export type GameClockState = {
-  /** The logical game time in seconds (serialized value) */
-  gameTime: number;
-};
+
 
 const INITIAL_TIME = 0;
 
