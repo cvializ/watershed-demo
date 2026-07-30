@@ -18,6 +18,7 @@ gpuCompute.setVariableDependencies(variable, [dependency1, dependency2]);
 ```
 
 **Pattern**: This is a **Dependency Graph** or **Directed Acyclic Graph (DAG)** pattern where:
+
 - Each `Variable` is a node
 - Dependencies define edges between nodes
 - The renderer topologically sorts variables to determine compute order
@@ -42,6 +43,7 @@ export const createGpuWaterHeight = (
 ```
 
 **Structure**:
+
 - **Variable**: GPU computation texture (render target)
 - **Initializer**: Sets up uniforms once after variable creation
 - **Updater**: Updates time-varying uniforms each frame
@@ -52,13 +54,13 @@ export const createGpuWaterHeight = (
 
 The system decomposes simulation into independent variables:
 
-| Variable | Purpose | Dependencies |
-|----------|---------|-------------|
-| `cloudDensity` | Animated procedural clouds | Self (temporal) |
-| `waterSources` | Water addition points | Self |
-| `waterHeight` | Surface water depth | Clouds, Sources, Self |
-| `waterVelocity` | Flow direction/magnitude | WaterHeight |
-| `pulsing` | Time-based pulsing effect | Self |
+| Variable        | Purpose                    | Dependencies          |
+| --------------- | -------------------------- | --------------------- |
+| `cloudDensity`  | Animated procedural clouds | Self (temporal)       |
+| `waterSources`  | Water addition points      | Self                  |
+| `waterHeight`   | Surface water depth        | Clouds, Sources, Self |
+| `waterVelocity` | Flow direction/magnitude   | WaterHeight           |
+| `pulsing`       | Time-based pulsing effect  | Self                  |
 
 ---
 
@@ -119,6 +121,7 @@ type WaterFlowVisualization = {
 ```
 
 **Structure**:
+
 - **Component**: Individual GPU variables (clouds, water height, etc.)
 - **Composite**: Unified simulation interface that orchestrates components
 
@@ -163,6 +166,7 @@ export type WaterHeightUniforms = {
 ### Double Buffering
 
 `GPUComputationRenderer` automatically handles ping-pong rendering:
+
 - Current frame writes to output texture
 - Next frame reads from that texture as input
 - Managed transparently by the renderer
@@ -212,16 +216,17 @@ src/gpu/
 
 ## Summary
 
-| Traditional Pattern | GPU Computation Equivalent |
-|---------------------|----------------------------|
-| Class/Object | Variable + Uniforms |
-| Method | Fragment Shader |
-| State | Render Target Texture |
-| Dependency Injection | `setVariableDependencies()` |
-| Pipeline | `compute()` call propagating through graph |
-| Composition | WaterFlowVisualization composite |
+| Traditional Pattern  | GPU Computation Equivalent                 |
+| -------------------- | ------------------------------------------ |
+| Class/Object         | Variable + Uniforms                        |
+| Method               | Fragment Shader                            |
+| State                | Render Target Texture                      |
+| Dependency Injection | `setVariableDependencies()`                |
+| Pipeline             | `compute()` call propagating through graph |
+| Composition          | WaterFlowVisualization composite           |
 
 The architecture transforms traditional object-oriented simulation concepts into a **shader-based dataflow system** where:
+
 - Data flows through executable graph nodes
 - State persists in GPU textures
 - Composition happens via dependency declaration rather than inheritance

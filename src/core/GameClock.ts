@@ -51,8 +51,6 @@ export type GameClock = {
   reset: () => void;
 };
 
-
-
 const INITIAL_TIME = 0;
 
 /**

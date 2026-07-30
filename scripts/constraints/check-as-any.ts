@@ -14,7 +14,10 @@ import * as ts from "typescript";
 /**
  * Check if a node is a type assertion with 'any' type
  */
-function findAsAnyAssertions(node: ts.Node, sourceFile: ts.SourceFile): number[] {
+function findAsAnyAssertions(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+): number[] {
   const lines: number[] = [];
 
   function visit(currentNode: ts.Node) {
@@ -25,8 +28,7 @@ function findAsAnyAssertions(node: ts.Node, sourceFile: ts.SourceFile): number[]
       // Check if the type is 'any'
       if (asExpr.type.kind === ts.SyntaxKind.AnyKeyword) {
         const pos = asExpr.getFullStart();
-        const line =
-          sourceFile.getLineAndCharacterOfPosition(pos).line + 1;
+        const line = sourceFile.getLineAndCharacterOfPosition(pos).line + 1;
         lines.push(line);
       }
     }
