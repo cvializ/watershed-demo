@@ -12,7 +12,7 @@ import { getUniforms } from "@/utils/uniformUtils";
 /**
  * Uniform structure for pulsing texture computation shader.
  */
-export type PulsingUniforms = {
+type PulsingUniforms = {
   uTime: THREE.IUniform<number>;
 };
 

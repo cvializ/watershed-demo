@@ -19,7 +19,7 @@ export const createDefaultMaterialResource = () => {
   }) as THREE.MeshPhongMaterial;
 };
 
-export type HeightVisualizationUniforms = {
+type HeightVisualizationUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
   uMinHeight: THREE.IUniform<number>;
   uMaxHeight: THREE.IUniform<number>;

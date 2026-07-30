@@ -9,7 +9,7 @@ import { logger } from "@/utils/logger";
 /**
  * Uniform structure for cloud sphere shader.
  */
-export type CloudSphereUniforms = {
+type CloudSphereUniforms = {
   uCloudTexture: THREE.IUniform<THREE.Texture>;
   uCameraPosition: THREE.IUniform<THREE.Vector3>;
   uTime: THREE.IUniform<number>;
