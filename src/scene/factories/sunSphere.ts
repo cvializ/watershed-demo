@@ -1,6 +1,6 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
-import { MeshRef, Name, Renderable, SunSphere } from "@/components/components";
+import { MeshRef, Name, Renderable } from "@/components/components";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { logger } from "@/utils/logger";
 
@@ -11,7 +11,6 @@ export function createSunSphere(world: World): number {
 
   logger.info(`Adding SunSphere entity: ${entity$}`);
 
-  addComponent(world, entity$, SunSphere);
   addComponent(world, entity$, MeshRef);
   MeshRef.ref[entity$] = MeshEnum.SunSphere;
 
