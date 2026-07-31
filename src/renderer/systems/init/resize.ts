@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
 
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 
 export const resizeInitSystem: RendererInitSystem = (

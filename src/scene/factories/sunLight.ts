@@ -1,7 +1,7 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
 import { Name, ObjectRef, Renderable } from "@/components/components";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { logger } from "@/utils/logger";
 
 export function createSunLight(world: World): number {

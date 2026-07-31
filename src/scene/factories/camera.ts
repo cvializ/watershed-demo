@@ -1,7 +1,7 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
 import { Camera, Name, ObjectRef, Renderable } from "@/components/components";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { logger } from "@/utils/logger";
 
 export const createCamera = (world: World): number => {
