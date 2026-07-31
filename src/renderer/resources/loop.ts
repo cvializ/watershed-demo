@@ -51,6 +51,7 @@ export const createLoopResource = (
   requestAnimationFrame(animate);
 
   return {
+    tick: () => cb(gameClock.getTime(), gameClock.getDelta()),
     clock: gameClock,
     stop: () => {}, // Placeholder - loop continues until component unmounts
   };

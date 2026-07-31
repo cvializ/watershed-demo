@@ -8,9 +8,11 @@ import * as THREE from "three";
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import { getControls } from "@/renderer/resources/camera";
+import { waterSimulation } from "@/renderer/systems/init/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
+import { getUniforms } from "@/utils/uniformUtils";
 
 /**
  * Create a serializer for the ECS world
@@ -219,14 +221,13 @@ export const loadFromWorldStorage = async (
   }
 
   logger.info("[storage:load:ecs] Deserializing ECS world...");
-  // Deserialize ECS world first (creates entities including Camera component)
   deserializeWorld(world, ecsSerialized);
 
   logger.info("[storage:load:camera] Restoring camera state...");
+
   // Restore camera state after deserialization
   const controls = getControls();
   if (controls) {
-    // Camera should be available now since ECS world was just deserialized
     controls.object.position.set(
       world.cameraPosition.x,
       world.cameraPosition.y,
@@ -246,11 +247,31 @@ export const loadFromWorldStorage = async (
     }
     controls.update();
   }
+  updateGPUSimulationUniforms(world);
 
   logger.info(
     { storageKey },
     "[storage:load:end] Load from localStorage complete",
   );
+};
+
+/**
+ * Update GPU simulation uniforms with the current gameTime.
+ * This ensures that after loading, the GPU simulation shows the correct frame
+ * even if the simulation is paused.
+ *
+ * Unlike compute(), this function only updates uniforms without running GPU computation,
+ * so it doesn't advance the simulation state.
+ */
+const updateGPUSimulationUniforms = (world: GameWorldContext): void => {
+  if (!waterSimulation) {
+    logger.warn(
+      "[storage:updateGPUSimulationUniforms] waterSimulation not initialized",
+    );
+    return;
+  }
+
+  waterSimulation.compute(0, world.gameTime);
 };
 
 /**

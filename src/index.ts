@@ -28,7 +28,7 @@ worldInitSystem(world);
 
 initGameUI();
 
-createLoopResource(world, (_t, dt) => {
+export const { tick } = createLoopResource(world, (_t, dt) => {
   worldSyncSystem(world, dt);
   sceneSyncSystem(world, scene, dt);
   rendererSyncSystem(world, scene, renderer, dt);

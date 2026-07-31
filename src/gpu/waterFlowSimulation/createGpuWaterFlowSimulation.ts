@@ -50,6 +50,21 @@ export type WaterFlowVisualization = {
    */
   getPulsingTexture: () => THREE.Texture;
 
+  /**
+   * Get the GPU computation variable for pulsing (for uniform updates).
+   */
+  getPulsingVariable: () => Variable;
+
+  /**
+   * Get the GPU computation variable for water height (for uniform updates).
+   */
+  getWaterHeightVariable: () => Variable;
+
+  /**
+   * Get the GPU computation variable for clouds (for uniform updates).
+   */
+  getCloudVariable: () => Variable;
+
   setSunPosition: (position: THREE.Vector3) => void;
 };
 
