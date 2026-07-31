@@ -5,12 +5,13 @@ import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, ObjectRef, Renderable } from "@/components/components";
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
-import { getMesh, initMeshes, MeshEnum } from "@/scene/resources/mesh";
+import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getObject, initObjects } from "@/scene/resources/objectCache";
 import { initTextures } from "@/scene/resources/texture";
 import { cameraLookInitSystem } from "@/scene/systems/init/cameraLook";
 import { hiddenInitSystem } from "@/scene/systems/init/hidden";
 import { initMaterials } from "@/scene/systems/init/material";
+import { initMeshes } from "@/scene/systems/init/mesh";
 import { logger } from "@/utils/logger";
 
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
@@ -46,10 +47,10 @@ export const sceneInitSystem: SceneInitSystem = (world, scene): void => {
     }
   });
 
-  initTextures();
-  initMaterials();
+  initTextures(world, scene);
+  initMaterials(world, scene);
   initMeshes(world, scene);
-  initObjects();
+  initObjects(world, scene);
 
   hiddenInitSystem(world, scene);
 

@@ -37,7 +37,7 @@ export const createTerrainGeometry = () => {
   return geometry;
 };
 
-export const createTerrainResource = () => {
+export const createTerrainMeshResource = () => {
   logger.info("[terrain:resource]");
 
   const geometry = createTerrainGeometry();
