@@ -2,12 +2,8 @@ import * as THREE from "three";
 
 import { getObject } from "@/scene/resources/objectCache";
 
-export type {
-  PulsingVisualizationUniforms,
-} from "@/scene/resources/materials/pulsingVisualization";
-export type {
-  WaterVisualizationUniforms,
-} from "@/scene/resources/materials/waterVisualization";
+export type { TestingVisualizationUniforms } from "@/scene/resources/materials/testingVisualization";
+export type { WaterVisualizationUniforms } from "@/scene/resources/materials/waterVisualization";
 
 export const MaterialEnum = {
   Default: "Default",
@@ -16,7 +12,7 @@ export const MaterialEnum = {
   DownslopeArrowsMaterial: "DownslopeArrowsMaterial",
   Slope: "Slope",
   WaterFlow: "WaterFlow",
-  PulsingSimulation: "PulsingSimulation",
+  TestingSimulation: "TestingSimulation",
 } as const;
 
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];

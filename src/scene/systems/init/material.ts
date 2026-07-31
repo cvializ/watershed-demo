@@ -7,8 +7,8 @@ import { createDefaultMaterialResource } from "@/scene/resources/materials/defau
 import { createDownslopeArrowsMaterialResource } from "@/scene/resources/materials/downslopeArrows";
 import { createHeightVisualizationMaterialResource } from "@/scene/resources/materials/heightVisualization";
 import { createNormalMaterialResource } from "@/scene/resources/materials/normal";
-import { createPulsingVisualizationMaterialResource } from "@/scene/resources/materials/pulsingVisualization";
 import { createSlopeVisualizationMaterialResource } from "@/scene/resources/materials/slopeVisualization";
+import { createTestingVisualizationMaterialResource } from "@/scene/resources/materials/testingVisualization";
 import { createWaterVisualizationMaterialResource } from "@/scene/resources/materials/waterVisualization";
 import { setObject } from "@/scene/resources/objectCache";
 import { getTexture, TextureEnum } from "@/scene/resources/texture";
@@ -41,9 +41,9 @@ export const initMaterials: SceneInitSystem = () => {
     }),
   );
   setObject(
-    MaterialEnum.PulsingSimulation,
-    createPulsingVisualizationMaterialResource({
-      pulsingTexture: getTexture(TextureEnum.PulsingTexture),
+    MaterialEnum.TestingSimulation,
+    createTestingVisualizationMaterialResource({
+      testingTexture: getTexture(TextureEnum.TestingTexture),
     }),
   );
 };

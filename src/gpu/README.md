@@ -60,7 +60,7 @@ The system decomposes simulation into independent variables:
 | `waterSources`  | Water addition points      | Self                  |
 | `waterHeight`   | Surface water depth        | Clouds, Sources, Self |
 | `waterVelocity` | Flow direction/magnitude   | WaterHeight           |
-| `pulsing`       | Time-based pulsing effect  | Self                  |
+| `testing`       | Time-based testing effect  | Self                  |
 
 ---
 
@@ -79,7 +79,7 @@ The GPU computation system embodies dataflow programming:
 Clouds ──────┐
              ├──→ WaterHeight → Velocity
 Sources ─────┘
-Pulsing ───────→ (visualization)
+Testing ───────→ (visualization)
 ```
 
 ---
@@ -201,8 +201,8 @@ This creates feedback loops essential for simulation stability.
 
 ```
 src/gpu/
-├── pulsingSimulation/         # Pulsing texture simulation
-│   └── createPulsingTexture.ts
+├── testingSimulation/         # Testing texture simulation
+│   └── createTestingTexture.ts
 └── waterFlowSimulation/       # Water flow simulation
     ├── createGpuWaterFlowSimulation.ts  # Main factory
     └── variables/             # Individual GPU variables

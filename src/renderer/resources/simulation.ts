@@ -3,8 +3,8 @@ import * as THREE from "three";
 import { createCloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
 import { createGpuWaterFlowSimulation } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
 import { MeshEnum, setMesh } from "@/scene/resources/mesh";
-import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
 import { setTexture, TextureEnum } from "@/scene/resources/texture";
+import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
 import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
@@ -29,9 +29,9 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   const simulationTexture = waterSimulation.getSimulationTexture();
   setTexture(TextureEnum.WaterHeightMap, simulationTexture);
 
-  // Get pulsing texture from GPU simulation
-  const pulsingTexture = waterSimulation.getPulsingTexture();
-  setTexture(TextureEnum.PulsingTexture, pulsingTexture);
+  // Get testing texture from GPU simulation
+  const testingTexture = waterSimulation.getTestingTexture();
+  setTexture(TextureEnum.TestingTexture, testingTexture);
 
   // Create cloud sphere system using the cloud texture from GPU simulation
   const cloudTexture = waterSimulation.getCloudShadowTexture();
