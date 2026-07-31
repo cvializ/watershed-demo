@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { createTerrainGeometry } from "@/scene/resources/terrain";
+import { createTerrainGeometry } from "@/scene/resources/meshes/terrain";
 
 const createWireframeMaterialResource = () => {
   return new THREE.LineBasicMaterial({
@@ -10,7 +10,7 @@ const createWireframeMaterialResource = () => {
   });
 };
 
-export const createWireframeResource = () => {
+export const createWireframeMeshResource = () => {
   const terrainGeometry = createTerrainGeometry();
   const wireframeGeometry = new THREE.WireframeGeometry(terrainGeometry);
   const wireframeMaterial = createWireframeMaterialResource();

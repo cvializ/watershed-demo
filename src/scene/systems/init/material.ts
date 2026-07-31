@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import type { SceneInitSystem } from "@/scene/types";
+
 import { MaterialEnum } from "@/scene/resources/material";
 import { createDefaultMaterialResource } from "@/scene/resources/materials/default";
 import { createDownslopeArrowsMaterialResource } from "@/scene/resources/materials/downslopeArrows";
@@ -12,7 +14,7 @@ import { setObject } from "@/scene/resources/objectCache";
 import { getTexture, TextureEnum } from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 
-export const initMaterials = () => {
+export const initMaterials: SceneInitSystem = () => {
   logger.info("[material:init]");
 
   setObject(MaterialEnum.Default, createDefaultMaterialResource());

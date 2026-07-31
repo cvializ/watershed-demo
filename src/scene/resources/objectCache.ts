@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import type { SceneInitSystem } from "@/scene/types";
+
 import { createCameraResource } from "@/renderer/resources/camera";
 import { GeneralObjectEnum } from "@/scene/resources/generalObject";
 import { MaterialEnum } from "@/scene/resources/material";
@@ -62,7 +64,7 @@ export const setObject = <T extends ResourceEnum>(
 /**
  * Initialize all objects in the cache into the scene
  */
-export const initObjects = (): void => {
+export const initObjects: SceneInitSystem = () => {
   logger.debug(`[objectCache:init] ${objectCache.size} objects`);
 
   setObject(GeneralObjectEnum.Camera, createCameraResource());
