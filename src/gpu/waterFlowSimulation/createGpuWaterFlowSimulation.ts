@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
+import type { Variable } from "three/addons/misc/GPUComputationRenderer.js";
 
 import { createPulsingTexture } from "@/gpu/pulsingSimulation/createPulsingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
@@ -180,5 +181,8 @@ export const createGpuWaterFlowSimulation = (
     },
     getPulsingTexture: () =>
       gpuCompute.getCurrentRenderTarget(pulsingVariable).texture,
+    getPulsingVariable: () => pulsingVariable,
+    getWaterHeightVariable: () => waterHeightVariable,
+    getCloudVariable: () => cloudVariable,
   };
 };

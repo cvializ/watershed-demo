@@ -12,7 +12,6 @@ import { waterSimulation } from "@/renderer/systems/init/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
-import { getUniforms } from "@/utils/uniformUtils";
 
 /**
  * Create a serializer for the ECS world
