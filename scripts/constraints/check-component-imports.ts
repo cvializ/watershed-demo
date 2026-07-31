@@ -302,13 +302,7 @@ function main() {
     const hasImportFromComponents = imports.some((imp) => {
       try {
         // Get the absolute path of the importing file's directory
-        const importDir = path.dirname(imp.filePath);
-
-        // Try to resolve the module path
-        const componentModulePath = path.join(
-          importDir,
-          "src/components/components",
-        );
+        const _importDir = path.dirname(imp.filePath);
 
         // Check if the import statement references the components module
         const content = fs.readFileSync(imp.filePath, "utf-8");
