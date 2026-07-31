@@ -3,11 +3,8 @@ import * as THREE from "three";
 import { createCloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
 import { createGpuWaterFlowSimulation } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
 import { MeshEnum, setMesh } from "@/scene/resources/mesh";
-import {
-  createDisplacementTexture,
-  setTexture,
-  TextureEnum,
-} from "@/scene/resources/texture";
+import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
+import { setTexture, TextureEnum } from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
@@ -20,7 +17,7 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
     SIM_SIZE,
     terrainSize,
     renderer,
-    createDisplacementTexture(512, 12),
+    createDisplacementTextureResource(512, 12),
   );
 
   const cloudShadowTexture = waterSimulation.getCloudShadowTexture();
