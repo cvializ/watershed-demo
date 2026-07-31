@@ -5,21 +5,21 @@ import type {
 
 import * as THREE from "three";
 
-import pulsingFragmentShader from "@/shaders/compute/pulsing.frag?raw";
+import testingFragmentShader from "@/shaders/compute/testing.frag?raw";
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
 /**
- * Uniform structure for pulsing texture computation shader.
+ * Uniform structure for testing texture computation shader.
  */
-type PulsingUniforms = {
+type TestingUniforms = {
   uTime: THREE.IUniform<number>;
 };
 
 /**
- * Creates an initial texture for the pulsing simulation.
+ * Creates an initial texture for the testing simulation.
  */
-const createInitialPulsingTexture = (
+const createInitialTestingTexture = (
   size: number,
 ): { texture: THREE.DataTexture; data: Float32Array } => {
   const data = new Float32Array(size * size * 4); // RGBA
@@ -39,36 +39,36 @@ const createInitialPulsingTexture = (
     THREE.FloatType,
   );
   texture.needsUpdate = true;
-  logger.debug({ size }, "Initial pulsing texture created");
+  logger.debug({ size }, "Initial testing texture created");
   return { texture, data };
 };
 
-export const createPulsingTexture = (
+export const createTestingTexture = (
   gpuCompute: GPUComputationRenderer,
   width: number,
 ): {
-  pulsingVariable: Variable;
-  initPulsing: () => void;
-  updatePulsing: (gameTime: number) => void;
+  testingVariable: Variable;
+  initTesting: () => void;
+  updateTesting: (gameTime: number) => void;
 } => {
-  logger.info("[gpu:pulsing:create]");
+  logger.info("[gpu:testing:create]");
 
-  const { texture: pulsingTexture } = createInitialPulsingTexture(width);
-  const pulsingVariable = gpuCompute.addVariable(
-    "pulsing",
-    pulsingFragmentShader,
-    pulsingTexture,
+  const { texture: testingTexture } = createInitialTestingTexture(width);
+  const testingVariable = gpuCompute.addVariable(
+    "testing",
+    testingFragmentShader,
+    testingTexture,
   );
 
-  const uniforms = getUniforms<PulsingUniforms>(pulsingVariable.material);
+  const uniforms = getUniforms<TestingUniforms>(testingVariable.material);
   uniforms.uTime = { value: 0.0 };
 
   return {
-    pulsingVariable,
-    initPulsing: () => {
+    testingVariable,
+    initTesting: () => {
       // Initial uniform setup
     },
-    updatePulsing: (gameTime: number) => {
+    updateTesting: (gameTime: number) => {
       uniforms.uTime.value = gameTime;
     },
   };

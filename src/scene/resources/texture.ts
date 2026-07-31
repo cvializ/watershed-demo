@@ -9,7 +9,7 @@ export const TextureEnum = {
   CloudShadowMap: "CloudShadowMap",
   VelocityMap: "VelocityMap",
   Simulation: "Simulation",
-  PulsingTexture: "PulsingTexture",
+  TestingTexture: "TestingTexture",
 } as const;
 
 export type TextureEnum = (typeof TextureEnum)[keyof typeof TextureEnum];

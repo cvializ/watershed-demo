@@ -22,7 +22,7 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 3, label: "Downslope Arrows" },
     { id: 4, label: "Water Flow" },
     { id: 5, label: "Water height" },
-    { id: 6, label: "Pulsing Simulation" },
+    { id: 6, label: "Testing Simulation" },
   ];
 
   const handleMaterialChange = (

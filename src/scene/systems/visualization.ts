@@ -82,8 +82,8 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
         MaterialRef.ref[terrain$] = MaterialEnum.WaterFlow;
         break;
       case 6:
-        // Pulsing simulation
-        MaterialRef.ref[terrain$] = MaterialEnum.PulsingSimulation;
+        // Testing simulation
+        MaterialRef.ref[terrain$] = MaterialEnum.TestingSimulation;
         break;
     }
   }
@@ -106,7 +106,7 @@ function getCurrentMaterial(mode: number): MaterialEnum {
     case 5:
       return MaterialEnum.WaterFlow;
     case 6:
-      return MaterialEnum.PulsingSimulation;
+      return MaterialEnum.TestingSimulation;
     default:
       // Default to WaterFlow for unknown modes
       return MaterialEnum.WaterFlow;

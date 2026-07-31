@@ -12,7 +12,7 @@ import {
 import {
   getMaterial,
   MaterialEnum,
-  type PulsingVisualizationUniforms,
+  type TestingVisualizationUniforms,
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
@@ -46,17 +46,17 @@ export const simulationSystem: RendererSystem = (
   const { showVelocity } = world;
   const material = getMaterial(MaterialEnum.WaterFlow) as ShaderMaterial;
 
-  // Check if this is a pulsing simulation material
-  const isPulsingMaterial = world.visualizationMode === 6;
+  // Check if this is a testing simulation material
+  const isTestingMaterial = world.visualizationMode === 6;
 
-  if (isPulsingMaterial) {
-    logger.debug("[simulation:pulsing] Using PulsingSimulation material");
-    const pulsingMaterial = getMaterial(
-      MaterialEnum.PulsingSimulation,
+  if (isTestingMaterial) {
+    logger.debug("[simulation:testing] Using TestingSimulation material");
+    const testingMaterial = getMaterial(
+      MaterialEnum.TestingSimulation,
     ) as ShaderMaterial;
-    const uniform = getUniforms<PulsingVisualizationUniforms>(pulsingMaterial);
-    const pulsingTexture = waterSimulation.getPulsingTexture();
-    uniform.uPulsingTexture.value = pulsingTexture;
+    const uniform = getUniforms<TestingVisualizationUniforms>(testingMaterial);
+    const testingTexture = waterSimulation.getTestingTexture();
+    uniform.uTestingTexture.value = testingTexture;
   } else {
     // Update water visualization uniforms
     const uniforms = getUniforms<WaterVisualizationUniforms>(material);
