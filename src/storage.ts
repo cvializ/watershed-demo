@@ -8,7 +8,7 @@ import * as THREE from "three";
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import { getControls } from "@/renderer/resources/camera";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 

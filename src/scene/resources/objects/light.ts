@@ -2,8 +2,11 @@ import * as THREE from "three";
 
 import { logger } from "@/utils/logger";
 
+/**
+ * Create sun light (directional) with shadows
+ */
 export const createSunLightResource = () => {
-  logger.info("[sunLight:resource]");
+  logger.info("[sun:light]");
 
   // Sun light (directional) with shadows
   const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);

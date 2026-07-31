@@ -8,7 +8,7 @@ import {
   createCameraControlsResource,
   disposeCameraControls,
 } from "@/renderer/resources/camera";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 

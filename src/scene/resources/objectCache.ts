@@ -2,11 +2,11 @@ import * as THREE from "three";
 
 import type { SceneInitSystem } from "@/scene/types";
 
-import { createCameraResource } from "@/renderer/resources/camera";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { createCameraResource } from "@/scene/resources/objects/camera";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
-import { createSunLightResource } from "@/scene/resources/sunLight";
+import { createSunLightResource } from "@/scene/resources/objects/light";
 import { TextureEnum } from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 

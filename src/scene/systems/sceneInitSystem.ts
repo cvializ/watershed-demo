@@ -4,7 +4,7 @@ import * as THREE from "three";
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, ObjectRef, Renderable } from "@/components/components";
-import { GeneralObjectEnum } from "@/scene/resources/generalObject";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getObject, initObjects } from "@/scene/resources/objectCache";
 import { initTextures } from "@/scene/systems/init/texture";
