@@ -8,6 +8,7 @@ export const TextureEnum = {
   WaterHeightMap: "WaterHeightMap",
   CloudShadowMap: "CloudShadowMap",
   VelocityMap: "VelocityMap",
+  SedimentFlowMap: "SedimentFlowMap",
   Simulation: "Simulation",
   TestingTexture: "TestingTexture",
 } as const;

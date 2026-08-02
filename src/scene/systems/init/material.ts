@@ -40,10 +40,11 @@ export const initMaterials: SceneInitSystem = () => {
       sunLightPosition: new THREE.Vector3(0, 0, 0),
     }),
   );
+  // Testing Simulation visualizes sediment flow
   setObject(
     MaterialEnum.TestingSimulation,
     createTestingVisualizationMaterialResource({
-      testingTexture: getTexture(TextureEnum.TestingTexture),
+      testingTexture: getTexture(TextureEnum.SedimentFlowMap),
     }),
   );
 };
