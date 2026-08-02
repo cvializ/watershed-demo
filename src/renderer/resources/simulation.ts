@@ -29,6 +29,10 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   const simulationTexture = waterSimulation.getSimulationTexture();
   setTexture(TextureEnum.WaterHeightMap, simulationTexture);
 
+  // Get sediment flow texture from GPU simulation
+  const sedimentFlowTexture = waterSimulation.getSedimentFlowTexture();
+  setTexture(TextureEnum.SedimentFlowMap, sedimentFlowTexture);
+
   // Get testing texture from GPU simulation
   const testingTexture = waterSimulation.getTestingTexture();
   setTexture(TextureEnum.TestingTexture, testingTexture);

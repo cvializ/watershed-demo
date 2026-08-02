@@ -2,6 +2,7 @@ import type { ShaderMaterial } from "three";
 
 import * as THREE from "three";
 
+import type { SedimentFlowUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
 import type { RendererSystem } from "@/renderer/types";
 
 import { getGameClock } from "@/renderer/resources/loop";
@@ -65,6 +66,12 @@ export const simulationSystem: RendererSystem = (
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;
   }
+
+  // Update sediment flow erosion rate from world state
+  const sedimentUniforms = getUniforms<SedimentFlowUniforms>(
+    waterSimulation.getSedimentFlowVariable().material,
+  );
+  sedimentUniforms.erosionRate.value = world.erosionRate;
 
   waterSimulation.compute(dt, gameTime);
 
