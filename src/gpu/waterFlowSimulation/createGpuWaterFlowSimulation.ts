@@ -3,6 +3,8 @@ import type { Variable } from "three/addons/misc/GPUComputationRenderer.js";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
+import type { SedimentFlowUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
+
 import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
@@ -11,6 +13,7 @@ import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/create
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
 import { logger } from "@/utils/logger";
+import { getUniforms } from "@/utils/uniformUtils";
 
 export type WaterFlowVisualization = {
   /**
@@ -171,12 +174,14 @@ export const createGpuWaterFlowSimulation = (
     sedimentFlowVariable,
   );
 
-  // Sediment flow depends on the dynamic height map for erosion feedback loop
+  // Update sediment flow dependencies to include dynamic height map
   gpuCompute.setVariableDependencies(sedimentFlowVariable, [
     waterVelocityVariable,
     sedimentFlowVariable,
     heightMapVariable,
   ]);
+
+  // Sediment flow uniform to use dynamic height map - set after init
   const { testingVariable, initTesting, updateTesting } = createTestingTexture(
     gpuCompute,
     width,
@@ -186,6 +191,14 @@ export const createGpuWaterFlowSimulation = (
   if (error) {
     logger.error({ err: error }, "gpu compute init error");
   }
+
+  // Update sediment flow uniform to use dynamic height map after init
+  const sedimentUniforms = getUniforms<SedimentFlowUniforms>(
+    sedimentFlowVariable.material,
+  );
+  sedimentUniforms.uHeightMap = {
+    value: gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,
+  };
 
   initWaterSources();
   initWaterHeight();

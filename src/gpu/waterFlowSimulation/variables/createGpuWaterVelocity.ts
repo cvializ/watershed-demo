@@ -45,6 +45,7 @@ export const createGpuWaterVelocity = (
   width: number,
   heightMapTexture: THREE.Texture,
   waterHeightVariable: Variable,
+  heightMapVariable?: Variable,
 ) => {
   logger.info("[gpu:water-velocity:create]");
 
@@ -55,9 +56,12 @@ export const createGpuWaterVelocity = (
     velocityTexture,
   );
 
-  gpuCompute.setVariableDependencies(waterVelocityVariable, [
-    waterHeightVariable,
-  ]);
+  const dependencies = [waterHeightVariable];
+  if (heightMapVariable) {
+    // Water velocity depends on dynamic height map (modified by erosion)
+    dependencies.push(heightMapVariable);
+  }
+  gpuCompute.setVariableDependencies(waterVelocityVariable, dependencies);
 
   return {
     waterVelocityVariable,
@@ -66,7 +70,12 @@ export const createGpuWaterVelocity = (
       const uniforms = getUniforms<WaterVelocityUniforms>(
         waterVelocityVariable.material,
       );
-      uniforms.uHeightMap = { value: heightMapTexture };
+      // Use dynamic height map if available (modified by erosion), otherwise use base height map
+      uniforms.uHeightMap = {
+        value: heightMapVariable
+          ? gpuCompute.getCurrentRenderTarget(heightMapVariable).texture
+          : heightMapTexture,
+      };
       uniforms.uWaterHeightmap = {
         value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
       };
