@@ -27,11 +27,28 @@ void main() {
 
     // Scale the effect for visible but gradual changes
     // Erosion (positive rate) lowers terrain, deposition (negative rate) raises it
-    float heightChange = -erosionDepositionRate * 0.1;
+    // Reduced multiplier for smoother, more natural slopes
+    float heightChange = -erosionDepositionRate * 0.02;
 
     // Accumulate the change
     float newHeight = currentHeight + heightChange;
 
+    // Apply additional smoothing to prevent jagged artifacts
+    // Sample neighboring heights and blend for smooth transitions
+    float neighborSum = 0.0;
+    int kernelSize = 1; // 3x3 kernel
+    for (int dx = -kernelSize; dx <= kernelSize; dx++) {
+        for (int dy = -kernelSize; dy <= kernelSize; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            vec2 offset = vec2(float(dx), float(dy)) * cellSize;
+            neighborSum += texture2D(heightMap, uv + offset).r;
+        }
+    }
+    float neighborAvg = neighborSum / 8.0;
+    
+    // Blend new height with average of neighbors (Laplacian smoothing)
+    float smoothedHeight = mix(newHeight, neighborAvg, 0.3);
+
     // Store as RGBA (GPUComputationRenderer expects RGBA)
-    gl_FragColor = vec4(newHeight, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4(smoothedHeight, 0.0, 0.0, 1.0);
 }

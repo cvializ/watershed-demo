@@ -47,20 +47,36 @@ void main() {
     float velE = length(texture2D(uVelocityMap, uv + vec2(cellSize.x, 0.0)).rg);
     float velW = length(texture2D(uVelocityMap, uv - vec2(cellSize.x, 0.0)).rg);
 
+    // Average neighbor velocity for more stable divergence calculation
+    float avgNeighborVel = 0.25 * (velE + velW + velN + velS);
+    
     // Divergence: positive means flow is spreading out (deposition zone)
     // negative means flow is converging (erosion zone)
-    float divergence = 0.25 * (velE + velW + velN + velS) - velocityMagnitude;
+    // Clamped divergence for smoother, more natural results
+    float divergence = avgNeighborVel - velocityMagnitude;
+    
+    // Clamp divergence to prevent extreme values
+    divergence = clamp(divergence, -0.5, 0.5);
 
     // Erosion/deposition rate
-    // Negative divergence (convergence) with high velocity = erosion
-    // Positive divergence (spreading) = deposition
-    float erosionDeposition;
-    if (divergence < 0.0) {
-        // Converging flow erodes sediment from terrain
-        erosionDeposition = -divergence * transportCapacity * 2.0;
+    // Declare before conditional assignment
+    float erosionDeposition = 0.0;
+    
+    // Apply threshold to prevent erosion from noise and minor fluctuations
+    float erosionThreshold = 0.01;
+    
+    // Only apply significant erosion/deposition
+    if (abs(divergence) > erosionThreshold) {
+        if (divergence < 0.0) {
+            // Converging flow erodes sediment from terrain
+            erosionDeposition = -divergence * transportCapacity * 2.0;
+        } else {
+            // Diverging flow deposits carried sediment
+            erosionDeposition = -divergence * transportCapacity;
+        }
     } else {
-        // Diverging flow deposits carried sediment
-        erosionDeposition = -divergence * transportCapacity;
+        // Below threshold - no significant change
+        erosionDeposition = 0.0;
     }
 
     // Advection: sediment moves in the direction of flow
@@ -78,8 +94,33 @@ void main() {
     // Limit sediment amount by transport capacity
     newSedimentAmount = min(newSedimentAmount, transportCapacity * 10.0);
 
-    // Smooth the sediment amount to avoid extreme spikes
-    newSedimentAmount = mix(prevSediment.b, newSedimentAmount, 0.3);
+    // Apply smoothing to avoid extreme spikes and jagged patterns
+    // Use a simple Gaussian-style blur on the sediment amount
+    float sum = prevSediment.b;
+    int kernelSize = 1; // 3x3 kernel
+    for (int dx = -kernelSize; dx <= kernelSize; dx++) {
+        for (int dy = -kernelSize; dy <= kernelSize; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            vec2 offset = vec2(float(dx), float(dy)) * cellSize;
+            sum += texture2D(sedimentFlow, uv + offset).b;
+        }
+    }
+    float smoothedAmount = sum / 9.0; // Average of 3x3 neighborhood
+    
+    // Blend smoothed with original for stability
+    newSedimentAmount = mix(newSedimentAmount, smoothedAmount, 0.6);
+
+    // Smooth the erosion/deposition rate as well
+    float sumErosion = erosionDeposition;
+    for (int dx = -kernelSize; dx <= kernelSize; dx++) {
+        for (int dy = -kernelSize; dy <= kernelSize; dy++) {
+            if (dx == 0 && dy == 0) continue;
+            vec2 offset = vec2(float(dx), float(dy)) * cellSize;
+            sumErosion += texture2D(sedimentFlow, uv + offset).a;
+        }
+    }
+    float smoothedErosion = sumErosion / 9.0;
+    erosionDeposition = mix(erosionDeposition, smoothedErosion, 0.5);
 
     // Store: R,G = flow direction, B = amount, A = erosion/deposition rate
     gl_FragColor = vec4(
