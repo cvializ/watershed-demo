@@ -47,6 +47,7 @@ export const createGpuSedimentFlow = (
   width: number,
   heightMapTexture: THREE.Texture,
   waterVelocityVariable: Variable,
+  heightMapVariable?: Variable,
 ) => {
   logger.info("[gpu:sediment-flow:create]");
 
@@ -58,10 +59,12 @@ export const createGpuSedimentFlow = (
     sedimentFlowTexture,
   );
 
-  gpuCompute.setVariableDependencies(sedimentFlowVariable, [
-    waterVelocityVariable,
-    sedimentFlowVariable,
-  ]);
+  const dependencies = [waterVelocityVariable, sedimentFlowVariable];
+  if (heightMapVariable) {
+    // Sediment flow depends on dynamic height map for erosion calculations
+    dependencies.push(heightMapVariable);
+  }
+  gpuCompute.setVariableDependencies(sedimentFlowVariable, dependencies);
 
   return {
     sedimentFlowVariable,
@@ -72,7 +75,12 @@ export const createGpuSedimentFlow = (
       uniforms.uVelocityMap = {
         value: gpuCompute.getCurrentRenderTarget(waterVelocityVariable).texture,
       };
-      uniforms.uHeightMap = { value: heightMapTexture };
+      // Use dynamic height map if available (modified by erosion), otherwise use base height map
+      uniforms.uHeightMap = {
+        value: heightMapVariable
+          ? gpuCompute.getCurrentRenderTarget(heightMapVariable).texture
+          : heightMapTexture,
+      };
       uniforms.erosionRate = { value: 0.5 };
     },
     getSedimentFlowUniforms: () => {
