@@ -21,7 +21,7 @@ export const initMaterials: SceneInitSystem = () => {
   setObject(
     MaterialEnum.HeightVisualization,
     createHeightVisualizationMaterialResource({
-      heightmap: getTexture(TextureEnum.DefaultHeightMap),
+      heightmap: getTexture(TextureEnum.HeightMap),
     }),
   );
   setObject(MaterialEnum.Normal, createNormalMaterialResource());
@@ -29,11 +29,16 @@ export const initMaterials: SceneInitSystem = () => {
     MaterialEnum.DownslopeArrowsMaterial,
     createDownslopeArrowsMaterialResource(),
   );
-  setObject(MaterialEnum.Slope, createSlopeVisualizationMaterialResource());
+  setObject(
+    MaterialEnum.Slope,
+    createSlopeVisualizationMaterialResource({
+      heightmap: getTexture(TextureEnum.HeightMap),
+    }),
+  );
   setObject(
     MaterialEnum.WaterFlow,
     createWaterVisualizationMaterialResource({
-      heightmap: getTexture(TextureEnum.DefaultHeightMap),
+      heightmap: getTexture(TextureEnum.HeightMap),
       waterHeightMap: getTexture(TextureEnum.WaterHeightMap),
       cloudShadowMap: getTexture(TextureEnum.CloudShadowMap),
       velocityMap: getTexture(TextureEnum.VelocityMap),

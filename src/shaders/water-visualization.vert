@@ -1,16 +1,34 @@
-uniform sampler2D uHeightMap;  // Initial height map for reference
+uniform sampler2D uHeightMap;  // Dynamic height map (modified by sediment)
+uniform vec2 uHeightMapSize;   // Size of the height map texture for normal calculation
 
 varying vec2 vUv;
 varying vec3 vNormal;
 
 void main() {
     vUv = uv;
-    
-    // Pass through position for shadow calculation
-    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-    
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    
-    // Transform normal to world space
-    vNormal = normalize(normalMatrix * normal);
+
+    // Sample height from dynamic height map (includes sediment erosion/deposition)
+    float height = texture2D(uHeightMap, uv).r;
+
+    // Apply displacement along local Z (before rotation)
+    vec3 displacedPosition = position + vec3(0.0, 0.0, height);
+
+    // Compute normals from finite differences on the height map
+    vec2 texelSize = 1.0 / uHeightMapSize;
+    float hLeft  = texture2D(uHeightMap, uv + vec2(-texelSize.x, 0.0)).r;
+    float hRight = texture2D(uHeightMap, uv + vec2(texelSize.x, 0.0)).r;
+    float hDown  = texture2D(uHeightMap, uv + vec2(0.0, -texelSize.y)).r;
+    float hUp    = texture2D(uHeightMap, uv + vec2(0.0, texelSize.y)).r;
+
+    // Tangent space normals from height differences
+    vec3 tangentNormal = normalize(vec3(
+        hLeft - hRight,
+        hDown - hUp,
+        2.0 * texelSize.x
+    ));
+
+    // Transform displaced position and normal
+    vec4 worldPosition = modelMatrix * vec4(displacedPosition, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
+    vNormal = normalize(normalMatrix * tangentNormal);
 }
