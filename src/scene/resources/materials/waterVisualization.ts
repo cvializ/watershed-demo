@@ -5,6 +5,7 @@ import waterVisualizationVert from "@/shaders/water-visualization.vert?raw";
 
 export type WaterVisualizationUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
+  uHeightMapSize: THREE.IUniform<THREE.Vector2>;
   uWaterHeightmap: THREE.IUniform<THREE.Texture>;
   uCloudShadowMap: THREE.IUniform<THREE.Texture>;
   uVelocityMap: THREE.IUniform<THREE.Texture>;
@@ -38,6 +39,7 @@ export const createWaterVisualizationMaterialResource = ({
 
   const uniforms: Partial<WaterVisualizationUniforms> = {
     uHeightMap: { value: heightmap },
+    uHeightMapSize: { value: new THREE.Vector2(512, 512) },
     uWaterHeightmap: { value: waterHeightMap },
     uCloudShadowMap: { value: cloudShadowMap },
     uVelocityMap: { value: velocityMap },

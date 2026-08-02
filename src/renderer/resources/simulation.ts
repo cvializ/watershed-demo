@@ -37,6 +37,10 @@ export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   const testingTexture = waterSimulation.getTestingTexture();
   setTexture(TextureEnum.TestingTexture, testingTexture);
 
+  // Get dynamic height map texture (modified by sediment erosion/deposition)
+  const dynamicHeightMapTexture = waterSimulation.getDynamicHeightMapTexture();
+  setTexture(TextureEnum.HeightMap, dynamicHeightMapTexture);
+
   // Create cloud sphere system using the cloud texture from GPU simulation
   const cloudTexture = waterSimulation.getCloudShadowTexture();
   const cloudSphereSystem = createCloudSphereSystem(renderer, cloudTexture);

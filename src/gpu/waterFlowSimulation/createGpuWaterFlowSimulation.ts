@@ -6,6 +6,7 @@ import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer
 import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
+import { createGpuTerrainHeight } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainHeight";
 import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
@@ -67,6 +68,16 @@ export type WaterFlowVisualization = {
    * Get the GPU computation variable for sediment flow (for uniform updates).
    */
   getSedimentFlowVariable: () => Variable;
+
+  /**
+   * Get the dynamic height map texture (modified by sediment erosion/deposition).
+   */
+  getDynamicHeightMapTexture: () => THREE.Texture;
+
+  /**
+   * Get the GPU computation variable for terrain height.
+   */
+  getHeightMapVariable: () => Variable;
 
   /**
    * Get the GPU computation variable for water height (for uniform updates).
@@ -151,6 +162,21 @@ export const createGpuWaterFlowSimulation = (
     heightMapTexture,
     waterVelocityVariable,
   );
+
+  // Dynamic terrain height: starts from base terrain, modified by sediment erosion/deposition
+  const { heightMapVariable } = createGpuTerrainHeight(
+    gpuCompute,
+    width,
+    heightMapTexture,
+    sedimentFlowVariable,
+  );
+
+  // Sediment flow depends on the dynamic height map for erosion feedback loop
+  gpuCompute.setVariableDependencies(sedimentFlowVariable, [
+    waterVelocityVariable,
+    sedimentFlowVariable,
+    heightMapVariable,
+  ]);
   const { testingVariable, initTesting, updateTesting } = createTestingTexture(
     gpuCompute,
     width,
@@ -207,5 +233,8 @@ export const createGpuWaterFlowSimulation = (
     getSedimentFlowVariable: () => sedimentFlowVariable,
     getWaterHeightVariable: () => waterHeightVariable,
     getCloudVariable: () => cloudVariable,
+    getHeightMapVariable: () => heightMapVariable,
+    getDynamicHeightMapTexture: () =>
+      gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,
   };
 };

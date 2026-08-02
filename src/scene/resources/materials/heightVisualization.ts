@@ -5,6 +5,7 @@ import heightVisualizationVert from "@/shaders/height-visualization.vert?raw";
 
 type HeightVisualizationUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
+  uHeightMapSize: THREE.IUniform<THREE.Vector2>;
   uMinHeight: THREE.IUniform<number>;
   uMaxHeight: THREE.IUniform<number>;
 };
@@ -19,6 +20,7 @@ export const createHeightVisualizationMaterialResource = ({
 }) => {
   const uniforms: HeightVisualizationUniforms = {
     uHeightMap: { value: heightmap },
+    uHeightMapSize: { value: new THREE.Vector2(512, 512) },
     uMinHeight: { value: -1.5 },
     uMaxHeight: { value: 2.0 },
   };
