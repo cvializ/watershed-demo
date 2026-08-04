@@ -87,6 +87,7 @@ export const createGpuWaterHeight = (
   heightMapTexture: THREE.Texture,
   cloudShadowVariable: Variable,
   waterSourcesVariable: Variable,
+  surfaceMaterialMap?: THREE.Texture | null,
 ) => {
   logger.info("[gpu:water-height:create]");
 
@@ -110,7 +111,7 @@ export const createGpuWaterHeight = (
   uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage
   uniforms.waterSourcesMap = { value: null };
   uniforms.cloudShadowMap = { value: null };
-  uniforms.surfaceMaterialMap = { value: null }; // Surface material texture
+  uniforms.surfaceMaterialMap = { value: surfaceMaterialMap ?? null };
   uniforms.uTime = { value: 0.0 }; // Global time reference for save/load support
 
   return {
@@ -121,7 +122,9 @@ export const createGpuWaterHeight = (
         gpuCompute.getCurrentRenderTarget(cloudShadowVariable).texture;
       uniforms.waterSourcesMap.value =
         gpuCompute.getCurrentRenderTarget(waterSourcesVariable).texture;
-      uniforms.surfaceMaterialMap.value = null;
+      if (surfaceMaterialMap) {
+        uniforms.surfaceMaterialMap.value = surfaceMaterialMap;
+      }
     },
     updateWaterHeight: (time: number) => {
       uniforms.waterSourcesMap.value =

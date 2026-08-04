@@ -5,6 +5,7 @@ import { createGpuWaterFlowSimulation } from "@/gpu/waterFlowSimulation/createGp
 import { MeshEnum, setMesh } from "@/scene/resources/mesh";
 import { setTexture, TextureEnum } from "@/scene/resources/texture";
 import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
+import { createSurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
@@ -13,11 +14,17 @@ const terrainSize = 12;
 export const createSimulationResource = (renderer: THREE.WebGLRenderer) => {
   logger.info("[simulation:create]");
 
+  // Create surface material texture for terrain painting
+  const surfaceMaterialTexture = createSurfaceMaterialTexture(SIM_SIZE, terrainSize);
+  const surfaceMaterialMap = surfaceMaterialTexture.getTexture();
+  setTexture(TextureEnum.SurfaceMaterialMap, surfaceMaterialMap);
+
   const waterSimulation = createGpuWaterFlowSimulation(
     SIM_SIZE,
     terrainSize,
     renderer,
     createDisplacementTextureResource(512, 12),
+    surfaceMaterialMap,
   );
 
   const cloudShadowTexture = waterSimulation.getCloudShadowTexture();

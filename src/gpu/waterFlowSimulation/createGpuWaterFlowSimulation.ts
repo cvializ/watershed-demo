@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import type { SedimentFlowUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
+import type { WaterHeightUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 
 import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
@@ -118,6 +119,11 @@ export type WaterFlowVisualization = {
  * - The water simulation samples water sources from a pre-computed texture
  * - This allows multiple water sources to be efficiently added and combined on GPU
  *
+ * Surface material support:
+ * - Surface material texture is passed to water simulation for material-based flow effects
+ * - Different materials affect infiltration rate and friction coefficient
+ * - Water flows differently on grass (slower, more absorption) vs rocks (faster, less absorption)
+ *
  * Key differences from 4-direction simulation:
  * - Considers diagonal neighbors (8 total instead of 4)
  * - More realistic flow patterns that can curve
@@ -127,12 +133,14 @@ export type WaterFlowVisualization = {
  * @param terrainSize - Physical size of the terrain in world units
  * @param renderer - WebGLRenderer instance
  * @param heightMapTexture - Texture containing terrain height data
+ * @param surfaceMaterialMap - Texture containing surface material information (optional)
  */
 export const createGpuWaterFlowSimulation = (
   width: number,
   terrainSize: number,
   renderer: THREE.WebGLRenderer,
   heightMapTexture: THREE.Texture,
+  surfaceMaterialMap?: THREE.Texture,
 ): WaterFlowVisualization => {
   logger.info("[gpu:water-flow:create]");
 
@@ -152,6 +160,7 @@ export const createGpuWaterFlowSimulation = (
       heightMapTexture,
       cloudVariable,
       waterSourcesVariable,
+      surfaceMaterialMap ?? null,
     );
   const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
@@ -205,6 +214,14 @@ export const createGpuWaterFlowSimulation = (
   initWaterVelocity();
   initSedimentFlow();
   initTesting();
+
+  // Initialize surface material map uniform
+  const waterHeightUniforms = getUniforms<WaterHeightUniforms>(
+    waterHeightVariable.material,
+  );
+  if (surfaceMaterialMap) {
+    waterHeightUniforms.surfaceMaterialMap = { value: surfaceMaterialMap };
+  }
 
   return {
     compute: (_deltaTime: number, gameTime: number = 0) => {
