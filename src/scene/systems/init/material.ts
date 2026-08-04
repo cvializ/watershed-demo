@@ -14,6 +14,15 @@ import { setObject } from "@/scene/resources/objectCache";
 import { getTexture, TextureEnum } from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 
+// Helper to get a texture with fallback to DefaultHeightMap if not found
+const getTextureOrDefault = (id: TextureEnum): THREE.Texture => {
+  try {
+    return getTexture(id);
+  } catch {
+    return getTexture(TextureEnum.DefaultHeightMap);
+  }
+};
+
 export const initMaterials: SceneInitSystem = () => {
   logger.info("[material:init]");
 
@@ -21,7 +30,7 @@ export const initMaterials: SceneInitSystem = () => {
   setObject(
     MaterialEnum.HeightVisualization,
     createHeightVisualizationMaterialResource({
-      heightmap: getTexture(TextureEnum.HeightMap),
+      heightmap: getTexture(TextureEnum.DefaultHeightMap),
     }),
   );
   setObject(MaterialEnum.Normal, createNormalMaterialResource());
@@ -32,17 +41,17 @@ export const initMaterials: SceneInitSystem = () => {
   setObject(
     MaterialEnum.Slope,
     createSlopeVisualizationMaterialResource({
-      heightmap: getTexture(TextureEnum.HeightMap),
+      heightmap: getTexture(TextureEnum.DefaultHeightMap),
     }),
   );
   setObject(
     MaterialEnum.WaterFlow,
     createWaterVisualizationMaterialResource({
-      heightmap: getTexture(TextureEnum.HeightMap),
-      waterHeightMap: getTexture(TextureEnum.WaterHeightMap),
-      cloudShadowMap: getTexture(TextureEnum.CloudShadowMap),
-      velocityMap: getTexture(TextureEnum.VelocityMap),
-      surfaceMaterialMap: getTexture(TextureEnum.SurfaceMaterialMap),
+      heightmap: getTextureOrDefault(TextureEnum.DefaultHeightMap),
+      waterHeightMap: getTextureOrDefault(TextureEnum.WaterHeightMap),
+      cloudShadowMap: getTextureOrDefault(TextureEnum.CloudShadowMap),
+      velocityMap: getTextureOrDefault(TextureEnum.VelocityMap),
+      surfaceMaterialMap: getTextureOrDefault(TextureEnum.SurfaceMaterialMap),
       sunLightPosition: new THREE.Vector3(0, 0, 0),
     }),
   );
@@ -50,7 +59,7 @@ export const initMaterials: SceneInitSystem = () => {
   setObject(
     MaterialEnum.TestingSimulation,
     createTestingVisualizationMaterialResource({
-      testingTexture: getTexture(TextureEnum.SedimentFlowMap),
+      testingTexture: getTextureOrDefault(TextureEnum.SedimentFlowMap),
     }),
   );
 };

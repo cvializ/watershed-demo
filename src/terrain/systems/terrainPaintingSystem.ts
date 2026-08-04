@@ -18,12 +18,6 @@ export type TerrainPaintingConfig = {
 
   /** Painting strength (0-1) */
   brushStrength: number;
-
-  /** Key code to hold for painting (default: Shift) */
-  paintKey: string;
-
-  /** Mouse button to use for painting (default: 'right') */
-  paintMouseButton: "left" | "right" | "middle";
 };
 
 /**
@@ -90,8 +84,6 @@ export const createTerrainPaintingSystem = (
     brushMaterial: initialConfig.brushMaterial ?? "bareDirt",
     brushRadius: initialConfig.brushRadius ?? 2.0,
     brushStrength: initialConfig.brushStrength ?? 1.0,
-    paintKey: initialConfig.paintKey ?? "Shift",
-    paintMouseButton: initialConfig.paintMouseButton ?? "right",
   };
 
   let terrainPainter: TerrainPainter | null = null;
@@ -106,21 +98,28 @@ export const createTerrainPaintingSystem = (
   let isPainting = false;
   let lastPaintTime = 0;
   const paintCooldown = 50; // ms between paint operations
+  let lastMousePosition: { x: number; y: number } | null = null;
+
+  // Clear materials event handler
+  const handleClearMaterials = () => {
+    if (terrainPainter) {
+      terrainPainter.clear();
+    }
+  };
+
+  window.addEventListener("terrain-paint-clear", handleClearMaterials);
 
   // Event handlers
   const handleMouseDown = (event: MouseEvent): void => {
     if (!config.enabled || !terrainPainter) return;
 
-    // Check mouse button
-    const buttonMap: Record<string, number> = {
-      left: 0,
-      right: 2,
-      middle: 1,
-    };
-    const expectedButton = buttonMap[config.paintMouseButton];
-
-    if (event.button === expectedButton) {
+    // Right-click to start painting
+    if (event.button === 2) {
+      console.log("[painting] Right-click detected, starting paint");
+      event.preventDefault();
+      event.stopPropagation();
       isPainting = true;
+      lastMousePosition = { x: event.clientX, y: event.clientY };
       paintAtMousePosition(event);
     }
   };
@@ -128,29 +127,43 @@ export const createTerrainPaintingSystem = (
   const handleMouseMove = (event: MouseEvent): void => {
     if (!config.enabled || !isPainting || !terrainPainter) return;
 
+    // Store last mouse position for continuous painting
+    lastMousePosition = { x: event.clientX, y: event.clientY };
+
     // Cooldown to prevent too frequent painting
     const now = performance.now();
     if (now - lastPaintTime < paintCooldown) return;
 
+    console.log("[painting] Painting at", event.clientX, event.clientY);
+    event.preventDefault();
+    event.stopPropagation();
     paintAtMousePosition(event);
     lastPaintTime = now;
   };
 
   const handleMouseUp = (): void => {
     isPainting = false;
+    lastMousePosition = null;
+  };
+
+  const handleContextMenu = (event: MouseEvent): void => {
+    // Always prevent context menu on right-click
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const handleKeyDown = (event: KeyboardEvent): void => {
-    if (!config.enabled || event.key !== config.paintKey) return;
+    // Shift key to enable painting mode
+    if (!config.enabled || event.key !== "Shift") return;
 
-    // Hold key to paint
+    // Hold Shift to paint
     if (!isPainting && terrainPainter) {
       isPainting = true;
     }
   };
 
   const handleKeyUp = (event: KeyboardEvent): void => {
-    if (!config.enabled || event.key !== config.paintKey) return;
+    if (!config.enabled || event.key !== "Shift") return;
 
     isPainting = false;
   };
@@ -163,7 +176,10 @@ export const createTerrainPaintingSystem = (
 
   // Paint at current mouse position
   const paintAtMousePosition = (event: MouseEvent): void => {
-    if (!camera || !terrainMesh || !terrainPainter) return;
+    if (!camera || !terrainMesh || !terrainPainter) {
+      console.log("[painting] Missing dependencies:", { camera: !!camera, terrainMesh: !!terrainMesh, terrainPainter: !!terrainPainter });
+      return;
+    }
 
     updateMouseCoordinates(event);
 
@@ -178,8 +194,10 @@ export const createTerrainPaintingSystem = (
       // Convert world coordinates to terrain coordinates (0 to terrainSize)
       // Assuming terrain is centered at origin with size 12
       const terrainSize = 12;
-      const x = (point.x + terrainSize / 2);
-      const y = (point.z + terrainSize / 2);
+      const x = point.x + terrainSize / 2;
+      const y = point.z + terrainSize / 2;
+
+      console.log("[painting] Painting at world point", point, "-> terrain coords", x, y);
 
       // Paint at this location
       terrainPainter.paint(
@@ -189,6 +207,8 @@ export const createTerrainPaintingSystem = (
         config.brushRadius,
         config.brushStrength,
       );
+    } else {
+      console.log("[painting] No terrain intersection found");
     }
   };
 
@@ -199,6 +219,7 @@ export const createTerrainPaintingSystem = (
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("contextmenu", handleContextMenu);
   };
 
   
@@ -208,12 +229,16 @@ export const createTerrainPaintingSystem = (
 
   return {
     update: (): void => {
-      // Continuous painting while key is held down
-      if (isPainting && terrainPainter) {
+      // Continuous painting while Shift is held down
+      if (isPainting && terrainPainter && lastMousePosition) {
         const now = performance.now();
         if (now - lastPaintTime >= paintCooldown) {
-          // Note: For continuous painting, we'd need to track the last mouse position
-          // This is a simplified version - in practice you'd want to store the last mouse pos
+          // Create a synthetic mouse event for continuous painting
+          const syntheticEvent = new MouseEvent("mousemove", {
+            clientX: lastMousePosition.x,
+            clientY: lastMousePosition.y,
+          });
+          paintAtMousePosition(syntheticEvent);
           lastPaintTime = now;
         }
       }
@@ -236,8 +261,6 @@ export const createTerrainPaintingSystem = (
       if (newConfig.brushMaterial !== undefined) config.brushMaterial = newConfig.brushMaterial;
       if (newConfig.brushRadius !== undefined) config.brushRadius = newConfig.brushRadius;
       if (newConfig.brushStrength !== undefined) config.brushStrength = newConfig.brushStrength;
-      if (newConfig.paintKey !== undefined) config.paintKey = newConfig.paintKey;
-      if (newConfig.paintMouseButton !== undefined) config.paintMouseButton = newConfig.paintMouseButton;
     },
 
     getConfig: (): TerrainPaintingConfig => {

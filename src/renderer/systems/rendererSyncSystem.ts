@@ -1,5 +1,6 @@
 import type { RendererSystem } from "@/renderer/types";
 
+import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import { updateControls } from "@/renderer/resources/camera";
 import { simulationSystem } from "@/renderer/systems/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
@@ -12,6 +13,12 @@ export const rendererSyncSystem: RendererSystem = (
   dt,
 ) => {
   simulationSystem(world, scene, renderer, dt);
+
+  // Update terrain painting system
+  const terrainPaintingManager = getTerrainPaintingManager();
+  if (terrainPaintingManager) {
+    terrainPaintingManager.update();
+  }
 
   // Update camera controls (auto-rotate and input handling)
   updateControls(dt);
