@@ -6,6 +6,8 @@ import {
 } from "@/storage";
 import { logger } from "@/utils/logger";
 
+import { TerrainPaintingControls } from "./TerrainPaintingControls";
+
 type GameUiProps = {
   world: GameWorldContext;
 };
@@ -62,6 +64,7 @@ export const GameUI = ({ world }: GameUiProps) => {
 
   return (
     <>
+      <TerrainPaintingControls world={world} />
       <div style={styles.container}>
         <div style={styles.panel}>
           <div style={styles.fpsSection}>

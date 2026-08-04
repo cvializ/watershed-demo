@@ -22,8 +22,8 @@ initSerializers(world);
 const scene = createSceneResource();
 const renderer = createRendererResource();
 
-rendererInitSystem(world, scene, renderer);
 sceneInitSystem(world, scene);
+rendererInitSystem(world, scene, renderer);
 worldInitSystem(world);
 
 initGameUI();

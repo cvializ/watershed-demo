@@ -30,6 +30,9 @@ export const createCameraControlsResource = (
   controls.autoRotateSpeed = 2.0;
   controls.target.set(0, 0, 0);
 
+  // Disable right-click rotation to allow terrain painting
+  controls.enableRotate = false;
+
   return controls;
 };
 

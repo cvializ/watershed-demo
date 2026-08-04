@@ -61,7 +61,6 @@ export const exampleInteractivePainting = (
     brushMaterial: "grass", // Default brush material
     brushRadius: 2.0, // Brush size in world units
     brushStrength: 1.0, // Full strength painting
-    paintMouseButton: "right", // Right mouse button to paint
   });
 
   // Step 3: Set up the painting system
@@ -230,7 +229,6 @@ export const exampleCompleteIntegration = (
     brushMaterial: "bareDirt",
     brushRadius: 2.0,
     brushStrength: 1.0,
-    paintMouseButton: "right",
   });
 
   // Set up painting system

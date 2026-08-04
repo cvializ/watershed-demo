@@ -1,3 +1,5 @@
+import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
+
 export const createGameWorldContext = () => ({
   gameTime: 0,
   fps: 0,
@@ -25,6 +27,11 @@ export const createGameWorldContext = () => ({
   cameraZoom: 2.5,
   // Pause state
   isPaused: false,
+  // Terrain painting state
+  terrainPaintingEnabled: true,
+  terrainBrushMaterial: "bareDirt" as SurfaceMaterialType,
+  terrainBrushRadius: 2.0,
+  terrainBrushStrength: 1.0,
 });
 
 export const togglePause = (world: GameWorldContext): void => {

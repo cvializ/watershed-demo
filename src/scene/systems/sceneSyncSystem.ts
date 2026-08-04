@@ -1,5 +1,6 @@
 import type { SceneSystem } from "@/scene/types";
 
+import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import { materialSystem } from "@/scene/systems/material";
 import { positionSystem } from "@/scene/systems/position";
 import { sunBackgroundSystem } from "@/scene/systems/sunBackground";
@@ -10,4 +11,15 @@ export const sceneSyncSystem: SceneSystem = (world, scene, dt): void => {
   materialSystem(world, scene, dt);
   sunBackgroundSystem(world, scene, dt);
   visualizationSystem(world, scene, dt);
+
+  // Update terrain painting system with React UI state
+  const terrainPaintingManager = getTerrainPaintingManager();
+  if (terrainPaintingManager) {
+    terrainPaintingManager.updateFromUI({
+      enabled: world.terrainPaintingEnabled,
+      brushMaterial: world.terrainBrushMaterial,
+      brushRadius: world.terrainBrushRadius,
+      brushStrength: world.terrainBrushStrength,
+    });
+  }
 };
