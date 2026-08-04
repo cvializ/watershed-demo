@@ -42,6 +42,7 @@ export const initMaterials: SceneInitSystem = () => {
       waterHeightMap: getTexture(TextureEnum.WaterHeightMap),
       cloudShadowMap: getTexture(TextureEnum.CloudShadowMap),
       velocityMap: getTexture(TextureEnum.VelocityMap),
+      surfaceMaterialMap: getTexture(TextureEnum.SurfaceMaterialMap),
       sunLightPosition: new THREE.Vector3(0, 0, 0),
     }),
   );

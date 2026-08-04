@@ -11,6 +11,7 @@ export const TextureEnum = {
   SedimentFlowMap: "SedimentFlowMap",
   Simulation: "Simulation",
   TestingTexture: "TestingTexture",
+  SurfaceMaterialMap: "SurfaceMaterialMap",
 } as const;
 
 export type TextureEnum = (typeof TextureEnum)[keyof typeof TextureEnum];
