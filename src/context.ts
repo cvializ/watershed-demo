@@ -4,7 +4,7 @@ export const createGameWorldContext = () => ({
   gameTime: 0,
   fps: 0,
   showVelocity: true,
-  erosionRate: 0.5,
+  erosionRate: 0.01,
   lastVizMode: 4, // Default to Water Flow mode
   visualizationMode: 4, // Default to Water Flow mode
   sunAngle: 0,

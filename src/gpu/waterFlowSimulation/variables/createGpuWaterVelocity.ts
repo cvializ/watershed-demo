@@ -12,6 +12,7 @@ import { getUniforms } from "@/utils/uniformUtils";
 export type WaterVelocityUniforms = {
   uHeightMap: THREE.IUniform<THREE.Texture>;
   uWaterHeightmap: THREE.IUniform<THREE.Texture | null>;
+  surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
 };
 
 /**
@@ -45,6 +46,7 @@ export const createGpuWaterVelocity = (
   width: number,
   heightMapTexture: THREE.Texture,
   waterHeightVariable: Variable,
+  surfaceMaterialMap?: THREE.Texture | null,
   heightMapVariable?: Variable,
 ) => {
   logger.info("[gpu:water-velocity:create]");
@@ -79,6 +81,12 @@ export const createGpuWaterVelocity = (
       uniforms.uWaterHeightmap = {
         value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
       };
+      // Set surface material map for friction calculations in the velocity shader
+      if (surfaceMaterialMap) {
+        uniforms.surfaceMaterialMap = { value: surfaceMaterialMap };
+      } else {
+        uniforms.surfaceMaterialMap = { value: null };
+      }
     },
   };
 };
