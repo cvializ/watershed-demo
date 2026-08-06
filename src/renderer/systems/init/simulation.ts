@@ -9,7 +9,6 @@ import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain"
 import type { TerrainPainter } from "@/terrain/paintTerrain";
 import { MeshEnum, getMesh } from "@/scene/resources/mesh";
 import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
-import { createSurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 import { createSimulationResource } from "@/renderer/resources/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
@@ -17,9 +16,6 @@ import { getObject } from "@/scene/resources/objectCache";
 export let waterSimulation: WaterFlowVisualization | null = null;
 export let cloudSphereSystem: CloudSphereSystem | null = null;
 let surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
-
-const SIM_SIZE = 512;
-const terrainSize = 12;
 
 export const simulationInitSystem: RendererInitSystem = (
   _world,
@@ -31,15 +27,17 @@ export const simulationInitSystem: RendererInitSystem = (
   waterSimulation = simulationResource.waterSimulation;
   cloudSphereSystem = simulationResource.cloudSphereSystem;
 
-  // Create surface material texture for terrain painting
-  surfaceMaterialTexture = createSurfaceMaterialTexture(SIM_SIZE, terrainSize);
+  // Reuse the surface material texture created in createSimulationResource
+  // so painting affects the SAME texture used by the water simulation and
+  // the water-flow visualization material.
+  surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
 
   // Initialize terrain painting manager
   const terrainPaintingManager = createTerrainPaintingManager();
 
   // Get required dependencies
   if (waterSimulation && surfaceMaterialTexture) {
-    // Create terrain painter that actually paints on the surface material texture
+    // Create terrain painter that paints on the shared surface material texture
     const terrainPainter: TerrainPainter = createTerrainPainterFromSurfaceMaterial(
       surfaceMaterialTexture,
     );

@@ -167,6 +167,7 @@ export const createGpuWaterFlowSimulation = (
     width,
     heightMapTexture,
     waterHeightVariable,
+    surfaceMaterialMap ?? null,
   );
   const { sedimentFlowVariable, initSedimentFlow } = createGpuSedimentFlow(
     gpuCompute,

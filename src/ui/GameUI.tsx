@@ -92,7 +92,7 @@ export const GameUI = ({ world }: GameUiProps) => {
             <input
               type="range"
               min="0"
-              max="1"
+              max="0.1"
               step="0.01"
               value={world.erosionRate}
               onChange={(e) => (world.erosionRate = parseFloat(e.target.value))}

@@ -81,7 +81,7 @@ export const createGpuSedimentFlow = (
           ? gpuCompute.getCurrentRenderTarget(heightMapVariable).texture
           : heightMapTexture,
       };
-      uniforms.erosionRate = { value: 0.5 };
+      uniforms.erosionRate = { value: 0.01 };
     },
     getSedimentFlowUniforms: () => {
       return getUniforms<SedimentFlowUniforms>(sedimentFlowVariable.material);

@@ -136,7 +136,7 @@ export const TerrainPaintingControls = ({ world }: TerrainPaintingControlsProps)
       </div>
 
       <div style={styles.instructions}>
-        <strong>How to paint:</strong> Hold Shift + Right-click and drag on terrain
+        <strong>How to paint:</strong> Left-click and drag on terrain
       </div>
 
       <div style={styles.materialInfo}>

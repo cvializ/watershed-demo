@@ -113,11 +113,8 @@ export const createTerrainPaintingSystem = (
   const handleMouseDown = (event: MouseEvent): void => {
     if (!config.enabled || !terrainPainter) return;
 
-    // Right-click to start painting
-    if (event.button === 2) {
-      console.log("[painting] Right-click detected, starting paint");
-      event.preventDefault();
-      event.stopPropagation();
+    // Left-click to start painting
+    if (event.button === 0) {
       isPainting = true;
       lastMousePosition = { x: event.clientX, y: event.clientY };
       paintAtMousePosition(event);
@@ -150,22 +147,6 @@ export const createTerrainPaintingSystem = (
     // Always prevent context menu on right-click
     event.preventDefault();
     event.stopPropagation();
-  };
-
-  const handleKeyDown = (event: KeyboardEvent): void => {
-    // Shift key to enable painting mode
-    if (!config.enabled || event.key !== "Shift") return;
-
-    // Hold Shift to paint
-    if (!isPainting && terrainPainter) {
-      isPainting = true;
-    }
-  };
-
-  const handleKeyUp = (event: KeyboardEvent): void => {
-    if (!config.enabled || event.key !== "Shift") return;
-
-    isPainting = false;
   };
 
   // Convert mouse coordinates to normalized device coordinates
@@ -217,8 +198,6 @@ export const createTerrainPaintingSystem = (
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("contextmenu", handleContextMenu);
   };
 
@@ -229,7 +208,7 @@ export const createTerrainPaintingSystem = (
 
   return {
     update: (): void => {
-      // Continuous painting while Shift is held down
+      // Continuous painting while the mouse button is held down
       if (isPainting && terrainPainter && lastMousePosition) {
         const now = performance.now();
         if (now - lastPaintTime >= paintCooldown) {

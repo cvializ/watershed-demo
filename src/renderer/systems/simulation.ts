@@ -17,7 +17,7 @@ import {
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
-import { setTexture, TextureEnum } from "@/scene/resources/texture";
+import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
@@ -76,12 +76,22 @@ export const simulationSystem: RendererSystem = (
 
   waterSimulation.compute(dt, gameTime);
 
-  // Update water visualization with dynamic height map (modified by sediment)
+  // Update water visualization with dynamic height map (modified by sediment) and all simulation textures
   const dynamicHeightMap = waterSimulation.getDynamicHeightMapTexture();
   setTexture(TextureEnum.HeightMap, dynamicHeightMap);
 
   const waterUniforms = getUniforms<WaterVisualizationUniforms>(material);
   waterUniforms.uHeightMap.value = dynamicHeightMap;
+  // Update all simulation textures that were not available at material init time
+  waterUniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
+  waterUniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+  waterUniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
+
+  // Update surface material map (shared texture used for both visualization and simulation)
+  const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
+  if (surfaceMaterialTexture) {
+    waterUniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
+  }
 
   // Also update other materials that use the height map for displacement
   const heightVizMaterial = getMaterial(
