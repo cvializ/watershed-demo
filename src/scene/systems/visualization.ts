@@ -79,10 +79,6 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
         // Testing simulation
         MaterialRef.ref[terrain$] = MaterialEnum.TestingSimulation;
         break;
-      case 7:
-        // Terrain wireframe - shows mesh triangles
-        MaterialRef.ref[terrain$] = MaterialEnum.TerrainWireframe;
-        break;
     }
   }
 };
@@ -105,8 +101,6 @@ function getCurrentMaterial(mode: number): MaterialEnum {
       return MaterialEnum.WaterFlow;
     case 6:
       return MaterialEnum.TestingSimulation;
-    case 7:
-      return MaterialEnum.TerrainWireframe;
     default:
       // Default to WaterFlow for unknown modes
       return MaterialEnum.WaterFlow;

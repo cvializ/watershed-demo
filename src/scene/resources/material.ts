@@ -13,8 +13,6 @@ export const MaterialEnum = {
   Slope: "Slope",
   WaterFlow: "WaterFlow",
   TestingSimulation: "TestingSimulation",
-  TerrainWireframe: "TerrainWireframe",
-  SimpleTerrain: "SimpleTerrain", // Non-displacing terrain material
 } as const;
 
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];
