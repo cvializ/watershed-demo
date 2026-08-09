@@ -5,7 +5,6 @@ import { createDownslopeArrows } from "@/world/factories/downslopeArrows";
 import { createSunLight } from "@/world/factories/sunLight";
 import { createSunSphere } from "@/world/factories/sunSphere";
 import { createTerrain } from "@/world/factories/terrain";
-import { createWireframe } from "@/world/factories/wireframe";
 import { logger } from "@/utils/logger";
 
 export const worldInitSystem: WorldInitSystem = (world) => {
@@ -15,6 +14,5 @@ export const worldInitSystem: WorldInitSystem = (world) => {
   createCamera(world);
   createSunLight(world);
   createSunSphere(world);
-  createWireframe(world);
   createDownslopeArrows(world);
 };
