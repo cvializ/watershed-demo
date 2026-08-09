@@ -12,7 +12,9 @@ import { getUniforms } from "@/utils/uniformUtils";
 export type SedimentFlowUniforms = {
   uVelocityMap: THREE.IUniform<THREE.Texture>;
   uHeightMap: THREE.IUniform<THREE.Texture>;
-  erosionRate: THREE.IUniform<number>;
+  surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+  uHasSurfaceMaterialMap: THREE.IUniform<number>;
+  baseErosionRate: THREE.IUniform<number>;
 };
 
 /**
@@ -48,6 +50,7 @@ export const createGpuSedimentFlow = (
   heightMapTexture: THREE.Texture,
   waterVelocityVariable: Variable,
   heightMapVariable?: Variable,
+  surfaceMaterialMap?: THREE.Texture | null,
 ) => {
   logger.info("[gpu:sediment-flow:create]");
 
@@ -81,7 +84,16 @@ export const createGpuSedimentFlow = (
           ? gpuCompute.getCurrentRenderTarget(heightMapVariable).texture
           : heightMapTexture,
       };
-      uniforms.erosionRate = { value: 0.01 };
+      // Pass surface material map for material-dependent erosion rates
+      uniforms.surfaceMaterialMap = {
+        value: surfaceMaterialMap ?? null,
+      };
+      // Flag indicating if surface material map is available
+      uniforms.uHasSurfaceMaterialMap = {
+        value: surfaceMaterialMap ? 1.0 : 0.0,
+      };
+      // Base erosion rate (multiplied by material-specific factors)
+      uniforms.baseErosionRate = { value: 0.01 };
     },
     getSedimentFlowUniforms: () => {
       return getUniforms<SedimentFlowUniforms>(sedimentFlowVariable.material);

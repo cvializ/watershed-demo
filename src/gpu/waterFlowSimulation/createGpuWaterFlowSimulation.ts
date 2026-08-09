@@ -184,6 +184,8 @@ export const createGpuWaterFlowSimulation = (
     width,
     heightMapTexture,
     waterVelocityVariable,
+    undefined, // heightMapVariable (will be set later)
+    surfaceMaterialMap ?? null,
   );
 
   // Dynamic terrain height: starts from base terrain, modified by sediment erosion/deposition
