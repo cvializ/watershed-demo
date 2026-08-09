@@ -9,7 +9,7 @@ import { createTerrainWireframeOverlayMesh } from "@/scene/resources/meshes/terr
 import { setObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 
-export const initMeshes: SceneInitSystem = (world, scene) => {
+export const initMeshes: SceneInitSystem = (_world, scene) => {
   logger.info("[mesh:init]");
 
   // Create terrain geometry once and share between terrain mesh and wireframe overlay

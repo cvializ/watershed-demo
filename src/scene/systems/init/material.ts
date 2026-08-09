@@ -66,8 +66,6 @@ export const initMaterials: SceneInitSystem = () => {
   // Terrain Wireframe visualizes mesh triangles
   setObject(
     MaterialEnum.TerrainWireframe,
-    createTerrainWireframeMaterialResource({
-      heightmap: getTextureOrDefault(TextureEnum.DefaultHeightMap),
-    }),
+    createTerrainWireframeMaterialResource(),
   );
 };

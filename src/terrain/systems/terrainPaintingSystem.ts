@@ -260,11 +260,3 @@ export const createTerrainPaintingSystem = (
     },
   };
 };
-
-/**
- * Cleanup function to remove event listeners.
- */
-export const cleanupTerrainPaintingSystem = (): void => {
-  // Event listeners are removed when the page unloads
-  // This function can be used for explicit cleanup if needed
-};

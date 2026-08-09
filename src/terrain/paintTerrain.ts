@@ -57,14 +57,8 @@ export type TerrainPainter = {
   getBrushStrength: () => number;
 };
 
-/**
- * Creates a terrain painter that wraps the surface material texture.
- * Provides a convenient API for painting materials on the terrain.
- * 
- * @param paintFunction - Function to paint material at a location
- * @param clearFunction - Function to clear all materials
- */
-export const createTerrainPainter = (
+// Creates a terrain painter that wraps the surface material texture.
+const createTerrainPainter = (
   paintFunction: (
     x: number,
     y: number,
