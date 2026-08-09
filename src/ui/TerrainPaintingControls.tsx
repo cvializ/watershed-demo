@@ -8,7 +8,9 @@ type TerrainPaintingControlsProps = {
  * React component for terrain painting controls.
  * Provides UI for selecting brush material, size, and strength.
  */
-export const TerrainPaintingControls = ({ world }: TerrainPaintingControlsProps) => {
+export const TerrainPaintingControls = ({
+  world,
+}: TerrainPaintingControlsProps) => {
   const handleMaterialChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
@@ -117,9 +119,15 @@ export const TerrainPaintingControls = ({ world }: TerrainPaintingControlsProps)
           onClick={handleTogglePainting}
           style={{
             ...styles.button,
-            backgroundColor: world.terrainPaintingEnabled ? "#28a745" : "#6c757d",
+            backgroundColor: world.terrainPaintingEnabled
+              ? "#28a745"
+              : "#6c757d",
           }}
-          title={world.terrainPaintingEnabled ? "Disable painting" : "Enable painting"}
+          title={
+            world.terrainPaintingEnabled
+              ? "Disable painting"
+              : "Enable painting"
+          }
         >
           {world.terrainPaintingEnabled ? "Painting ON" : "Painting OFF"}
         </button>
@@ -141,9 +149,7 @@ export const TerrainPaintingControls = ({ world }: TerrainPaintingControlsProps)
 
       <div style={styles.materialInfo}>
         <strong>Material Properties:</strong>
-        <ul style={styles.infoList}>
-          {getMaterialInfo()}
-        </ul>
+        <ul style={styles.infoList}>{getMaterialInfo()}</ul>
       </div>
     </div>
   );

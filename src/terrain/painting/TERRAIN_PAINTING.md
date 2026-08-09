@@ -37,7 +37,9 @@ const waterSimulation = createGpuWaterFlowSimulation(
 ```typescript
 import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain";
 
-const terrainPainter = createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
+const terrainPainter = createTerrainPainterFromSurfaceMaterial(
+  surfaceMaterialTexture,
+);
 ```
 
 ### 3. Paint Materials Programmatically
@@ -85,11 +87,11 @@ function gameLoop(deltaTime: number) {
 
 ```typescript
 type TerrainPaintingConfig = {
-  enabled: boolean;           // Enable/disable painting
+  enabled: boolean; // Enable/disable painting
   brushMaterial: "bareDirt" | "grass" | "rocks"; // Current brush material
-  brushRadius: number;        // Brush radius in world units (default: 2.0)
-  brushStrength: number;      // Painting strength 0-1 (default: 1.0)
-  paintKey: string;           // Key to hold for painting (default: "Shift")
+  brushRadius: number; // Brush radius in world units (default: 2.0)
+  brushStrength: number; // Painting strength 0-1 (default: 1.0)
+  paintKey: string; // Key to hold for painting (default: "Shift")
   paintMouseButton: "left" | "right" | "middle"; // Mouse button (default: "right")
 };
 ```
@@ -117,11 +119,11 @@ paintingSystem.enable();
 
 Each material type has specific properties that affect water flow:
 
-| Material | Infiltration Rate | Friction Coefficient | Visual Color |
-|----------|------------------|---------------------|--------------|
-| Bare Dirt | 0.5 (moderate) | 1.0 (normal) | Brown (#664C33) |
-| Grass | 0.8 (high) | 1.3 (slower flow) | Green (#339933) |
-| Rocks | 0.2 (low) | 0.8 (faster flow) | Gray (#808099) |
+| Material  | Infiltration Rate | Friction Coefficient | Visual Color    |
+| --------- | ----------------- | -------------------- | --------------- |
+| Bare Dirt | 0.5 (moderate)    | 1.0 (normal)         | Brown (#664C33) |
+| Grass     | 0.8 (high)        | 1.3 (slower flow)    | Green (#339933) |
+| Rocks     | 0.2 (low)         | 0.8 (faster flow)    | Gray (#808099)  |
 
 ### How Materials Affect Water Flow
 
@@ -178,7 +180,7 @@ for (let y = 0; y < 12; y += 0.5) {
   for (let x = 0; x < 12; x += 0.5) {
     // Check slope at this position (pseudo-code)
     const slope = getSlopeAt(x, y);
-    
+
     if (slope > 0.5) {
       // Steep area - paint rocks for faster flow
       terrainPainter.paint(x, y, "rocks", 0.3);
@@ -205,8 +207,9 @@ No additional setup is required - just pass the surface material texture to the 
 ### Visualize Material Distribution
 
 The terrain visualization will show different colors for each material:
+
 - **Brown**: Bare dirt areas
-- **Green**: Grass areas  
+- **Green**: Grass areas
 - **Gray**: Rock areas
 
 ### Check Texture Updates

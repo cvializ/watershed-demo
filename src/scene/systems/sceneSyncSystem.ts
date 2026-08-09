@@ -1,10 +1,10 @@
 import type { SceneSystem } from "@/scene/types";
 
-import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import { materialSystem } from "@/scene/systems/material";
 import { positionSystem } from "@/scene/systems/position";
 import { sunBackgroundSystem } from "@/scene/systems/sunBackground";
 import { visualizationSystem } from "@/scene/systems/visualization";
+import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 
 export const sceneSyncSystem: SceneSystem = (world, scene, dt): void => {
   positionSystem(world, scene, dt);

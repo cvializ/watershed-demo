@@ -1,17 +1,17 @@
-import type { RendererInitSystem } from "@/renderer/types";
-
 import * as THREE from "three";
+
+import type { RendererInitSystem } from "@/renderer/types";
+import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
+import type { TerrainPainter } from "@/terrain/paintTerrain";
 
 import { type CloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
 import { type WaterFlowVisualization } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
-import { createTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
-import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain";
-import type { TerrainPainter } from "@/terrain/paintTerrain";
-import { MeshEnum, getMesh } from "@/scene/resources/mesh";
-import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 import { createSimulationResource } from "@/renderer/resources/simulation";
+import { MeshEnum, getMesh } from "@/scene/resources/mesh";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
+import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain";
+import { createTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 
 export let waterSimulation: WaterFlowVisualization | null = null;
 export let cloudSphereSystem: CloudSphereSystem | null = null;
@@ -38,9 +38,8 @@ export const simulationInitSystem: RendererInitSystem = (
   // Get required dependencies
   if (waterSimulation && surfaceMaterialTexture) {
     // Create terrain painter that paints on the shared surface material texture
-    const terrainPainter: TerrainPainter = createTerrainPainterFromSurfaceMaterial(
-      surfaceMaterialTexture,
-    );
+    const terrainPainter: TerrainPainter =
+      createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
 
     // Use the actual camera from the scene, not a new instance
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;

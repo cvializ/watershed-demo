@@ -1,11 +1,11 @@
 import type { WorldInitSystem } from "@/world/types";
 
+import { logger } from "@/utils/logger";
 import { createCamera } from "@/world/factories/camera";
 import { createDownslopeArrows } from "@/world/factories/downslopeArrows";
 import { createSunLight } from "@/world/factories/sunLight";
 import { createSunSphere } from "@/world/factories/sunSphere";
 import { createTerrain } from "@/world/factories/terrain";
-import { logger } from "@/utils/logger";
 
 export const worldInitSystem: WorldInitSystem = (world) => {
   logger.info("[world:init]");

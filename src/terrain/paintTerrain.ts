@@ -119,11 +119,11 @@ const createTerrainPainter = (
 
 /**
  * Creates a terrain painter from a surface material texture manager.
- * 
+ *
  * @param surfaceMaterialTexture - Surface material texture manager
  */
-export const createTerrainPainterFromSurfaceMaterial = (
-  surfaceMaterialTexture: {
+export const createTerrainPainterFromSurfaceMaterial =
+  (surfaceMaterialTexture: {
     paint: (
       x: number,
       y: number,
@@ -132,10 +132,9 @@ export const createTerrainPainterFromSurfaceMaterial = (
       strength?: number,
     ) => void;
     clear: () => void;
-  },
-): TerrainPainter => {
-  return createTerrainPainter(
-    surfaceMaterialTexture.paint.bind(surfaceMaterialTexture),
-    surfaceMaterialTexture.clear.bind(surfaceMaterialTexture),
-  );
-};
+  }): TerrainPainter => {
+    return createTerrainPainter(
+      surfaceMaterialTexture.paint.bind(surfaceMaterialTexture),
+      surfaceMaterialTexture.clear.bind(surfaceMaterialTexture),
+    );
+  };

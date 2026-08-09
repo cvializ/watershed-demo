@@ -3,8 +3,8 @@ import * as THREE from "three";
 import type { GameWorldContext } from "@/context";
 import type { SceneSystem } from "@/scene/types";
 
-import { GeneralObjectEnum } from "@/scene/resources/object";
 import { MeshEnum, getMesh } from "@/scene/resources/mesh";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 
 /**

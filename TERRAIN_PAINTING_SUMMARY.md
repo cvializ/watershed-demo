@@ -18,6 +18,7 @@ This document summarizes the implementation of the terrain painting system that 
   - **Visual color**: For terrain visualization
 
 **Key Features**:
+
 - Paint function to apply materials at specific locations with brush radius and strength
 - Clear function to reset all materials to bare dirt
 - Texture format: RGBA Float32 with material type ID in R channel
@@ -43,10 +44,12 @@ This document summarizes the implementation of the terrain painting system that 
 ### 4. Integration with Water Simulation
 
 **Updated Files**:
+
 - `src/gpu/waterFlowSimulation/createGpuWaterFlowSimulation.ts`
 - `src/gpu/waterFlowSimulation/variables/createGpuWaterHeight.ts`
 
 **Changes**:
+
 - Added `surfaceMaterialMap` parameter to water flow simulation
 - Updated water height variable to accept and use surface material texture
 - Surface material is now sampled in GPU shaders for:
@@ -56,10 +59,12 @@ This document summarizes the implementation of the terrain painting system that 
 ### 5. Integration with Terrain Visualization
 
 **Updated Files**:
+
 - `src/scene/resources/materials/waterVisualization.ts`
 - `src/scene/systems/init/material.ts`
 
 **Changes**:
+
 - Added `uSurfaceMaterialMap` uniform to water visualization material
 - Surface material texture is passed during material initialization
 - Terrain now displays different colors based on painted materials
@@ -80,26 +85,29 @@ This document summarizes the implementation of the terrain painting system that 
 ### 8. Documentation
 
 **Files Created**:
+
 - `TERRAIN_PAINTING.md` - Main documentation with usage instructions
 - `src/terrain/painting/TERRAIN_PAINTING.md` - Detailed API documentation
 - `src/terrain/painting/example.ts` - Usage examples
 
 ## Material Properties
 
-| Material | Infiltration Rate | Friction Coefficient | Visual Color |
-|----------|------------------|---------------------|--------------|
-| **Bare Dirt** | 0.5 (moderate) | 1.0 (normal) | Brown (#664C33) |
-| **Grass** | 0.8 (high) | 1.3 (slower flow) | Green (#339933) |
-| **Rocks** | 0.2 (low) | 0.8 (faster flow) | Gray (#808099) |
+| Material      | Infiltration Rate | Friction Coefficient | Visual Color    |
+| ------------- | ----------------- | -------------------- | --------------- |
+| **Bare Dirt** | 0.5 (moderate)    | 1.0 (normal)         | Brown (#664C33) |
+| **Grass**     | 0.8 (high)        | 1.3 (slower flow)    | Green (#339933) |
+| **Rocks**     | 0.2 (low)         | 0.8 (faster flow)    | Gray (#808099)  |
 
 ## How Materials Affect Water Flow
 
 ### Infiltration Rate
+
 - Controls how quickly water is removed from the surface (simulates absorption)
 - Higher values = more absorption = less surface water
 - Grass absorbs water quickly (0.8), rocks absorb slowly (0.2)
 
 ### Friction Coefficient
+
 - Controls how much the material slows water velocity
 - Higher values = slower water flow
 - Grass creates more friction (1.3), rocks are smoother (0.8)
@@ -112,7 +120,9 @@ This document summarizes the implementation of the terrain painting system that 
 import { createSurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 
 const surfaceMaterialTexture = createSurfaceMaterialTexture(512, 12);
-const terrainPainter = createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
+const terrainPainter = createTerrainPainterFromSurfaceMaterial(
+  surfaceMaterialTexture,
+);
 
 // Paint grass at position (6, 6) with radius 2.0
 terrainPainter.paint(6, 6, "grass", 2.0);
@@ -180,13 +190,14 @@ TERRAIN_PAINTING.md                     # Main documentation
 ## Shader Integration
 
 ### Water Height Shader (`src/shaders/compute/water-height.frag`)
+
 ```glsl
 uniform sampler2D surfaceMaterialMap;
 
 float getInfiltrationRate(vec2 uv) {
     vec4 materialData = texture2D(surfaceMaterialMap, uv);
     float materialType = materialData.r;
-    
+
     if (materialType < 0.5) {
         return INFILTRATION_BARE_DIRT;
     } else if (materialType < 1.5) {
@@ -198,13 +209,14 @@ float getInfiltrationRate(vec2 uv) {
 ```
 
 ### Water Velocity Shader (`src/shaders/compute/water-velocity.frag`)
+
 ```glsl
 uniform sampler2D surfaceMaterialMap;
 
 float getMaterialFriction(vec2 uv) {
     vec4 materialData = texture2D(surfaceMaterialMap, uv);
     float materialType = materialData.r;
-    
+
     if (materialType < 0.5) {
         return FRICTION_BARE_DIRT;
     } else if (materialType < 1.5) {
@@ -216,13 +228,14 @@ float getMaterialFriction(vec2 uv) {
 ```
 
 ### Terrain Visualization Shader (`src/shaders/water-visualization.frag`)
+
 ```glsl
 uniform sampler2D uSurfaceMaterialMap;
 
 vec3 getTerrainMaterialColor(vec2 uv) {
     vec4 materialData = texture2D(uSurfaceMaterialMap, uv);
     float materialType = materialData.r;
-    
+
     if (materialType < 0.5) {
         return vec3(0.4, 0.3, 0.2); // Bare dirt (brown)
     } else if (materialType < 1.5) {
@@ -236,6 +249,7 @@ vec3 getTerrainMaterialColor(vec2 uv) {
 ## Testing the Implementation
 
 ### Visual Verification
+
 1. Run the application
 2. Observe terrain colors:
    - Brown areas = bare dirt (default)
@@ -243,6 +257,7 @@ vec3 getTerrainMaterialColor(vec2 uv) {
    - Gray areas = rocks (where painted)
 
 ### Water Flow Verification
+
 1. Paint different materials on the terrain
 2. Add water using existing controls
 3. Observe how water behaves differently:
@@ -253,6 +268,7 @@ vec3 getTerrainMaterialColor(vec2 uv) {
 ## Future Enhancements
 
 Potential improvements:
+
 1. **More Material Types**: Sand, snow, concrete, etc.
 2. **Material Blending**: Smoother transitions between materials
 3. **UI Panel**: Visual brush controls and material selection

@@ -38,12 +38,14 @@ import { createSurfaceMaterialTexture } from "@/scene/resources/textures/surface
 const surfaceMaterialTexture = createSurfaceMaterialTexture(512, 12);
 
 // Create terrain painter
-const terrainPainter = createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
+const terrainPainter = createTerrainPainterFromSurfaceMaterial(
+  surfaceMaterialTexture,
+);
 
 // Paint materials
-terrainPainter.paint(6, 6, "grass", 2.0);     // Paint grass at center
-terrainPainter.paint(8, 4, "rocks", 1.5);     // Paint rocks at (8, 4)
-terrainPainter.paint(2, 8, "bareDirt", 1.0);  // Paint bare dirt
+terrainPainter.paint(6, 6, "grass", 2.0); // Paint grass at center
+terrainPainter.paint(8, 4, "rocks", 1.5); // Paint rocks at (8, 4)
+terrainPainter.paint(2, 8, "bareDirt", 1.0); // Paint bare dirt
 ```
 
 ### 3. Interactive Mouse Painting
@@ -87,11 +89,11 @@ function gameLoop(deltaTime: number) {
 
 ### Material Properties
 
-| Material | Infiltration Rate | Friction Coefficient | Visual Color |
-|----------|------------------|---------------------|--------------|
-| **Bare Dirt** | 0.5 (moderate) | 1.0 (normal) | Brown (#664C33) |
-| **Grass** | 0.8 (high) | 1.3 (slower flow) | Green (#339933) |
-| **Rocks** | 0.2 (low) | 0.8 (faster flow) | Gray (#808099) |
+| Material      | Infiltration Rate | Friction Coefficient | Visual Color    |
+| ------------- | ----------------- | -------------------- | --------------- |
+| **Bare Dirt** | 0.5 (moderate)    | 1.0 (normal)         | Brown (#664C33) |
+| **Grass**     | 0.8 (high)        | 1.3 (slower flow)    | Green (#339933) |
+| **Rocks**     | 0.2 (low)         | 0.8 (faster flow)    | Gray (#808099)  |
 
 ### How Materials Affect Water Flow
 
@@ -167,6 +169,7 @@ The surface material system is integrated at these points:
 ### Visual Verification
 
 When you run the application, you should see:
+
 - **Brown areas**: Bare dirt (default)
 - **Green areas**: Grass (where you've painted grass)
 - **Gray areas**: Rocks (where you've painted rocks)
@@ -174,6 +177,7 @@ When you run the application, you should see:
 ### Water Flow Verification
 
 After painting materials:
+
 1. Add water to the terrain (using existing water addition controls)
 2. Observe how water behaves differently on different materials:
    - On **grass**: Water should absorb quickly and flow slowly
@@ -187,7 +191,10 @@ After painting materials:
 You can modify material properties in `src/scene/resources/textures/surfaceMaterial.ts`:
 
 ```typescript
-export const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties> = {
+export const MATERIAL_PROPERTIES: Record<
+  SurfaceMaterialType,
+  MaterialProperties
+> = {
   bareDirt: {
     infiltrationRate: 0.5, // Adjust absorption rate
     frictionCoefficient: 1.0, // Adjust flow speed
@@ -227,6 +234,7 @@ export const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties
 ## Next Steps
 
 Potential enhancements:
+
 - Add more material types (sand, snow, concrete, etc.)
 - Implement material blending for smoother transitions
 - Add keyboard shortcuts to quickly switch between materials

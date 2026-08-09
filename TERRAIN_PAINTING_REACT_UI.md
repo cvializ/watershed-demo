@@ -47,23 +47,27 @@ Mouse Events → Raycasting → Paint on Terrain
 ### Brush Material Selector
 
 Dropdown to select material type:
+
 - **Bare Dirt**: Moderate absorption, normal flow
-- **Grass**: High absorption, slower flow  
+- **Grass**: High absorption, slower flow
 - **Rocks**: Low absorption, faster flow
 
 ### Brush Size Slider
 
 Range input (0.5 - 6.0 world units)
+
 - Displays current size: "Brush Size: 2.0"
 
 ### Brush Strength Slider
 
 Range input (10% - 100%)
+
 - Displays current strength: "Brush Strength: 75%"
 
 ### Toggle Button
 
 Enables/disables painting system
+
 - Shows "Painting ON" or "Painting OFF"
 
 ### Clear Materials Button
@@ -117,11 +121,13 @@ type TerrainPaintingControlsProps = {
 To add a new brush property (e.g., `brushOpacity`):
 
 1. **Update context** (`src/context.ts`):
+
 ```typescript
 terrainBrushOpacity: 1.0, // Add to createGameWorldContext
 ```
 
 2. **Update component** (`src/ui/TerrainPaintingControls.tsx`):
+
 ```typescript
 const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   world.terrainBrushOpacity = parseFloat(e.target.value);
@@ -139,6 +145,7 @@ const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 ```
 
 3. **Update manager type** (`src/terrain/TerrainPaintingManager.ts`):
+
 ```typescript
 updateFromUI: (params: {
   // ... existing params
@@ -147,6 +154,7 @@ updateFromUI: (params: {
 ```
 
 4. **Update scene sync** (`src/scene/systems/sceneSyncSystem.ts`):
+
 ```typescript
 terrainPaintingManager.updateFromUI({
   enabled: world.terrainPaintingEnabled,
@@ -224,12 +232,12 @@ Potential improvements:
 
 ### Context Properties
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `terrainPaintingEnabled` | `boolean` | `true` | Enable/disable painting |
-| `terrainBrushMaterial` | `"bareDirt" \| "grass" \| "rocks"` | `"bareDirt"` | Current brush material |
-| `terrainBrushRadius` | `number` | `2.0` | Brush radius in world units |
-| `terrainBrushStrength` | `number` | `1.0` | Painting strength (0-1) |
+| Property                 | Type                               | Default      | Description                 |
+| ------------------------ | ---------------------------------- | ------------ | --------------------------- |
+| `terrainPaintingEnabled` | `boolean`                          | `true`       | Enable/disable painting     |
+| `terrainBrushMaterial`   | `"bareDirt" \| "grass" \| "rocks"` | `"bareDirt"` | Current brush material      |
+| `terrainBrushRadius`     | `number`                           | `2.0`        | Brush radius in world units |
+| `terrainBrushStrength`   | `number`                           | `1.0`        | Painting strength (0-1)     |
 
 ## Conclusion
 

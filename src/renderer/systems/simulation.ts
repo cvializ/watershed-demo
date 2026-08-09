@@ -18,9 +18,7 @@ import {
 } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
-import {
-  updateTerrainGeometryFromRenderTarget,
-} from "@/scene/systems/updateTerrainGeometry";
+import { updateTerrainGeometryFromRenderTarget } from "@/scene/systems/updateTerrainGeometry";
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
@@ -49,12 +47,12 @@ export const simulationSystem: RendererSystem = (
   );
 
   const { showVelocity } = world;
-  
+
   // Only update water/simulation uniforms for modes that use them
-  const usesWaterVisualization = 
+  const usesWaterVisualization =
     world.visualizationMode === 4 || // Water Flow
-    world.visualizationMode === 5;   // Water Flow (show velocity)
-  
+    world.visualizationMode === 5; // Water Flow (show velocity)
+
   const material = getMaterial(MaterialEnum.WaterFlow) as ShaderMaterial;
 
   // Check if this is a testing simulation material
@@ -91,9 +89,10 @@ export const simulationSystem: RendererSystem = (
   // Update mesh geometry from GPU height map (wireframe follows contours)
   // Access render target directly for reading
   const heightMapVariable = waterSimulation.getHeightMapVariable();
-  const gpuCompute = (waterSimulation as any).getGpuCompute?.();
+  const gpuCompute = waterSimulation.getGpuCompute();
   if (gpuCompute) {
-    const heightRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
+    const heightRenderTarget =
+      gpuCompute.getCurrentRenderTarget(heightMapVariable);
     updateTerrainGeometryFromRenderTarget(heightRenderTarget, renderer);
   }
 
@@ -104,8 +103,10 @@ export const simulationSystem: RendererSystem = (
     const waterUniforms = getUniforms<WaterVisualizationUniforms>(material);
     waterUniforms.uHeightMap.value = dynamicHeightMap;
     // Update all simulation textures that were not available at material init time
-    waterUniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
-    waterUniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+    waterUniforms.uWaterHeightmap.value =
+      waterSimulation.getSimulationTexture();
+    waterUniforms.uCloudShadowMap.value =
+      waterSimulation.getCloudShadowTexture();
     waterUniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
 
     // Update surface material map (shared texture used for both visualization and simulation)
