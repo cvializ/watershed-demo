@@ -22,6 +22,7 @@ export const updateTerrainGeometryFromRenderTarget = (
 
   const geometry = terrainMesh.geometry as THREE.BufferGeometry;
   const positions = geometry.attributes.position;
+  const uvs = geometry.attributes.uv; // Use built-in UV attributes
   const terrainSize = 12;
 
   // Try to read from render target
@@ -40,16 +41,15 @@ export const updateTerrainGeometryFromRenderTarget = (
     // Update each vertex position from height data
     let updated = 0;
     for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i);
-      const y = positions.getY(i);
-
-      // Map vertex position to texture coordinates (0-1 range)
-      const uvX = (x + terrainSize / 2) / terrainSize;
-      const uvY = (y + terrainSize / 2) / terrainSize;
+      // Use the geometry's UV attributes directly (0-1 range)
+      const uvX = uvs.getX(i);
+      const uvY = uvs.getY(i);
 
       // Convert to texture pixel coordinates
-      const texX = Math.floor(uvX * (heightMapSize - 1));
-      const texY = Math.floor((1.0 - uvY) * (heightMapSize - 1));
+      // GPUComputationRenderer uses bottom-left origin, same as readRenderTargetPixels
+      // PlaneGeometry UVs also use bottom-left (0,0) to top-right (1,1)
+      const texX = Math.floor(uvX * heightMapSize);
+      const texY = Math.floor((1.0 - uvY) * heightMapSize); // Flip Y to match texture storage
 
       // Clamp to bounds
       const clampedX = Math.max(0, Math.min(heightMapSize - 1, texX));

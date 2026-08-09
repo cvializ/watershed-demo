@@ -28,6 +28,7 @@ export const createDisplacementTextureResource = (
     THREE.RedFormat,
     THREE.FloatType,
   );
+  texture.flipY = true; // Match coordinate system with mesh UVs
   texture.needsUpdate = true;
   return texture;
 };

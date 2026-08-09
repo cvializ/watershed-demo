@@ -44,6 +44,7 @@ const createInitialTerrainHeightTexture = (
     THREE.RGBAFormat,
     THREE.FloatType,
   );
+  texture.flipY = true; // Match GPUComputationRenderer coordinate system
   texture.needsUpdate = true;
 
   return { texture, data };
