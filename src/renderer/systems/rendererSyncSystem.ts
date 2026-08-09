@@ -1,10 +1,10 @@
 import type { RendererSystem } from "@/renderer/types";
 
-import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import { updateControls } from "@/renderer/resources/camera";
 import { simulationSystem } from "@/renderer/systems/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
+import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 
 export const rendererSyncSystem: RendererSystem = (
   world,

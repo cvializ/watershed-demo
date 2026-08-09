@@ -7,10 +7,10 @@ import { logger } from "@/utils/logger";
  * Create a wireframe overlay mesh for terrain visualization.
  * This renders on top of the main terrain mesh to show triangle edges.
  * Uses Three.js built-in wireframe mode for maximum compatibility.
- * 
+ *
  * Note: For the wireframe to follow terrain contours, the mesh geometry
  * must be updated from the height map texture each frame.
- * 
+ *
  * @param geometry - Shared terrain geometry (must be same as terrain mesh)
  */
 export const createTerrainWireframeOverlayMesh = (
@@ -33,7 +33,7 @@ export const createTerrainWireframeOverlayMesh = (
 
   const mesh = new THREE.Mesh(overlayGeometry, material);
   mesh.rotation.x = -Math.PI / 2;
-  
+
   // Set higher render order to ensure wireframe renders on top of terrain
   mesh.renderOrder = 2;
 

@@ -4,14 +4,14 @@ import * as THREE from "three";
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, ObjectRef, Renderable } from "@/components/components";
-import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
+import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject, initObjects } from "@/scene/resources/objectCache";
-import { initTextures } from "@/scene/systems/init/texture";
 import { cameraLookInitSystem } from "@/scene/systems/init/cameraLook";
 import { hiddenInitSystem } from "@/scene/systems/init/hidden";
 import { initMaterials } from "@/scene/systems/init/material";
 import { initMeshes } from "@/scene/systems/init/mesh";
+import { initTextures } from "@/scene/systems/init/texture";
 import { logger } from "@/utils/logger";
 
 export const sceneInitSystem: SceneInitSystem = (world, scene): void => {

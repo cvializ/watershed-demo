@@ -37,15 +37,13 @@ export const createTerrainGeometry = () => {
   return geometry;
 };
 
-export const createTerrainMeshResource = (
-  geometry?: THREE.BufferGeometry,
-) => {
+export const createTerrainMeshResource = (geometry?: THREE.BufferGeometry) => {
   logger.info("[terrain:resource]");
 
   const terrainGeometry = geometry ?? createTerrainGeometry();
   const terrain = new THREE.Mesh(terrainGeometry);
   terrain.rotation.x = -Math.PI / 2;
-  
+
   // Ensure terrain renders before wireframe overlay
   terrain.renderOrder = 0;
 

@@ -2,7 +2,11 @@ import * as THREE from "three";
 
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 import type { TerrainPainter } from "@/terrain/paintTerrain";
-import { createTerrainPaintingSystem, type TerrainPaintingSystem } from "@/terrain/systems/terrainPaintingSystem";
+
+import {
+  createTerrainPaintingSystem,
+  type TerrainPaintingSystem,
+} from "@/terrain/systems/terrainPaintingSystem";
 
 /**
  * Centralized terrain painting manager.

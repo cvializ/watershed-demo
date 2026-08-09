@@ -295,7 +295,7 @@ async function init() {
   camera.position.set(0, 7, 0);
   camera.lookAt(0, 0, 0);
 
-  renderer = new THREE.WebGLRenderer({ 
+  renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: "high-performance", // Prefer WebGL 2.0
   });

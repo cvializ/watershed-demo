@@ -78,19 +78,21 @@ export type SurfaceMaterialTexture = {
   /**
    * Get the material properties for a specific type.
    */
-  getMaterialProperties: (materialType: SurfaceMaterialType) => MaterialProperties;
+  getMaterialProperties: (
+    materialType: SurfaceMaterialType,
+  ) => MaterialProperties;
 };
 
 /**
  * Creates a surface material texture for terrain painting.
  * The texture stores material type information that affects water flow simulation.
- * 
+ *
  * Texture format:
  * - R channel: Material type ID (0.0 = bareDirt, 1.0 = grass, 2.0 = rocks)
  * - G channel: Reserved for future use
  * - B channel: Reserved for future use
  * - A channel: Alpha (always 1.0)
- * 
+ *
  * @param size - Texture resolution (should match simulation grid size)
  * @param terrainSize - Physical size of the terrain in world units
  */
@@ -126,8 +128,6 @@ export const createSurfaceMaterialTexture = (
     return { u, v };
   };
 
-  
-
   return {
     paint: (
       x: number,
@@ -155,14 +155,16 @@ export const createSurfaceMaterialTexture = (
           if (distanceSquared <= radiusSquared) {
             // Calculate brush falloff (smooth edge)
             const distance = Math.sqrt(distanceSquared);
-            const falloff = 1.0 - (distance / radiusPixels);
+            const falloff = 1.0 - distance / radiusPixels;
             const paintStrength = strength * falloff;
 
             const index = py * size + px;
             const currentMaterial = data[index * 4 + 0];
 
             // Blend material types (simple linear interpolation)
-            const blendedMaterial = currentMaterial * (1.0 - paintStrength) + materialId * paintStrength;
+            const blendedMaterial =
+              currentMaterial * (1.0 - paintStrength) +
+              materialId * paintStrength;
             data[index * 4 + 0] = blendedMaterial;
           }
         }

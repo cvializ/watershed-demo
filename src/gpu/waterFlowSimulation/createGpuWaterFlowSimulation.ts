@@ -276,13 +276,14 @@ export const createGpuWaterFlowSimulation = (
     getWaterHeightVariable: () => waterHeightVariable,
     getCloudVariable: () => cloudVariable,
     getHeightMapVariable: () => heightMapVariable,
-  getHeightData: () => {
-    // Access the terrain height texture data from heightMapVariable
-    const texture = heightMapVariable.initialValueTexture;
-    if (!texture) return null;
-    // Access image.data which contains the texture data
-    return (texture as any).image?.data as Float32Array | null;
-  },
+    getHeightData: () => {
+      // Access the terrain height texture data from heightMapVariable
+      const texture = heightMapVariable.initialValueTexture;
+      if (!texture) return null;
+      // Access image.data which contains the texture data
+      const imageData = texture.image as Float32Array | null;
+      return imageData;
+    },
     getDynamicHeightMapTexture: () =>
       gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,
   };

@@ -23,7 +23,6 @@ export const updateTerrainGeometryFromRenderTarget = (
   const geometry = terrainMesh.geometry as THREE.BufferGeometry;
   const positions = geometry.attributes.position;
   const uvs = geometry.attributes.uv; // Use built-in UV attributes
-  const terrainSize = 12;
 
   // Try to read from render target
   try {
@@ -35,7 +34,7 @@ export const updateTerrainGeometryFromRenderTarget = (
       0,
       heightMapSize,
       heightMapSize,
-      pixelData as any,
+      pixelData,
     );
 
     // Update each vertex position from height data
@@ -73,6 +72,8 @@ export const updateTerrainGeometryFromRenderTarget = (
       "[terrain:update] Mesh geometry updated from GPU render target",
     );
   } catch (error) {
-    logger.warn(`[terrain:update] Failed to read render target: ${String(error)}`);
+    logger.warn(
+      `[terrain:update] Failed to read render target: ${String(error)}`,
+    );
   }
 };

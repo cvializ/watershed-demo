@@ -55,7 +55,7 @@ export type TerrainPaintingSystem = {
 
 /**
  * Creates a terrain painting system for interactive material painting.
- * 
+ *
  * Usage:
  * ```typescript
  * const paintingSystem = createTerrainPaintingSystem({
@@ -64,13 +64,13 @@ export type TerrainPaintingSystem = {
  *   brushRadius: 2.0,
  *   brushStrength: 1.0,
  * });
- * 
+ *
  * // In your game loop:
  * paintingSystem.update();
- * 
+ *
  * // Set painter when available
  * paintingSystem.setTerrainPainter(terrainPainter);
- * 
+ *
  * // Set camera and terrain mesh for raycasting
  * paintingSystem.setCamera(camera);
  * paintingSystem.setTerrainMesh(terrainMesh);
@@ -158,7 +158,11 @@ export const createTerrainPaintingSystem = (
   // Paint at current mouse position
   const paintAtMousePosition = (event: MouseEvent): void => {
     if (!camera || !terrainMesh || !terrainPainter) {
-      console.log("[painting] Missing dependencies:", { camera: !!camera, terrainMesh: !!terrainMesh, terrainPainter: !!terrainPainter });
+      console.log("[painting] Missing dependencies:", {
+        camera: !!camera,
+        terrainMesh: !!terrainMesh,
+        terrainPainter: !!terrainPainter,
+      });
       return;
     }
 
@@ -178,7 +182,13 @@ export const createTerrainPaintingSystem = (
       const x = point.x + terrainSize / 2;
       const y = point.z + terrainSize / 2;
 
-      console.log("[painting] Painting at world point", point, "-> terrain coords", x, y);
+      console.log(
+        "[painting] Painting at world point",
+        point,
+        "-> terrain coords",
+        x,
+        y,
+      );
 
       // Paint at this location
       terrainPainter.paint(
@@ -200,8 +210,6 @@ export const createTerrainPaintingSystem = (
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("contextmenu", handleContextMenu);
   };
-
-  
 
   // Attach listeners on creation
   attachEventListeners();
@@ -237,9 +245,12 @@ export const createTerrainPaintingSystem = (
 
     updateConfig: (newConfig: Partial<TerrainPaintingConfig>): void => {
       if (newConfig.enabled !== undefined) config.enabled = newConfig.enabled;
-      if (newConfig.brushMaterial !== undefined) config.brushMaterial = newConfig.brushMaterial;
-      if (newConfig.brushRadius !== undefined) config.brushRadius = newConfig.brushRadius;
-      if (newConfig.brushStrength !== undefined) config.brushStrength = newConfig.brushStrength;
+      if (newConfig.brushMaterial !== undefined)
+        config.brushMaterial = newConfig.brushMaterial;
+      if (newConfig.brushRadius !== undefined)
+        config.brushRadius = newConfig.brushRadius;
+      if (newConfig.brushStrength !== undefined)
+        config.brushStrength = newConfig.brushStrength;
     },
 
     getConfig: (): TerrainPaintingConfig => {
