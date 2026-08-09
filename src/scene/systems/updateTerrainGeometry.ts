@@ -73,66 +73,6 @@ export const updateTerrainGeometryFromRenderTarget = (
       "[terrain:update] Mesh geometry updated from GPU render target",
     );
   } catch (error) {
-    logger.warn("[terrain:update] Failed to read render target:", error);
+    logger.warn(`[terrain:update] Failed to read render target: ${String(error)}`);
   }
-};
-
-/**
- * Update terrain mesh geometry vertices from CPU height map.
- * @param heightData - Float32Array of height values (512x512, R channel)
- */
-export const updateTerrainGeometry = (heightData: Float32Array) => {
-  const terrainMesh = getMesh(MeshEnum.Terrain);
-  const wireframeOverlay = getMesh(MeshEnum.TerrainWireframeOverlay);
-
-  if (!terrainMesh || !wireframeOverlay) {
-    return;
-  }
-
-  const geometry = terrainMesh.geometry as THREE.BufferGeometry;
-  const positions = geometry.attributes.position;
-
-  // Terrain configuration (must match createTerrainGeometry)
-  const terrainSize = 12;
-  const heightMapSize = 512;
-
-  // Update each vertex position from CPU height map
-  let maxHeight = -Infinity;
-  let minHeight = Infinity;
-
-  for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i);
-    const y = positions.getY(i);
-
-    // Map vertex position to texture coordinates (0-1 range)
-    const uvX = (x + terrainSize / 2) / terrainSize;
-    const uvY = (y + terrainSize / 2) / terrainSize;
-
-    // Convert to texture pixel coordinates
-    const texX = Math.floor(uvX * (heightMapSize - 1));
-    const texY = Math.floor((1.0 - uvY) * (heightMapSize - 1)); // Flip Y
-
-    // Clamp to bounds
-    const clampedX = Math.max(0, Math.min(heightMapSize - 1, texX));
-    const clampedY = Math.max(0, Math.min(heightMapSize - 1, texY));
-
-    // Read height from CPU array
-    const index = clampedY * heightMapSize + clampedX;
-    const heightValue = heightData[index];
-
-    // Update Z position (height)
-    positions.setZ(i, heightValue);
-
-    if (heightValue > maxHeight) maxHeight = heightValue;
-    if (heightValue < minHeight) minHeight = heightValue;
-  }
-
-  // Mark for update and recalculate normals
-  positions.needsUpdate = true;
-  geometry.computeVertexNormals();
-
-  logger.debug(
-    { maxHeight, minHeight },
-    "[terrain:update] Mesh geometry updated from height map",
-  );
 };

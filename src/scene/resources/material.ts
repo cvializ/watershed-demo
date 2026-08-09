@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { getObject } from "@/scene/resources/objectCache";
 
 export type { TestingVisualizationUniforms } from "@/scene/resources/materials/testingVisualization";
-export type { TerrainWireframeUniforms } from "@/scene/resources/materials/terrainWireframe";
 export type { WaterVisualizationUniforms } from "@/scene/resources/materials/waterVisualization";
 
 export const MaterialEnum = {

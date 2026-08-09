@@ -93,6 +93,16 @@ export type WaterFlowVisualization = {
    */
   getCloudVariable: () => Variable;
 
+  /**
+   * Get the GPU computation renderer instance.
+   */
+  getGpuCompute: () => GPUComputationRenderer;
+
+  /**
+   * Get the height data array from the terrain height variable.
+   */
+  getHeightData: () => Float32Array | null;
+
   setSunPosition: (position: THREE.Vector3) => void;
 };
 
@@ -268,7 +278,10 @@ export const createGpuWaterFlowSimulation = (
     getHeightMapVariable: () => heightMapVariable,
   getHeightData: () => {
     // Access the terrain height texture data from heightMapVariable
-    return heightMapVariable.initialValueTexture?.data as Float32Array;
+    const texture = heightMapVariable.initialValueTexture;
+    if (!texture) return null;
+    // Access image.data which contains the texture data
+    return (texture as any).image?.data as Float32Array | null;
   },
     getDynamicHeightMapTexture: () =>
       gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,

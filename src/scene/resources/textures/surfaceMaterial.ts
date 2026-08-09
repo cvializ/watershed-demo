@@ -6,10 +6,8 @@ import * as THREE from "three";
  */
 export type SurfaceMaterialType = "bareDirt" | "grass" | "rocks";
 
-/**
- * Material properties that affect water flow simulation.
- */
-export type MaterialProperties = {
+// Material properties that affect water flow simulation.
+type MaterialProperties = {
   /** Infiltration rate: how quickly water soaks into the ground (0-1) */
   infiltrationRate: number;
 
@@ -20,10 +18,8 @@ export type MaterialProperties = {
   color: [number, number, number];
 };
 
-/**
- * Material type to properties mapping.
- */
-export const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties> = {
+// Material type to properties mapping.
+const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties> = {
   bareDirt: {
     infiltrationRate: 0.5, // Moderate absorption
     frictionCoefficient: 1.0, // Normal flow speed
@@ -41,10 +37,8 @@ export const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties
   },
 };
 
-/**
- * Material type to numeric ID mapping for shader usage.
- */
-export const MATERIAL_TYPE_IDS: Record<SurfaceMaterialType, number> = {
+// Material type to numeric ID mapping for shader usage.
+const MATERIAL_TYPE_IDS: Record<SurfaceMaterialType, number> = {
   bareDirt: 0.0,
   grass: 1.0,
   rocks: 2.0,
