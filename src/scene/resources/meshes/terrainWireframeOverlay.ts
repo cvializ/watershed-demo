@@ -26,8 +26,9 @@ export const createTerrainWireframeOverlayMesh = (
     color: 0xffff00, // Yellow wireframe for visibility
     wireframe: true,
     transparent: true,
-    opacity: 0.3, // Semi-transparent to see terrain colors underneath
+    opacity: 0.15, // More transparent to see terrain colors underneath
     side: THREE.DoubleSide, // Ensure wireframe is visible from all angles
+    depthTest: false, // Disable depth testing to ensure wireframe always renders on top
   });
 
   const mesh = new THREE.Mesh(overlayGeometry, material);
