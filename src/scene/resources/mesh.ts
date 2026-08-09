@@ -5,7 +5,6 @@ import { getObject, setObject } from "@/scene/resources/objectCache";
 export const MeshEnum = {
   Terrain: "Terrain",
   DownslopeArrows: "DownslopeArrows",
-  Wireframe: "Wireframe",
   CloudMesh: "CloudMesh",
   SunSphere: "SunSphere",
 } as const;

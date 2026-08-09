@@ -27,12 +27,6 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
     }
   }
 
-  // Check for wireframe objects in scene
-  const wireframe = getMesh(MeshEnum.Wireframe);
-  // Wireframe is visible in Water Flow mode (4) or when explicitly enabled
-  const showWireframe = vizMode === 4;
-  wireframe.visible = showWireframe;
-
   // Query for terrain mesh
   const entities$ = query(world, []);
   logger.info(`ENTITIES: ${entities$}`);
