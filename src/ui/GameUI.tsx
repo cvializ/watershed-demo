@@ -25,7 +25,6 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 4, label: "Water Flow" },
     { id: 5, label: "Water height" },
     { id: 6, label: "Testing Simulation" },
-    { id: 7, label: "Terrain Wireframe" },
   ];
 
   const handleMaterialChange = (
