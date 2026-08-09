@@ -2,9 +2,64 @@
 
 uniform sampler2D uVelocityMap;
 uniform sampler2D uHeightMap;
-uniform float erosionRate;
+uniform sampler2D surfaceMaterialMap; // Surface material texture
+uniform float baseErosionRate;
 
-// Sediment flow computation based on water velocity.
+// Uniform to indicate if surface material map is available (1.0 = yes, 0.0 = no)
+uniform float uHasSurfaceMaterialMap;
+
+// Material types (must match surfaceMaterial.ts)
+const float MATERIAL_BARE_DIRT = 0.0;
+const float MATERIAL_GRASS = 1.0;
+const float MATERIAL_ROCKS = 2.0;
+
+// Material erosion coefficients (how easily material erodes)
+// Higher = easier to erode, lower = more resistant
+const float EROSION_RESISTANCE_BARE_DIRT = 1.0; // Baseline erosion rate
+const float EROSION_RESISTANCE_GRASS = 0.3; // Grass roots stabilize soil (harder to erode)
+const float EROSION_RESISTANCE_ROCKS = 0.1; // Rocks are very resistant to erosion
+
+// Material deposition coefficients (how easily sediment settles)
+// Higher = more likely to deposit, lower = sediment stays in motion
+const float DEPOSITION_FACTOR_GRASS = 1.5; // Grass slows water, causing more deposition
+const float DEPOSITION_FACTOR_BARE_DIRT = 1.0; // Baseline deposition
+const float DEPOSITION_FACTOR_ROCKS = 0.8; // Smooth rocks, sediment stays in motion
+
+// Get material erosion resistance based on surface type
+float getMaterialErosionResistance(vec2 uv) {
+    if (uHasSurfaceMaterialMap < 0.5) {
+        return EROSION_RESISTANCE_BARE_DIRT; // Default to bare dirt if no material map
+    }
+    vec4 materialData = texture2D(surfaceMaterialMap, uv);
+    float materialType = materialData.r;
+    
+    if (materialType < 0.5) {
+        return EROSION_RESISTANCE_BARE_DIRT;
+    } else if (materialType < 1.5) {
+        return EROSION_RESISTANCE_GRASS;
+    } else {
+        return EROSION_RESISTANCE_ROCKS;
+    }
+}
+
+// Get material deposition factor based on surface type
+float getMaterialDepositionFactor(vec2 uv) {
+    if (uHasSurfaceMaterialMap < 0.5) {
+        return DEPOSITION_FACTOR_BARE_DIRT; // Default to bare dirt if no material map
+    }
+    vec4 materialData = texture2D(surfaceMaterialMap, uv);
+    float materialType = materialData.r;
+    
+    if (materialType < 0.5) {
+        return DEPOSITION_FACTOR_BARE_DIRT;
+    } else if (materialType < 1.5) {
+        return DEPOSITION_FACTOR_GRASS;
+    } else {
+        return DEPOSITION_FACTOR_ROCKS;
+    }
+}
+
+// Sediment flow computation based on water velocity and surface material.
 //
 // Reads the velocity field to determine:
 // - R,G = sediment flow direction (2D vector)
@@ -37,8 +92,12 @@ void main() {
         return;
     }
 
-    // Transport capacity: proportional to velocity^2 * erosionRate
-    float transportCapacity = velocityMagnitude * velocityMagnitude * erosionRate;
+    // Get material-specific erosion resistance
+    float erosionResistance = getMaterialErosionResistance(uv);
+    
+    // Transport capacity: proportional to velocity^2 * baseErosionRate * material resistance
+    // Materials with lower erosion resistance (like rocks) erode less
+    float transportCapacity = velocityMagnitude * velocityMagnitude * baseErosionRate * erosionResistance;
 
     // Compute divergence to determine erosion vs deposition
     // Sample neighbors in the cardinal directions for velocity magnitude
@@ -67,12 +126,17 @@ void main() {
     
     // Only apply significant erosion/deposition
     if (abs(divergence) > erosionThreshold) {
+        // Get material-specific deposition factor
+        float depositionFactor = getMaterialDepositionFactor(uv);
+        
         if (divergence < 0.0) {
             // Converging flow erodes sediment from terrain
+            // Material resistance reduces erosion rate
             erosionDeposition = -divergence * transportCapacity * 2.0;
         } else {
             // Diverging flow deposits carried sediment
-            erosionDeposition = -divergence * transportCapacity;
+            // Material affects how much sediment is deposited (grass = more deposition)
+            erosionDeposition = -divergence * transportCapacity * depositionFactor;
         }
     } else {
         // Below threshold - no significant change

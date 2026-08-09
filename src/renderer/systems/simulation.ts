@@ -79,7 +79,7 @@ export const simulationSystem: RendererSystem = (
   const sedimentUniforms = getUniforms<SedimentFlowUniforms>(
     waterSimulation.getSedimentFlowVariable().material,
   );
-  sedimentUniforms.erosionRate.value = world.erosionRate;
+  sedimentUniforms.baseErosionRate.value = world.erosionRate;
 
   waterSimulation.compute(dt, gameTime);
 
