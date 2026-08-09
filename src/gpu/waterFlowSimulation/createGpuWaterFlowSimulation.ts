@@ -240,6 +240,7 @@ export const createGpuWaterFlowSimulation = (
 
       clearWater();
     },
+    getGpuCompute: () => gpuCompute,
     addWater,
     setSunPosition: (position: THREE.Vector3) => {
       waterHeightVariable.material.uniforms.uLightPosition = {
@@ -265,6 +266,10 @@ export const createGpuWaterFlowSimulation = (
     getWaterHeightVariable: () => waterHeightVariable,
     getCloudVariable: () => cloudVariable,
     getHeightMapVariable: () => heightMapVariable,
+  getHeightData: () => {
+    // Access the terrain height texture data from heightMapVariable
+    return heightMapVariable.initialValueTexture?.data as Float32Array;
+  },
     getDynamicHeightMapTexture: () =>
       gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,
   };

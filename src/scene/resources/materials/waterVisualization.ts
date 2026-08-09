@@ -15,6 +15,9 @@ export type WaterVisualizationUniforms = {
   uSurfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
   uLightPosition: THREE.IUniform<THREE.Vector3>;
   uLightSpaceMatrix: THREE.IUniform<THREE.Matrix4>;
+  // Wireframe overlay uniforms
+  uWireframeColor: THREE.IUniform<THREE.Color>;
+  uWireframeWidth: THREE.IUniform<number>;
 };
 
 /**
@@ -51,6 +54,9 @@ export const createWaterVisualizationMaterialResource = ({
     uSurfaceMaterialMap: { value: surfaceMaterialMap ?? null },
     uLightPosition: { value: sunLightPosition.clone() },
     uLightSpaceMatrix: { value: new THREE.Matrix4() },
+    // Wireframe overlay - enabled by default (yellow lines, width 2.0)
+    uWireframeColor: { value: new THREE.Color(1.0, 1.0, 0.0) }, // Yellow
+    uWireframeWidth: { value: 2.0 }, // Set to 0 to disable
   };
   return new THREE.ShaderMaterial({
     uniforms,

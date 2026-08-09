@@ -9,6 +9,10 @@ uniform float uMaxHeight;
 uniform int uShowVelocity; // 0 = show height, 1 = show velocity
 uniform sampler2D uSurfaceMaterialMap; // Surface material texture
 
+// Wireframe overlay uniforms (not used with barycentric - kept for future use)
+uniform vec3 uWireframeColor;      // Color of wireframe lines
+uniform float uWireframeWidth;     // Width of wireframe lines
+
 // Shadow calculation uniforms for sun light
 uniform vec3 uLightPosition;
 uniform vec4 uLightSpaceMatrix;
@@ -123,6 +127,8 @@ void main() {
     vec4 velocityData = texture2D(uVelocityMap, vUv);
     
     // Visualize water if present
+    vec3 finalColor; // Declare at top level scope
+    
     if (waterHeight > 0.01) {
         if (uShowVelocity == 1) {
             // Visualize velocity magnitude (not direction)
@@ -143,7 +149,7 @@ void main() {
             
             // Blend with terrain - make velocity more visible
             float blendAmount = clamp(velMag * 0.5 + 0.3, 0.3, 1.0);
-            vec3 finalColor = mix(terrainMaterialColor, velocityColor, blendAmount);
+            finalColor = mix(terrainMaterialColor, velocityColor, blendAmount);
             
             gl_FragColor = vec4(finalColor, 1.0);
         } else {
@@ -152,12 +158,14 @@ void main() {
             vec3 waterColor = mix(vec3(0.4, 0.7, 1.0), vec3(0.1, 0.3, 0.7), waterIntensity);
             
             // Blend terrain and water (water overlays terrain)
-            vec3 finalColor = mix(terrainMaterialColor, waterColor, waterIntensity * 0.6);
+            finalColor = mix(terrainMaterialColor, waterColor, waterIntensity * 0.6);
             
             gl_FragColor = vec4(finalColor, 1.0);
         }
     } else {
         // No water - just show terrain material color
-        gl_FragColor = vec4(terrainMaterialColor, 1.0);
+        finalColor = terrainMaterialColor;
     }
+
+    gl_FragColor = vec4(finalColor, 1.0);
 }
