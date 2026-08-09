@@ -18,6 +18,7 @@ export const initMeshes: SceneInitSystem = (_world, scene) => {
   // Terrain mesh uses shared geometry
   const terrainMesh = createTerrainMeshResource(sharedGeometry);
   setObject(MeshEnum.Terrain, terrainMesh);
+  scene.add(terrainMesh); // Add terrain to scene explicitly
   
   // Wireframe overlay uses same geometry so it updates with erosion
   const wireframeOverlay = createTerrainWireframeOverlayMesh(sharedGeometry);

@@ -27,14 +27,14 @@ export const createTerrainWireframeOverlayMesh = (
     wireframe: true,
     transparent: true,
     opacity: 0.3, // Semi-transparent to see terrain colors underneath
-    depthWrite: false, // Prevent wireframe from occluding terrain
+    side: THREE.DoubleSide, // Ensure wireframe is visible from all angles
   });
 
   const mesh = new THREE.Mesh(overlayGeometry, material);
   mesh.rotation.x = -Math.PI / 2;
   
-  // Set higher render order to ensure wireframe renders on top
-  mesh.renderOrder = 1;
+  // Set higher render order to ensure wireframe renders on top of terrain
+  mesh.renderOrder = 2;
 
   return mesh;
 };
