@@ -11,6 +11,7 @@ export const createTerrainWireframeMaterialResource = () => {
     color: 0x000000, // Black wireframe
     wireframe: true,
     transparent: true,
-    opacity: 0.5, // Semi-transparent to see through
+    opacity: 0.25, // More transparent to see through
+    depthTest: false, // Disable depth testing to ensure wireframe always renders on top
   });
 };
