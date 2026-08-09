@@ -18,13 +18,16 @@ import {
 } from "@/scene/resources/material";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
+import {
+  updateTerrainGeometryFromRenderTarget,
+} from "@/scene/systems/updateTerrainGeometry";
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
 export const simulationSystem: RendererSystem = (
   world,
   scene,
-  _renderer,
+  renderer,
   dt,
 ) => {
   // Skip updates when game is paused
@@ -46,6 +49,12 @@ export const simulationSystem: RendererSystem = (
   );
 
   const { showVelocity } = world;
+  
+  // Only update water/simulation uniforms for modes that use them
+  const usesWaterVisualization = 
+    world.visualizationMode === 4 || // Water Flow
+    world.visualizationMode === 5;   // Water Flow (show velocity)
+  
   const material = getMaterial(MaterialEnum.WaterFlow) as ShaderMaterial;
 
   // Check if this is a testing simulation material
@@ -59,7 +68,7 @@ export const simulationSystem: RendererSystem = (
     const uniform = getUniforms<TestingVisualizationUniforms>(testingMaterial);
     const testingTexture = waterSimulation.getTestingTexture();
     uniform.uTestingTexture.value = testingTexture;
-  } else {
+  } else if (usesWaterVisualization) {
     // Update water visualization uniforms
     const uniforms = getUniforms<WaterVisualizationUniforms>(material);
     uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
@@ -76,21 +85,34 @@ export const simulationSystem: RendererSystem = (
 
   waterSimulation.compute(dt, gameTime);
 
-  // Update water visualization with dynamic height map (modified by sediment) and all simulation textures
+  // Get dynamic height map (always needed for other materials)
   const dynamicHeightMap = waterSimulation.getDynamicHeightMapTexture();
-  setTexture(TextureEnum.HeightMap, dynamicHeightMap);
 
-  const waterUniforms = getUniforms<WaterVisualizationUniforms>(material);
-  waterUniforms.uHeightMap.value = dynamicHeightMap;
-  // Update all simulation textures that were not available at material init time
-  waterUniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
-  waterUniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
-  waterUniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
+  // Update mesh geometry from GPU height map (wireframe follows contours)
+  // Access render target directly for reading
+  const heightMapVariable = waterSimulation.getHeightMapVariable();
+  const gpuCompute = (waterSimulation as any).getGpuCompute?.();
+  if (gpuCompute) {
+    const heightRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
+    updateTerrainGeometryFromRenderTarget(heightRenderTarget, renderer);
+  }
 
-  // Update surface material map (shared texture used for both visualization and simulation)
-  const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
-  if (surfaceMaterialTexture) {
-    waterUniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
+  // Update water visualization with dynamic height map (modified by sediment) and all simulation textures
+  if (usesWaterVisualization) {
+    setTexture(TextureEnum.HeightMap, dynamicHeightMap);
+
+    const waterUniforms = getUniforms<WaterVisualizationUniforms>(material);
+    waterUniforms.uHeightMap.value = dynamicHeightMap;
+    // Update all simulation textures that were not available at material init time
+    waterUniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
+    waterUniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+    waterUniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
+
+    // Update surface material map (shared texture used for both visualization and simulation)
+    const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
+    if (surfaceMaterialTexture) {
+      waterUniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
+    }
   }
 
   // Also update other materials that use the height map for displacement

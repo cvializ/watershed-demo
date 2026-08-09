@@ -8,6 +8,7 @@ import { createDownslopeArrowsMaterialResource } from "@/scene/resources/materia
 import { createHeightVisualizationMaterialResource } from "@/scene/resources/materials/heightVisualization";
 import { createNormalMaterialResource } from "@/scene/resources/materials/normal";
 import { createSlopeVisualizationMaterialResource } from "@/scene/resources/materials/slopeVisualization";
+import { createTerrainWireframeMaterialResource } from "@/scene/resources/materials/terrainWireframe";
 import { createTestingVisualizationMaterialResource } from "@/scene/resources/materials/testingVisualization";
 import { createWaterVisualizationMaterialResource } from "@/scene/resources/materials/waterVisualization";
 import { setObject } from "@/scene/resources/objectCache";
@@ -60,6 +61,13 @@ export const initMaterials: SceneInitSystem = () => {
     MaterialEnum.TestingSimulation,
     createTestingVisualizationMaterialResource({
       testingTexture: getTextureOrDefault(TextureEnum.SedimentFlowMap),
+    }),
+  );
+  // Terrain Wireframe visualizes mesh triangles
+  setObject(
+    MaterialEnum.TerrainWireframe,
+    createTerrainWireframeMaterialResource({
+      heightmap: getTextureOrDefault(TextureEnum.DefaultHeightMap),
     }),
   );
 };

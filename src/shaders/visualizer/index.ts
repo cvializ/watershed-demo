@@ -131,6 +131,9 @@ const shaderConfig: Record<string, ShaderConfig> = {
     uniforms: {
       uMinHeight: { value: -1.5, min: -5, max: 5, step: 0.1 },
       uMaxHeight: { value: 2.0, min: -5, max: 5, step: 0.1 },
+      // Wireframe overlay controls - enabled by default
+      uWireframeColor: { value: new THREE.Color(1.0, 1.0, 0.0) }, // Yellow
+      uWireframeWidth: { value: 2.0, min: 0, max: 10, step: 0.5 },
     },
     createGeometry: (geometryKey: GeometryKey = "plane") => {
       let geometry: THREE.BufferGeometry;
@@ -292,7 +295,10 @@ async function init() {
   camera.position.set(0, 7, 0);
   camera.lookAt(0, 0, 0);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer = new THREE.WebGLRenderer({ 
+    antialias: true,
+    powerPreference: "high-performance", // Prefer WebGL 2.0
+  });
   renderer.setSize(256, 256);
   renderer.setPixelRatio(window.devicePixelRatio);
   if (canvasContainer) {

@@ -37,11 +37,13 @@ export const createTerrainGeometry = () => {
   return geometry;
 };
 
-export const createTerrainMeshResource = () => {
+export const createTerrainMeshResource = (
+  geometry?: THREE.BufferGeometry,
+) => {
   logger.info("[terrain:resource]");
 
-  const geometry = createTerrainGeometry();
-  const terrain = new THREE.Mesh(geometry);
+  const terrainGeometry = geometry ?? createTerrainGeometry();
+  const terrain = new THREE.Mesh(terrainGeometry);
   terrain.rotation.x = -Math.PI / 2;
 
   return terrain;
