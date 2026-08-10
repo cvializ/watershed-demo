@@ -61,6 +61,12 @@ export type TerrainPaintingSystem = {
 
   /** Get current mouse position in world coordinates */
   getMouseWorldPosition: () => { x: number; y: number } | null;
+
+  /** Save surface materials to localStorage */
+  saveSurfaceMaterials: (key?: string) => boolean;
+
+  /** Load surface materials from localStorage */
+  loadSurfaceMaterials: (key?: string) => boolean;
 };
 
 /**
@@ -342,6 +348,22 @@ export const createTerrainPaintingSystem = (
 
     getMouseWorldPosition: (): { x: number; y: number } | null => {
       return lastWorldPosition;
+    },
+
+    saveSurfaceMaterials: (key?: string): boolean => {
+      if (!surfaceMaterialTexture) {
+        console.warn("No surface material texture available");
+        return false;
+      }
+      return surfaceMaterialTexture.save(key);
+    },
+
+    loadSurfaceMaterials: (key?: string): boolean => {
+      if (!surfaceMaterialTexture) {
+        console.warn("No surface material texture available");
+        return false;
+      }
+      return surfaceMaterialTexture.load(key);
     },
   };
 };

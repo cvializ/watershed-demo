@@ -22,6 +22,18 @@ export const GameUI = ({ world }: GameUiProps) => {
     const manager = getTerrainPaintingManager();
     return manager?.getMaterialUnderCursor() ?? null;
   };
+
+  // Save surface materials from painting system
+  const saveSurfaceMaterials = (): boolean => {
+    const manager = getTerrainPaintingManager();
+    return manager?.getPaintingSystem()?.saveSurfaceMaterials() ?? false;
+  };
+
+  // Load surface materials from painting system
+  const loadSurfaceMaterials = (): boolean => {
+    const manager = getTerrainPaintingManager();
+    return manager?.getPaintingSystem()?.loadSurfaceMaterials() ?? false;
+  };
   // Map internal visualization mode numbers to UI labels (not used but kept for reference)
   const _materialOptions: { id: number; label: string }[] = [
     { id: 0, label: "Height Visualization" },
@@ -72,7 +84,11 @@ export const GameUI = ({ world }: GameUiProps) => {
     <>
       <TerrainPaintingControls
         world={world}
-        paintingSystem={{ getMaterialUnderCursor }}
+        paintingSystem={{
+          getMaterialUnderCursor,
+          saveSurfaceMaterials,
+          loadSurfaceMaterials,
+        }}
       />
       <div style={styles.container}>
         <div style={styles.panel}>

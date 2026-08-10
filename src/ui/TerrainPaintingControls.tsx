@@ -2,7 +2,11 @@ import type { GameWorldContext } from "@/context";
 
 type TerrainPaintingControlsProps = {
   world: GameWorldContext;
-  paintingSystem?: { getMaterialUnderCursor: () => string | null };
+  paintingSystem?: {
+    getMaterialUnderCursor: () => string | null;
+    saveSurfaceMaterials: () => boolean;
+    loadSurfaceMaterials: () => boolean;
+  };
 };
 
 /**
@@ -35,6 +39,32 @@ export const TerrainPaintingControls = ({
   const handleClearMaterials = () => {
     // Trigger clear by dispatching a custom event that the painting system listens to
     window.dispatchEvent(new CustomEvent("terrain-paint-clear"));
+  };
+
+  const handleSaveMaterials = () => {
+    if (!paintingSystem) {
+      alert("Painting system not available");
+      return;
+    }
+    const success = paintingSystem.saveSurfaceMaterials();
+    if (success) {
+      alert("Surface materials saved successfully!");
+    } else {
+      alert("Failed to save surface materials");
+    }
+  };
+
+  const handleLoadMaterials = () => {
+    if (!paintingSystem) {
+      alert("Painting system not available");
+      return;
+    }
+    const success = paintingSystem.loadSurfaceMaterials();
+    if (success) {
+      alert("Surface materials loaded successfully!");
+    } else {
+      alert("No saved surface materials found or failed to load");
+    }
   };
 
   // Get material under cursor for display
@@ -157,6 +187,26 @@ export const TerrainPaintingControls = ({
           title="Clear all materials (reset to bare dirt)"
         >
           Clear Materials
+        </button>
+      </div>
+
+      <div style={styles.section}>
+        <button
+          onClick={handleSaveMaterials}
+          style={{ ...styles.button, backgroundColor: "#007bff" }}
+          title="Save surface materials to browser storage"
+        >
+          Save Materials
+        </button>
+      </div>
+
+      <div style={styles.section}>
+        <button
+          onClick={handleLoadMaterials}
+          style={{ ...styles.button, backgroundColor: "#17a2b8" }}
+          title="Load surface materials from browser storage"
+        >
+          Load Materials
         </button>
       </div>
 
