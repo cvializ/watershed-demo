@@ -134,10 +134,11 @@ export const createTerrainPaintingSystem = (
   };
 
   const handleMouseMove = (event: MouseEvent): void => {
-    if (!config.enabled || !isPainting || !terrainPainter) return;
-
-    // Store last mouse position for continuous painting
+    // Always update cursor position for UI display, even when not painting
     lastMousePosition = { x: event.clientX, y: event.clientY };
+    updateCursorPosition();
+
+    if (!config.enabled || !isPainting || !terrainPainter) return;
 
     // Cooldown to prevent too frequent painting
     const now = performance.now();
@@ -152,7 +153,7 @@ export const createTerrainPaintingSystem = (
 
   const handleMouseUp = (): void => {
     isPainting = false;
-    lastMousePosition = null;
+    // Keep last position for UI display, don't clear it
   };
 
   const handleContextMenu = (event: MouseEvent): void => {
@@ -170,6 +171,36 @@ export const createTerrainPaintingSystem = (
   // Get terrain size (assumes terrain is centered at origin)
   const getTerrainSize = (): number => {
     return 12; // Matches the terrain size in the project
+  };
+
+  // Update cursor position for UI display (without painting)
+  const updateCursorPosition = (): void => {
+    if (!camera || !terrainMesh) return;
+
+    updateMouseCoordinates({
+      clientX: lastMousePosition?.x ?? 0,
+      clientY: lastMousePosition?.y ?? 0,
+    } as MouseEvent);
+
+    // Raycast to find terrain intersection
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(terrainMesh);
+
+    if (intersects.length > 0) {
+      const intersection = intersects[0];
+      const point = intersection.point;
+
+      // Convert world coordinates to terrain coordinates (0 to terrainSize)
+      const terrainSize = getTerrainSize();
+      const x = point.x + terrainSize / 2;
+      const y = point.z + terrainSize / 2;
+
+      // Store last world position for UI display
+      lastWorldPosition = { x, y };
+    } else {
+      // No intersection - clear the position
+      lastWorldPosition = null;
+    }
   };
 
   // Paint at current mouse position
@@ -236,6 +267,11 @@ export const createTerrainPaintingSystem = (
 
   return {
     update: (): void => {
+      // Always update cursor position for UI display (even when not painting)
+      if (lastMousePosition) {
+        updateCursorPosition();
+      }
+
       // Continuous painting while the mouse button is held down
       if (isPainting && terrainPainter && lastMousePosition) {
         const now = performance.now();
