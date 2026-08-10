@@ -2,6 +2,7 @@ import type { GameWorldContext } from "@/context";
 
 type TerrainPaintingControlsProps = {
   world: GameWorldContext;
+  paintingSystem?: { getMaterialUnderCursor: () => string | null };
 };
 
 /**
@@ -10,6 +11,7 @@ type TerrainPaintingControlsProps = {
  */
 export const TerrainPaintingControls = ({
   world,
+  paintingSystem,
 }: TerrainPaintingControlsProps) => {
   const handleMaterialChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -33,6 +35,15 @@ export const TerrainPaintingControls = ({
   const handleClearMaterials = () => {
     // Trigger clear by dispatching a custom event that the painting system listens to
     window.dispatchEvent(new CustomEvent("terrain-paint-clear"));
+  };
+
+  // Get material under cursor for display
+  const getMaterialUnderCursor = (): string => {
+    if (!paintingSystem) return "N/A";
+    const material = paintingSystem.getMaterialUnderCursor();
+    if (!material) return "N/A";
+    // Format material name for display
+    return material.charAt(0).toUpperCase() + material.slice(1);
   };
 
   // Type guard for material info display
@@ -64,6 +75,12 @@ export const TerrainPaintingControls = ({
 
   return (
     <div style={styles.container}>
+      {/* Material under cursor display */}
+      <div style={styles.cursorInfo}>
+        <strong>Cursor Material:</strong>
+        <span style={styles.cursorMaterial}>{getMaterialUnderCursor()}</span>
+      </div>
+
       <div style={styles.section}>
         <label htmlFor="brush-material" style={styles.label}>
           Brush Material:
@@ -168,6 +185,22 @@ const styles = {
     color: "#fff",
     pointerEvents: "auto" as const,
     minWidth: "220px",
+  } satisfies React.CSSProperties,
+  cursorInfo: {
+    marginBottom: "12px",
+    padding: "8px",
+    backgroundColor: "rgba(64, 224, 208, 0.15)",
+    borderRadius: "6px",
+    borderLeft: "3px solid #40E0D0",
+  } satisfies React.CSSProperties,
+  cursorMaterial: {
+    display: "inline-block",
+    marginLeft: "8px",
+    padding: "2px 8px",
+    backgroundColor: "rgba(64, 224, 208, 0.3)",
+    borderRadius: "4px",
+    fontFamily: "monospace",
+    fontWeight: "bold",
   } satisfies React.CSSProperties,
   section: {
     display: "flex",

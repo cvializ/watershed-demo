@@ -36,6 +36,9 @@ export type TerrainPaintingManager = {
 
   /** Update in game loop */
   update: () => void;
+
+  /** Get the material type under current cursor position */
+  getMaterialUnderCursor: () => string | null;
 };
 
 /**
@@ -119,6 +122,14 @@ export const createTerrainPaintingManager = (): TerrainPaintingManager => {
       if (paintingSystemInstance) {
         paintingSystemInstance.update();
       }
+    },
+
+    getMaterialUnderCursor: (): string | null => {
+      if (!paintingSystemInstance) return null;
+      const material = paintingSystemInstance.getMaterialUnderCursor();
+      if (!material) return null;
+      // Format material name for display (capitalize first letter)
+      return material.charAt(0).toUpperCase() + material.slice(1);
     },
   };
 

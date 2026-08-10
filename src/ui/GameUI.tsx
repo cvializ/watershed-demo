@@ -5,6 +5,7 @@ import {
   saveToWorldStorage,
 } from "@/storage";
 import { logger } from "@/utils/logger";
+import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 
 import { TerrainPaintingControls } from "./TerrainPaintingControls";
 
@@ -16,6 +17,11 @@ type GameUiProps = {
  * Main game UI component - renders on top of the canvas
  */
 export const GameUI = ({ world }: GameUiProps) => {
+  // Get material under cursor from painting system
+  const getMaterialUnderCursor = (): string | null => {
+    const manager = getTerrainPaintingManager();
+    return manager?.getMaterialUnderCursor() ?? null;
+  };
   // Map internal visualization mode numbers to UI labels (not used but kept for reference)
   const _materialOptions: { id: number; label: string }[] = [
     { id: 0, label: "Height Visualization" },
@@ -64,7 +70,10 @@ export const GameUI = ({ world }: GameUiProps) => {
 
   return (
     <>
-      <TerrainPaintingControls world={world} />
+      <TerrainPaintingControls
+        world={world}
+        paintingSystem={{ getMaterialUnderCursor }}
+      />
       <div style={styles.container}>
         <div style={styles.panel}>
           <div style={styles.fpsSection}>
