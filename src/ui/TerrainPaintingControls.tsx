@@ -77,7 +77,7 @@ export const TerrainPaintingControls = ({
     <div style={styles.container}>
       {/* Material under cursor display */}
       <div style={styles.cursorInfo}>
-        <strong>Cursor Material:</strong>
+        <strong>Cursor:</strong>
         <span style={styles.cursorMaterial}>{getMaterialUnderCursor()}</span>
       </div>
 
