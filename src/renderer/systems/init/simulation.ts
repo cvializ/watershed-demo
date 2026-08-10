@@ -51,6 +51,12 @@ export const simulationInitSystem: RendererInitSystem = (
         camera,
         terrainMesh,
       });
+
+      // Pass surface material texture to painting system for cursor sampling
+      const paintingSystem = terrainPaintingManager.getPaintingSystem();
+      if (paintingSystem) {
+        paintingSystem.setSurfaceMaterialTexture(surfaceMaterialTexture);
+      }
     }
   }
 };

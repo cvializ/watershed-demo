@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 import type { TerrainPainter } from "@/terrain/paintTerrain";
+import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 
 /**
  * Configuration for terrain painting interaction.
@@ -37,6 +38,9 @@ export type TerrainPaintingSystem = {
   /** Set the terrain mesh for raycasting */
   setTerrainMesh: (mesh: THREE.Mesh) => void;
 
+  /** Set the surface material texture for sampling */
+  setSurfaceMaterialTexture: (texture: SurfaceMaterialTexture) => void;
+
   /** Update configuration */
   updateConfig: (config: Partial<TerrainPaintingConfig>) => void;
 
@@ -51,6 +55,12 @@ export type TerrainPaintingSystem = {
 
   /** Check if painting is enabled */
   isEnabled: () => boolean;
+
+  /** Get the material type under current cursor position */
+  getMaterialUnderCursor: () => SurfaceMaterialType | null;
+
+  /** Get current mouse position in world coordinates */
+  getMouseWorldPosition: () => { x: number; y: number } | null;
 };
 
 /**
@@ -89,6 +99,7 @@ export const createTerrainPaintingSystem = (
   let terrainPainter: TerrainPainter | null = null;
   let camera: THREE.Camera | null = null;
   let terrainMesh: THREE.Mesh | null = null;
+  let surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
 
   // Raycaster for mouse interaction
   const raycaster = new THREE.Raycaster();
@@ -99,6 +110,7 @@ export const createTerrainPaintingSystem = (
   let lastPaintTime = 0;
   const paintCooldown = 50; // ms between paint operations
   let lastMousePosition: { x: number; y: number } | null = null;
+  let lastWorldPosition: { x: number; y: number } | null = null;
 
   // Clear materials event handler
   const handleClearMaterials = () => {
@@ -155,6 +167,11 @@ export const createTerrainPaintingSystem = (
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   };
 
+  // Get terrain size (assumes terrain is centered at origin)
+  const getTerrainSize = (): number => {
+    return 12; // Matches the terrain size in the project
+  };
+
   // Paint at current mouse position
   const paintAtMousePosition = (event: MouseEvent): void => {
     if (!camera || !terrainMesh || !terrainPainter) {
@@ -177,10 +194,12 @@ export const createTerrainPaintingSystem = (
       const point = intersection.point;
 
       // Convert world coordinates to terrain coordinates (0 to terrainSize)
-      // Assuming terrain is centered at origin with size 12
-      const terrainSize = 12;
+      const terrainSize = getTerrainSize();
       const x = point.x + terrainSize / 2;
       const y = point.z + terrainSize / 2;
+
+      // Store last world position for UI display
+      lastWorldPosition = { x, y };
 
       console.log(
         "[painting] Painting at world point",
@@ -200,6 +219,7 @@ export const createTerrainPaintingSystem = (
       );
     } else {
       console.log("[painting] No terrain intersection found");
+      lastWorldPosition = null;
     }
   };
 
@@ -243,6 +263,10 @@ export const createTerrainPaintingSystem = (
       terrainMesh = mesh;
     },
 
+    setSurfaceMaterialTexture: (texture: SurfaceMaterialTexture): void => {
+      surfaceMaterialTexture = texture;
+    },
+
     updateConfig: (newConfig: Partial<TerrainPaintingConfig>): void => {
       if (newConfig.enabled !== undefined) config.enabled = newConfig.enabled;
       if (newConfig.brushMaterial !== undefined)
@@ -268,6 +292,20 @@ export const createTerrainPaintingSystem = (
 
     isEnabled: (): boolean => {
       return config.enabled;
+    },
+
+    getMaterialUnderCursor: (): SurfaceMaterialType | null => {
+      if (!lastWorldPosition || !surfaceMaterialTexture) {
+        return null;
+      }
+      return surfaceMaterialTexture.getMaterialAtPosition(
+        lastWorldPosition.x,
+        lastWorldPosition.y,
+      );
+    },
+
+    getMouseWorldPosition: (): { x: number; y: number } | null => {
+      return lastWorldPosition;
     },
   };
 };

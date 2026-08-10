@@ -81,6 +81,14 @@ export type SurfaceMaterialTexture = {
   getMaterialProperties: (
     materialType: SurfaceMaterialType,
   ) => MaterialProperties;
+
+  /**
+   * Get the material type at a specific world position.
+   * @param x - X coordinate in world space (0 to terrainSize)
+   * @param y - Y coordinate in world space (0 to terrainSize)
+   * @returns The material type at that position
+   */
+  getMaterialAtPosition: (x: number, y: number) => SurfaceMaterialType;
 };
 
 /**
@@ -189,6 +197,33 @@ export const createSurfaceMaterialTexture = (
 
     getMaterialProperties: (type: SurfaceMaterialType): MaterialProperties => {
       return MATERIAL_PROPERTIES[type];
+    },
+
+    getMaterialAtPosition: (x: number, y: number): SurfaceMaterialType => {
+      // Convert world coordinates to texture UV
+      const u = x / terrainSize;
+      const v = 1.0 - y / terrainSize; // Flip Y
+
+      // Clamp to valid range
+      const clampedU = Math.max(0, Math.min(1, u));
+      const clampedV = Math.max(0, Math.min(1, v));
+
+      // Convert to pixel coordinates
+      const pixelX = Math.floor(clampedU * (size - 1));
+      const pixelY = Math.floor(clampedV * (size - 1));
+
+      // Get material ID from data array
+      const index = pixelY * size + pixelX;
+      const materialId = data[index * 4 + 0];
+
+      // Convert material ID to type
+      if (materialId < 0.5) {
+        return "bareDirt";
+      } else if (materialId < 1.5) {
+        return "grass";
+      } else {
+        return "rocks";
+      }
     },
   };
 };
