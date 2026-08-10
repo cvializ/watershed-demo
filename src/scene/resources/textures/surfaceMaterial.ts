@@ -89,6 +89,33 @@ export type SurfaceMaterialTexture = {
    * @returns The material type at that position
    */
   getMaterialAtPosition: (x: number, y: number) => SurfaceMaterialType;
+
+  /**
+   * Save the surface material texture to localStorage.
+   * @param key - Storage key (default: "terrainSurfaceMaterials")
+   * @returns true if successful, false otherwise
+   */
+  save: (key?: string) => boolean;
+
+  /**
+   * Load the surface material texture from localStorage.
+   * @param key - Storage key (default: "terrainSurfaceMaterials")
+   * @returns true if successful, false if no saved data found
+   */
+  load: (key?: string) => boolean;
+
+  /**
+   * Export surface material data as a JSON object.
+   * @returns JSON object containing material data
+   */
+  exportToJson: () => string;
+
+  /**
+   * Import surface material data from a JSON object.
+   * @param jsonData - JSON string containing material data
+   * @returns true if successful, false otherwise
+   */
+  importFromJson: (jsonData: string) => boolean;
 };
 
 /**
@@ -223,6 +250,98 @@ export const createSurfaceMaterialTexture = (
         return "grass";
       } else {
         return "rocks";
+      }
+    },
+
+    save: (key: string = "terrainSurfaceMaterials"): boolean => {
+      try {
+        const exportData = {
+          size,
+          terrainSize,
+          data: Array.from(data),
+        };
+        const jsonString = JSON.stringify(exportData);
+        localStorage.setItem(key, jsonString);
+        return true;
+      } catch (error) {
+        console.error("Failed to save surface materials:", error);
+        return false;
+      }
+    },
+
+    load: (key: string = "terrainSurfaceMaterials"): boolean => {
+      try {
+        const jsonString = localStorage.getItem(key);
+        if (!jsonString) {
+          return false;
+        }
+
+        const importData = JSON.parse(jsonString) as {
+          size: number;
+          terrainSize: number;
+          data: number[];
+        };
+
+        // Validate imported data
+        if (
+          importData.size !== size ||
+          importData.terrainSize !== terrainSize ||
+          !Array.isArray(importData.data)
+        ) {
+          console.error("Invalid surface material data format");
+          return false;
+        }
+
+        // Restore data array
+        for (let i = 0; i < size * size * 4; i++) {
+          data[i] = importData.data[i] ?? 0;
+        }
+
+        texture.needsUpdate = true;
+        return true;
+      } catch (error) {
+        console.error("Failed to load surface materials:", error);
+        return false;
+      }
+    },
+
+    exportToJson: (): string => {
+      const exportData = {
+        size,
+        terrainSize,
+        data: Array.from(data),
+      };
+      return JSON.stringify(exportData, null, 2);
+    },
+
+    importFromJson: (jsonData: string): boolean => {
+      try {
+        const importData = JSON.parse(jsonData) as {
+          size: number;
+          terrainSize: number;
+          data: number[];
+        };
+
+        // Validate imported data
+        if (
+          importData.size !== size ||
+          importData.terrainSize !== terrainSize ||
+          !Array.isArray(importData.data)
+        ) {
+          console.error("Invalid surface material data format");
+          return false;
+        }
+
+        // Restore data array
+        for (let i = 0; i < size * size * 4; i++) {
+          data[i] = importData.data[i] ?? 0;
+        }
+
+        texture.needsUpdate = true;
+        return true;
+      } catch (error) {
+        console.error("Failed to import surface materials:", error);
+        return false;
       }
     },
   };
