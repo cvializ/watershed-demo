@@ -54,5 +54,6 @@ export const createLoopResource = (
     tick: () => cb(gameClock.getTime(), gameClock.getDelta()),
     clock: gameClock,
     stop: () => {}, // Placeholder - loop continues until component unmounts
+    destroy: () => gameClock.destroy(),
   };
 };
