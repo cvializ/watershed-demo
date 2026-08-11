@@ -49,9 +49,18 @@ export type GameClock = {
    * Reset the clock to initial state.
    */
   reset: () => void;
+
+  /**
+   * Cleanup function to remove event listeners.
+   * Call this when the clock is no longer needed.
+   */
+  destroy: () => void;
 };
 
 const INITIAL_TIME = 0;
+
+/** Maximum allowed delta time in seconds to prevent simulation jumps when window is hidden/restored */
+const MAX_DELTA_TIME = 0.1; // 100ms maximum per frame
 
 /**
  * Create a game clock that maintains serializable time state.
@@ -63,12 +72,33 @@ export const createGameClock = (world: GameWorldContext): GameClock => {
   world.gameTime = INITIAL_TIME; // The "logical now" - serializable
   let lastRawTime: number | null = null; // Raw timestamp from previous frame
   let deltaTime = 0; // Computed delta from last frame
+  let isHidden = false; // Track if page was hidden
 
   const reset = (): void => {
     world.gameTime = INITIAL_TIME;
     lastRawTime = null;
     deltaTime = 0;
+    isHidden = false;
   };
+
+  // Listen for visibility changes to handle window/tab hiding
+  const handleVisibilityChange = (): void => {
+    if (document.hidden) {
+      // Page is being hidden - mark it so we don't accumulate time while hidden
+      isHidden = true;
+    } else {
+      // Page is becoming visible again - reset lastRawTime to prevent time jump
+      if (isHidden && lastRawTime !== null) {
+        // Reset the reference time to now, so delta starts fresh
+        lastRawTime = performance.now();
+        isHidden = false;
+        logger.debug("GameClock: Page became visible, reset timing reference");
+      }
+    }
+  };
+
+  // Attach visibility change listener
+  document.addEventListener("visibilitychange", handleVisibilityChange);
 
   return {
     getTime: (): number => world.gameTime,
@@ -92,9 +122,18 @@ export const createGameClock = (world: GameWorldContext): GameClock => {
         return;
       }
 
+      // If page was hidden, skip delta calculation to prevent time jumps
+      if (isHidden) {
+        // Update lastRawTime but don't advance gameTime or compute delta
+        lastRawTime = rawTime;
+        deltaTime = 0;
+        return;
+      }
+
       // Compute delta from raw time
       const computedDelta = rawTime - lastRawTime;
-      deltaTime = Math.max(0, computedDelta); // Prevent negative deltas
+      // Clamp delta to prevent huge jumps when window was hidden/restored
+      deltaTime = Math.min(MAX_DELTA_TIME, Math.max(0, computedDelta));
 
       // If paused, don't advance gameTime but still update lastRawTime to avoid large delta jumps
       if (!world.isPaused) {
@@ -130,5 +169,13 @@ export const createGameClock = (world: GameWorldContext): GameClock => {
     },
 
     reset,
+
+    /**
+     * Cleanup function to remove event listeners.
+     * Call this when the clock is no longer needed.
+     */
+    destroy: (): void => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    },
   };
 };
