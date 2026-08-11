@@ -20,19 +20,23 @@ export const GameUI = ({ world }: GameUiProps) => {
   // Get material under cursor from painting system
   const getMaterialUnderCursor = (): string | null => {
     const manager = getTerrainPaintingManager();
-    return manager?.getMaterialUnderCursor() ?? null;
+    return manager !== null ? manager.getMaterialUnderCursor() : null;
   };
 
   // Save surface materials from painting system
   const saveSurfaceMaterials = (): boolean => {
     const manager = getTerrainPaintingManager();
-    return manager?.getPaintingSystem()?.saveSurfaceMaterials() ?? false;
+    if (manager === null) return false;
+    const paintingSystem = manager.getPaintingSystem();
+    return paintingSystem !== null ? paintingSystem.saveSurfaceMaterials() : false;
   };
 
   // Load surface materials from painting system
   const loadSurfaceMaterials = (): boolean => {
     const manager = getTerrainPaintingManager();
-    return manager?.getPaintingSystem()?.loadSurfaceMaterials() ?? false;
+    if (manager === null) return false;
+    const paintingSystem = manager.getPaintingSystem();
+    return paintingSystem !== null ? paintingSystem.loadSurfaceMaterials() : false;
   };
   // Map internal visualization mode numbers to UI labels (not used but kept for reference)
   const _materialOptions: { id: number; label: string }[] = [

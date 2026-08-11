@@ -184,8 +184,8 @@ export const createTerrainPaintingSystem = (
     if (!camera || !terrainMesh) return;
 
     updateMouseCoordinates({
-      clientX: lastMousePosition?.x ?? 0,
-      clientY: lastMousePosition?.y ?? 0,
+      clientX: lastMousePosition !== null ? lastMousePosition.x : 0,
+      clientY: lastMousePosition !== null ? lastMousePosition.y : 0,
     } as MouseEvent);
 
     // Raycast to find terrain intersection
