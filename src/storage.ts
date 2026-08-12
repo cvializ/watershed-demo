@@ -58,7 +58,7 @@ const serializeWorld = (
     "[serialize:ecs-buffer] ECS serialization complete",
   );
 
-  // Convert ArrayBuffer to base64 for localStorage
+  // Convert ArrayBuffer to base64 for in-memory storage
   const ecsSerialized = arrayBufferToBase64(buffer);
   logger.info(
     { base64Length: ecsSerialized.length },
@@ -119,7 +119,17 @@ const deserializeWorld = (
 };
 
 /**
- * Save ECS state and custom context to localStorage
+ * In-memory storage for game state
+ */
+type GameStorage = {
+  ecs: string;
+  context: string;
+};
+
+const inMemoryStorage = new Map<string, GameStorage>();
+
+/**
+ * Save ECS state and custom context to in-memory storage
  */
 export const saveToWorldStorage = async (
   world: GameWorldContext,
@@ -127,7 +137,7 @@ export const saveToWorldStorage = async (
 ): Promise<void> => {
   logger.info(
     { storageKey },
-    "[storage:save:start] Starting save to localStorage",
+    "[storage:save:start] Starting save to in-memory storage",
   );
 
   // Save current camera state to context before serialization
@@ -155,23 +165,23 @@ export const saveToWorldStorage = async (
 
   logger.info(
     { ecsSize: serialized.ecs.length, contextSize: serialized.context.length },
-    "[storage:save:store] Storing to localStorage",
+    "[storage:save:store] Storing to in-memory storage",
   );
 
-  // Store ECS state in localStorage (base64 encoded)
-  localStorage.setItem(`${storageKey}-ecs`, serialized.ecs);
-
-  // Store custom context in localStorage (JSON string)
-  localStorage.setItem(`${storageKey}-context`, serialized.context);
+  // Store in memory
+  inMemoryStorage.set(storageKey, {
+    ecs: serialized.ecs,
+    context: serialized.context,
+  });
 
   logger.info(
     { storageKey },
-    "[storage:save:end] Save to localStorage complete",
+    "[storage:save:end] Save to in-memory storage complete",
   );
 };
 
 /**
- * Load ECS state and custom context from localStorage
+ * Load ECS state and custom context from in-memory storage
  */
 export const loadFromWorldStorage = async (
   world: GameWorldContext,
@@ -179,20 +189,28 @@ export const loadFromWorldStorage = async (
 ): Promise<void> => {
   logger.info(
     { storageKey },
-    "[storage:load:start] Starting load from localStorage",
+    "[storage:load:start] Starting load from in-memory storage",
   );
 
-  const ecsSerialized = localStorage.getItem(`${storageKey}-ecs`);
-  const contextSerialized = localStorage.getItem(`${storageKey}-context`);
+  const stored = inMemoryStorage.get(storageKey);
+
+  if (!stored) {
+    logger.info(
+      "[storage:load:notfound] No saved ECS state found in in-memory storage",
+    );
+    return;
+  }
+
+  const { ecs: ecsSerialized, context: contextSerialized } = stored;
 
   logger.info(
     { ecsFound: !!ecsSerialized, contextFound: !!contextSerialized },
-    "[storage:load:retrieve] Retrieved from localStorage",
+    "[storage:load:retrieve] Retrieved from in-memory storage",
   );
 
   if (!ecsSerialized) {
     logger.info(
-      "[storage:load:notfound] No saved ECS state found in localStorage",
+      "[storage:load:notfound] No saved ECS state found in in-memory storage",
     );
     return;
   }
@@ -215,7 +233,7 @@ export const loadFromWorldStorage = async (
     }
   } else {
     logger.warn(
-      "[storage:load:context:missing] No context data found in localStorage",
+      "[storage:load:context:missing] No context data found in in-memory storage",
     );
   }
 
@@ -250,7 +268,7 @@ export const loadFromWorldStorage = async (
 
   logger.info(
     { storageKey },
-    "[storage:load:end] Load from localStorage complete",
+    "[storage:load:end] Load from in-memory storage complete",
   );
 };
 
@@ -274,14 +292,114 @@ const updateGPUSimulationUniforms = (world: GameWorldContext): void => {
 };
 
 /**
- * Clear ECS state and custom context from localStorage
+ * Clear ECS state and custom context from in-memory storage
  */
 export const clearWorldStorage = (storageKey = "ecs-snapshot"): void => {
-  logger.info({ storageKey }, "[storage:clear:start] Clearing localStorage");
-  localStorage.removeItem(`${storageKey}-ecs`);
-  localStorage.removeItem(`${storageKey}-context`);
-  localStorage.removeItem(`${storageKey}-gameTime`);
+  logger.info({ storageKey }, "[storage:clear:start] Clearing in-memory storage");
+  inMemoryStorage.delete(storageKey);
   logger.info({ storageKey }, "[storage:clear:end] Storage cleared");
+};
+
+/**
+ * Export storage state to a JSON-serializable object for file saving
+ */
+export const exportStorageToFile = (
+  storageKey = "ecs-snapshot",
+): GameStorage | undefined => {
+  logger.info(
+    { storageKey },
+    "[storage:export:start] Exporting storage to serializable format",
+  );
+
+  const stored = inMemoryStorage.get(storageKey);
+  if (!stored) {
+    logger.warn(
+      { storageKey },
+      "[storage:export:error] No data found for storage key",
+    );
+    return undefined;
+  }
+
+  logger.info(
+    { storageKey },
+    "[storage:export:end] Storage exported successfully",
+  );
+  return stored;
+};
+
+/**
+ * Import storage state from a JSON-serializable object (e.g., loaded from file)
+ */
+export const importStorageFromFile = (
+  data: GameStorage,
+  storageKey = "ecs-snapshot",
+): void => {
+  logger.info(
+    { storageKey },
+    "[storage:import:start] Importing storage from serializable format",
+  );
+
+  if (!data.ecs || !data.context) {
+    logger.error(
+      { storageKey },
+      "[storage:import:error] Invalid data format - missing ecs or context",
+    );
+    throw new Error("Invalid import data: missing ecs or context");
+  }
+
+  inMemoryStorage.set(storageKey, data);
+
+  logger.info(
+    { storageKey },
+    "[storage:import:end] Storage imported successfully",
+  );
+};
+
+/**
+ * Get all storage keys
+ */
+export const getStorageKeys = (): string[] => {
+  return Array.from(inMemoryStorage.keys());
+};
+
+/**
+ * Check if storage has data for a given key
+ */
+export const hasStorage = (storageKey = "ecs-snapshot"): boolean => {
+  return inMemoryStorage.has(storageKey);
+};
+
+/**
+ * Get storage as a JSON string for saving to file
+ * Example output: '{"ecs":"base64data...","context":"{}"}'
+ */
+export const getStorageAsJSON = (
+  storageKey = "ecs-snapshot",
+): string | undefined => {
+  const stored = inMemoryStorage.get(storageKey);
+  if (!stored) {
+    return undefined;
+  }
+  return JSON.stringify(stored, null, 2);
+};
+
+/**
+ * Load storage from a JSON string (e.g., loaded from file)
+ */
+export const loadStorageFromJSON = (
+  jsonString: string,
+  storageKey = "ecs-snapshot",
+): void => {
+  try {
+    const data = JSON.parse(jsonString) as GameStorage;
+    importStorageFromFile(data, storageKey);
+  } catch (error) {
+    logger.error(
+      { error },
+      "[storage:loadFromJSON:error] Failed to parse JSON",
+    );
+    throw new Error("Invalid JSON format for game storage");
+  }
 };
 
 /**
