@@ -8,9 +8,16 @@ import * as THREE from "three";
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import { getControls } from "@/renderer/resources/camera";
+import { getRenderer } from "@/renderer/resources/renderer";
 import { waterSimulation } from "@/renderer/systems/init/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
+import { getTerrainStateManager } from "@/terrain/TerrainStateManager";
+import {
+  type GPUSimulationState,
+  restoreGPUSimulationState,
+  saveGPUSimulationState,
+} from "@/gpu/waterFlowSimulation/saveLoadSimulationState";
 import { logger } from "@/utils/logger";
 
 /**
@@ -124,6 +131,8 @@ const deserializeWorld = (
 type GameStorage = {
   ecs: string;
   context: string;
+  terrain?: string; // Optional terrain geometry checkpoint
+  gpuSimulation?: string; // Optional GPU simulation state
 };
 
 const inMemoryStorage = new Map<string, GameStorage>();
@@ -135,6 +144,12 @@ export const saveToWorldStorage = async (
   world: GameWorldContext,
   storageKey = "ecs-snapshot",
 ): Promise<void> => {
+  const renderer = getRenderer();
+  if (!renderer) {
+    logger.warn(
+      "[storage:save:error] Renderer not available for GPU state saving",
+    );
+  }
   logger.info(
     { storageKey },
     "[storage:save:start] Starting save to in-memory storage",
@@ -163,16 +178,70 @@ export const saveToWorldStorage = async (
     logger.warn("[storage:save:warn] ECS serialization empty");
   }
 
+  // Save terrain geometry state if available
+  const terrainStateManager = getTerrainStateManager();
+  let terrainCheckpoint: string | null = null;
+  if (terrainStateManager) {
+    const checkpointState = terrainStateManager.createCheckpoint();
+    if (checkpointState) {
+      // Log first few position values for debugging
+      const samplePositions = Array.from(checkpointState.positions.slice(0, 9));
+      logger.info(
+        { samplePositions },
+        "[storage:save:terrain] Saved terrain geometry checkpoint (first 9 position values)",
+      );
+      // Store checkpoint state as JSON for persistence
+      terrainCheckpoint = JSON.stringify({
+        positions: Array.from(checkpointState.positions),
+        uv: checkpointState.uv ? Array.from(checkpointState.uv) : null,
+      });
+    }
+  }
+
+  // Save GPU simulation state if available
+  let gpuSimulationState: string | null = null;
+  if (waterSimulation && renderer) {
+    const heightMapVariable = waterSimulation.getHeightMapVariable();
+    const gpuCompute = waterSimulation.getGpuCompute();
+    if (gpuCompute) {
+      const gpuState = saveGPUSimulationState(
+        heightMapVariable,
+        gpuCompute,
+        renderer,
+      );
+      if (gpuState && gpuState.heightMapData) {
+        // Store GPU state as JSON for persistence
+        gpuSimulationState = JSON.stringify({
+          heightMapData: Array.from(gpuState.heightMapData),
+          width: gpuState.width,
+          height: gpuState.height,
+        });
+        logger.info(
+          { dataSize: gpuState.heightMapData.length },
+          "[storage:save:gpu] Saved GPU simulation height map state",
+        );
+      }
+    }
+  }
+
   logger.info(
     { ecsSize: serialized.ecs.length, contextSize: serialized.context.length },
     "[storage:save:store] Storing to in-memory storage",
   );
 
-  // Store in memory
-  inMemoryStorage.set(storageKey, {
+  // Store in memory with terrain checkpoint and GPU state if available
+  const storageData: GameStorage & { terrain?: string; gpuSimulation?: string } = {
     ecs: serialized.ecs,
     context: serialized.context,
-  });
+  };
+  if (terrainCheckpoint) {
+    storageData.terrain = terrainCheckpoint;
+  }
+  if (gpuSimulationState) {
+    storageData.gpuSimulation = gpuSimulationState;
+  }
+
+  inMemoryStorage.set(storageKey, storageData as GameStorage);
 
   logger.info(
     { storageKey },
@@ -201,7 +270,7 @@ export const loadFromWorldStorage = async (
     return;
   }
 
-  const { ecs: ecsSerialized, context: contextSerialized } = stored;
+  const { ecs: ecsSerialized, context: contextSerialized, terrain: terrainCheckpoint, gpuSimulation: gpuSimulationState } = stored;
 
   logger.info(
     { ecsFound: !!ecsSerialized, contextFound: !!contextSerialized },
@@ -264,12 +333,109 @@ export const loadFromWorldStorage = async (
     }
     controls.update();
   }
+
+  // Restore terrain geometry state from checkpoint if available
+  const terrainStateManager = getTerrainStateManager();
+  logger.info(
+    { hasTerrainManager: !!terrainStateManager, hasCheckpoint: !!terrainCheckpoint },
+    "[storage:load:terrain] Checking terrain state restoration",
+  );
+  if (terrainStateManager && terrainCheckpoint) {
+    try {
+      const checkpointData = JSON.parse(terrainCheckpoint);
+      const terrainState = {
+        positions: new Float32Array(checkpointData.positions),
+        uv: checkpointData.uv ? new Float32Array(checkpointData.uv) : undefined,
+      };
+      // Log first few values being restored
+      const sampleRestored = Array.from(terrainState.positions.slice(0, 9));
+      logger.info(
+        { sampleRestored },
+        "[storage:load:terrain] Restoring terrain from checkpoint (first 9 position values)",
+      );
+      terrainStateManager.restore(terrainState);
+      logger.info(
+        "[storage:load:terrain] Terrain geometry restoration complete",
+      );
+    } catch (error) {
+      logger.error(
+        { error, terrainCheckpointLength: terrainCheckpoint.length },
+        "[storage:load:terrain:error] Failed to restore terrain checkpoint",
+      );
+    }
+  } else {
+    logger.warn(
+      { hasTerrainManager: !!terrainStateManager, hasCheckpoint: !!terrainCheckpoint },
+      "[storage:load:terrain] Skipping terrain restoration - missing manager or checkpoint",
+    );
+  }
+
+  // Restore GPU simulation state from checkpoint if available
+  logger.info(
+    { hasGPUState: !!gpuSimulationState },
+    "[storage:load:gpu] Checking GPU simulation state restoration",
+  );
+  if (waterSimulation && gpuSimulationState) {
+    try {
+      const gpuData = JSON.parse(gpuSimulationState);
+      const gpuState: GPUSimulationState = {
+        heightMapData: new Float32Array(gpuData.heightMapData),
+        width: gpuData.width,
+        height: gpuData.height,
+      };
+      // Log first few values being restored
+      if (gpuState.heightMapData) {
+        const sampleRestored = Array.from(gpuState.heightMapData.slice(0, 9));
+        logger.info(
+          { sampleRestored },
+          "[storage:load:gpu] Restoring GPU simulation height map (first 9 values)",
+        );
+      }
+      const heightMapVariable = waterSimulation.getHeightMapVariable();
+      if (heightMapVariable) {
+        const restored = restoreGPUSimulationState(
+          heightMapVariable,
+          gpuState,
+        );
+        logger.info(
+          { restored },
+          "[storage:load:gpu] GPU restoration result",
+        );
+        if (restored) {
+          logger.info(
+            "[storage:load:gpu] GPU simulation state restoration complete",
+          );
+        } else {
+          logger.warn(
+            "[storage:load:gpu:warn] GPU simulation state restoration failed (non-fatal)",
+          );
+        }
+      } else {
+        logger.error(
+          "[storage:load:gpu:error] GPU compute not available for restoration",
+        );
+      }
+    } catch (error) {
+      logger.error(
+        { error, gpuSimulationStateLength: gpuSimulationState.length },
+        "[storage:load:gpu:error] Failed to restore GPU simulation checkpoint",
+      );
+    }
+  } else {
+    logger.warn(
+      { hasWaterSimulation: !!waterSimulation, hasGPUState: !!gpuSimulationState },
+      "[storage:load:gpu] Skipping GPU restoration - missing simulation or checkpoint",
+    );
+  }
   updateGPUSimulationUniforms(world);
 
   logger.info(
     { storageKey },
-    "[storage:load:end] Load from in-memory storage complete",
+    "[storage:load:end] Load from in-memory storage complete (simulation paused to preserve restored state)",
   );
+
+  // Pause the simulation to prevent it from overwriting restored state
+  world.isPaused = true;
 };
 
 /**

@@ -4,6 +4,12 @@ import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMate
 import type { TerrainPainter } from "@/terrain/paintTerrain";
 
 import {
+  cloneTerrainGeometryState,
+  restoreTerrainGeometryState,
+  saveTerrainGeometryState,
+  type TerrainGeometryState,
+} from "@/scene/resources/mesh";
+import {
   createTerrainPaintingSystem,
   type TerrainPaintingSystem,
 } from "@/terrain/systems/terrainPaintingSystem";
@@ -39,6 +45,15 @@ export type TerrainPaintingManager = {
 
   /** Get the material type under current cursor position */
   getMaterialUnderCursor: () => string | null;
+
+  /** Save current terrain geometry state for undo/restore */
+  saveTerrainState: () => TerrainGeometryState | null;
+
+  /** Restore terrain geometry from saved state */
+  restoreTerrainState: (state: TerrainGeometryState) => void;
+
+  /** Undo last terrain modification by restoring previous state */
+  undo: () => boolean;
 };
 
 /**
@@ -48,6 +63,10 @@ export type TerrainPaintingManager = {
 let _terrainPaintingManager: TerrainPaintingManager | null = null;
 let terrainPainterInstance: TerrainPainter | null = null;
 let paintingSystemInstance: TerrainPaintingSystem | null = null;
+
+/** Undo stack for terrain state */
+let undoStack: TerrainGeometryState[] = [];
+const MAX_UNDO_STACK_SIZE = 10;
 
 /**
  * Get the global terrain painting manager.
@@ -130,6 +149,41 @@ export const createTerrainPaintingManager = (): TerrainPaintingManager => {
       if (!material) return null;
       // Format material name for display (capitalize first letter)
       return material.charAt(0).toUpperCase() + material.slice(1);
+    },
+
+    saveTerrainState: (): TerrainGeometryState | null => {
+      const state = saveTerrainGeometryState();
+      if (state) {
+        // Clone and push to undo stack
+        const clonedState = cloneTerrainGeometryState(state);
+        undoStack.push(clonedState);
+
+        // Limit stack size
+        if (undoStack.length > MAX_UNDO_STACK_SIZE) {
+          undoStack.shift();
+        }
+
+        return state;
+      }
+      return null;
+    },
+
+    restoreTerrainState: (state: TerrainGeometryState): void => {
+      restoreTerrainGeometryState(state);
+    },
+
+    undo: (): boolean => {
+      if (undoStack.length === 0) {
+        return false;
+      }
+
+      const previousState = undoStack.pop();
+      if (previousState) {
+        restoreTerrainGeometryState(previousState);
+        return true;
+      }
+
+      return false;
     },
   };
 
