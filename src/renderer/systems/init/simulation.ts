@@ -12,10 +12,12 @@ import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain";
 import { createTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
+import { createTerrainStateManager, type TerrainStateManager } from "@/terrain/TerrainStateManager";
 
 export let waterSimulation: WaterFlowVisualization | null = null;
 export let cloudSphereSystem: CloudSphereSystem | null = null;
 let surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
+export let terrainStateManager: TerrainStateManager | null = null;
 
 export const simulationInitSystem: RendererInitSystem = (
   _world,
@@ -32,8 +34,15 @@ export const simulationInitSystem: RendererInitSystem = (
   // the water-flow visualization material.
   surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
 
-  // Initialize terrain painting manager
-  const terrainPaintingManager = createTerrainPaintingManager();
+  // Initialize terrain painting manager and state manager
+  const tm = createTerrainPaintingManager();
+  terrainStateManager = createTerrainStateManager();
+
+  // Expose globally for debugging and testing
+  if (typeof window !== "undefined") {
+    (window as any).terrainStateManager = terrainStateManager;
+    (window as any).getTerrainMesh = () => getMesh(MeshEnum.Terrain);
+  }
 
   // Get required dependencies
   if (waterSimulation && surfaceMaterialTexture) {
@@ -45,15 +54,15 @@ export const simulationInitSystem: RendererInitSystem = (
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;
     const terrainMesh = getMesh(MeshEnum.Terrain);
 
-    if (terrainPaintingManager && camera && terrainMesh) {
-      terrainPaintingManager.initialize({
+    if (tm && camera && terrainMesh) {
+      tm.initialize({
         terrainPainter,
         camera,
         terrainMesh,
       });
 
       // Pass surface material texture to painting system for cursor sampling
-      const paintingSystem = terrainPaintingManager.getPaintingSystem();
+      const paintingSystem = tm.getPaintingSystem();
       if (paintingSystem) {
         paintingSystem.setSurfaceMaterialTexture(surfaceMaterialTexture);
       }

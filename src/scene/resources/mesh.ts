@@ -1,6 +1,12 @@
 import * as THREE from "three";
 
 import { getObject, setObject } from "@/scene/resources/objectCache";
+export {
+  cloneTerrainGeometryState,
+  restoreTerrainGeometryState,
+  saveTerrainGeometryState,
+  type TerrainGeometryState,
+} from "@/scene/resources/meshes/terrainGeometryState";
 
 export const MeshEnum = {
   Terrain: "Terrain",
@@ -24,4 +30,11 @@ export const getMesh = (id: MeshEnum) => {
  */
 export const setMesh = (id: MeshEnum, value: THREE.Mesh) => {
   setObject(id, value);
+};
+
+/**
+ * Get current terrain mesh for debugging/verification
+ */
+export const getTerrainMesh = (): THREE.Mesh | null => {
+  return getMesh(MeshEnum.Terrain);
 };
