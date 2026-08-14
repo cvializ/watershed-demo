@@ -104,6 +104,23 @@ export type WaterFlowVisualization = {
   getHeightData: () => Float32Array | null;
 
   setSunPosition: (position: THREE.Vector3) => void;
+
+  /**
+   * Get all GPU variables for save/load operations.
+   */
+  getAllVariables: () => {
+    heightMapVariable: Variable;
+    waterHeightVariable: Variable;
+    velocityVariable: Variable;
+    sedimentVariable: Variable;
+    cloudVariable: Variable;
+    testingVariable: Variable;
+  };
+
+  /**
+   * Get the renderer instance for readRenderTargetPixels.
+   */
+  getRenderer: () => THREE.WebGLRenderer;
 };
 
 /**
@@ -288,5 +305,14 @@ export const createGpuWaterFlowSimulation = (
     },
     getDynamicHeightMapTexture: () =>
       gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,
+    getAllVariables: () => ({
+      heightMapVariable,
+      waterHeightVariable,
+      velocityVariable: waterVelocityVariable,
+      sedimentVariable: sedimentFlowVariable,
+      cloudVariable,
+      testingVariable,
+    }),
+    getRenderer: () => renderer,
   };
 };
