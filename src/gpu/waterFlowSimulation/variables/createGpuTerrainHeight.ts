@@ -55,13 +55,12 @@ const createGpuTerrainHeight = (
   width: number,
   baseHeightMapTexture: THREE.Texture,
   sedimentFlowVariable: Variable,
+  savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:terrain-height:create]");
 
-  const { texture: terrainHeightTexture } = createInitialTerrainHeightTexture(
-    width,
-    baseHeightMapTexture,
-  );
+  // Use saved texture if provided, otherwise create initial texture from base height map
+  const terrainHeightTexture = savedTexture || createInitialTerrainHeightTexture(width, baseHeightMapTexture).texture;
 
   const heightMapVariable = gpuCompute.addVariable(
     "heightMap",

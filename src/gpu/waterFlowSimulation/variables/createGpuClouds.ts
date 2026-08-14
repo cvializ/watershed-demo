@@ -67,15 +67,18 @@ const createInitialCloudTexture = (
  *
  * @param gpuCompute - The GPUComputationRenderer instance
  * @param width - Width of the computation texture (height will be same for square grid)
+ * @param savedTexture - Optional saved state texture for recreation (for save/load support)
  * @returns GPU clouds system with variable and update function
  */
 export const createGpuClouds = (
   gpuCompute: GPUComputationRenderer,
   width: number,
+  savedTexture?: THREE.DataTexture,
 ): GpuClouds => {
   logger.info("[gpu:clouds:create]");
 
-  const { texture: cloudTexture } = createInitialCloudTexture(width);
+  // Use saved texture if provided, otherwise create initial texture
+  const cloudTexture = savedTexture || createInitialCloudTexture(width).texture;
 
   const cloudVariable = gpuCompute.addVariable(
     "cloudDensity",

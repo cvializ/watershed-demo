@@ -9,6 +9,9 @@ import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import { getControls } from "@/renderer/resources/camera";
 import { getRenderer } from "@/renderer/resources/renderer";
+import {
+  recreateSimulationWithSavedState,
+} from "@/renderer/systems/init/simulation";
 import { waterSimulation } from "@/renderer/systems/init/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
@@ -430,9 +433,29 @@ export const loadFromWorldStorage = async (
         "[storage:load:gpu] Created textures from saved state",
       );
 
-      // TODO: Recreate GPU simulation with restored textures as initial values
-      // This requires access to the recreation logic from createGpuWaterFlowSimulation
-      // For now, we'll mark this as incomplete and restore gameTime
+      // Recreate simulation with restored textures
+      const renderer = getRenderer();
+      if (renderer) {
+        recreateSimulationWithSavedState(
+          world,
+          null as any, // scene not needed here
+          renderer,
+          {
+            heightMapTexture: textures.heightMapTexture,
+            waterHeightTexture: textures.waterHeightTexture,
+            velocityTexture: textures.velocityTexture,
+            sedimentTexture: textures.sedimentTexture,
+            cloudsTexture: textures.cloudsTexture,
+          },
+        );
+        logger.info(
+          "[storage:load:gpu] Successfully recreated simulation with restored state",
+        );
+      } else {
+        logger.error(
+          "[storage:load:gpu:error] Renderer not available for simulation recreation",
+        );
+      }
 
       // Restore gameTime to the saved value so simulation continues from correct point
       if (typeof savedGameTime === 'number') {
@@ -444,7 +467,7 @@ export const loadFromWorldStorage = async (
       }
 
       logger.info(
-        "[storage:load:gpu] GPU simulation state restoration complete (textures created, recreation pending)",
+        "[storage:load:gpu] GPU simulation state restoration complete",
       );
     } catch (error) {
       logger.error(

@@ -88,10 +88,12 @@ export const createGpuWaterHeight = (
   cloudShadowVariable: Variable,
   waterSourcesVariable: Variable,
   surfaceMaterialMap?: THREE.Texture | null,
+  savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:water-height:create]");
 
-  const { texture: waterTexture } = createInitialWaterTexture(width);
+  // Use saved texture if provided, otherwise create initial texture
+  const waterTexture = savedTexture || createInitialWaterTexture(width).texture;
   const waterHeightVariable = gpuCompute.addVariable(
     "waterHeight",
     waterHeightFragmentShader,

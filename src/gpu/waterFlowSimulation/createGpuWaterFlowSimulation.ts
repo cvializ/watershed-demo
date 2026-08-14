@@ -161,21 +161,33 @@ export type WaterFlowVisualization = {
  * @param renderer - WebGLRenderer instance
  * @param heightMapTexture - Texture containing terrain height data
  * @param surfaceMaterialMap - Texture containing surface material information (optional)
+ * @param savedTextures - Optional saved state textures for recreation (for save/load support)
  */
+export type SavedSimulationTextures = {
+  heightMapTexture?: THREE.DataTexture;
+  waterHeightTexture?: THREE.DataTexture;
+  velocityTexture?: THREE.DataTexture;
+  sedimentTexture?: THREE.DataTexture;
+  cloudsTexture?: THREE.DataTexture;
+};
+
 export const createGpuWaterFlowSimulation = (
   width: number,
   terrainSize: number,
   renderer: THREE.WebGLRenderer,
   heightMapTexture: THREE.Texture,
   surfaceMaterialMap?: THREE.Texture,
+  savedTextures?: SavedSimulationTextures,
 ): WaterFlowVisualization => {
   logger.info("[gpu:water-flow:create]");
 
   const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
+  // Create variables with saved textures if provided (for save/load recreation)
   const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(
     gpuCompute,
     width,
+    savedTextures?.cloudsTexture, // Pass saved clouds texture
   );
 
   const { waterSourcesVariable, initWaterSources, addWater, clearWater } =
@@ -188,6 +200,7 @@ export const createGpuWaterFlowSimulation = (
       cloudVariable,
       waterSourcesVariable,
       surfaceMaterialMap ?? null,
+      savedTextures?.waterHeightTexture, // Pass saved water height texture
     );
   const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
@@ -195,6 +208,8 @@ export const createGpuWaterFlowSimulation = (
     heightMapTexture,
     waterHeightVariable,
     surfaceMaterialMap ?? null,
+    undefined, // heightMapVariable (will be set later)
+    savedTextures?.velocityTexture, // Pass saved velocity texture
   );
   const { sedimentFlowVariable, initSedimentFlow } = createGpuSedimentFlow(
     gpuCompute,
@@ -203,6 +218,7 @@ export const createGpuWaterFlowSimulation = (
     waterVelocityVariable,
     undefined, // heightMapVariable (will be set later)
     surfaceMaterialMap ?? null,
+    savedTextures?.sedimentTexture, // Pass saved sediment texture
   );
 
   // Dynamic terrain height: starts from base terrain, modified by sediment erosion/deposition
@@ -211,6 +227,7 @@ export const createGpuWaterFlowSimulation = (
     width,
     heightMapTexture,
     sedimentFlowVariable,
+    savedTextures?.heightMapTexture, // Pass saved height map texture
   );
 
   // Update sediment flow dependencies to include dynamic height map

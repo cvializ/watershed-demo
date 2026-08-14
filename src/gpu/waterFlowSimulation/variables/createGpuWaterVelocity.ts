@@ -48,10 +48,12 @@ export const createGpuWaterVelocity = (
   waterHeightVariable: Variable,
   surfaceMaterialMap?: THREE.Texture | null,
   heightMapVariable?: Variable,
+  savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:water-velocity:create]");
 
-  const { texture: velocityTexture } = createInitialVelocityTexture(width);
+  // Use saved texture if provided, otherwise create initial texture
+  const velocityTexture = savedTexture || createInitialVelocityTexture(width).texture;
   const waterVelocityVariable = gpuCompute.addVariable(
     "waterVelocity",
     waterVelocityFragmentShader,

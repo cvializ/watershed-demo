@@ -51,11 +51,12 @@ export const createGpuSedimentFlow = (
   waterVelocityVariable: Variable,
   heightMapVariable?: Variable,
   surfaceMaterialMap?: THREE.Texture | null,
+  savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:sediment-flow:create]");
 
-  const { texture: sedimentFlowTexture } =
-    createInitialSedimentFlowTexture(width);
+  // Use saved texture if provided, otherwise create initial texture
+  const sedimentFlowTexture = savedTexture || createInitialSedimentFlowTexture(width).texture;
   const sedimentFlowVariable = gpuCompute.addVariable(
     "sedimentFlow",
     sedimentFlowFragmentShader,
