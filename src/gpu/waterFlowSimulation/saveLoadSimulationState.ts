@@ -7,144 +7,161 @@ import { logger } from "@/utils/logger";
  */
 export interface GPUSimulationState {
   heightMapData: Float32Array | null;
+  waterHeightData: Float32Array | null;
+  velocityData: Float32Array | null;
+  sedimentData: Float32Array | null;
+  cloudsData: Float32Array | null;
   width: number;
   height: number;
+  gameTime?: number; // Saved game time for proper resume
 }
 
 /**
- * Save GPU simulation height map data from BOTH ping-pong render targets
+ * Save ALL GPU simulation state from render targets
+ * @param variables - Object containing all GPU computation variables
+ * @param gpuCompute - GPUComputationRenderer instance
+ * @param renderer - WebGLRenderer instance
+ * @param gameTime - Current game time (optional, for proper resume)
  */
 export const saveGPUSimulationState = (
-  heightMapVariable: Variable,
+  variables: {
+    heightMapVariable: Variable;
+    waterHeightVariable: Variable;
+    velocityVariable: Variable;
+    sedimentVariable: Variable;
+    cloudVariable: Variable;
+  },
   gpuCompute: any, // GPUComputationRenderer
   renderer: THREE.WebGLRenderer,
+  gameTime?: number,
 ): GPUSimulationState | null => {
-  const initialTexture = heightMapVariable.initialValueTexture;
-  if (!initialTexture) {
-    logger.warn("[gpu:save] Initial value texture not available");
-    return null;
-  }
-  
-  const initialImageData = initialTexture.image as { width: number; height: number } | null;
-  if (!initialImageData) {
-    logger.warn("[gpu:save] Initial texture image not available");
-    return null;
-  }
-  
-  const width = initialImageData.width || 512;
-  const height = initialImageData.height || 512;
+  const { heightMapVariable, waterHeightVariable, velocityVariable, sedimentVariable, cloudVariable } = variables;
 
-  // Read from current render target
-  const currentRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
-  const pixelData = new Float32Array(width * height * 4);
+  // Read from current render targets
+  const heightRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
+  const waterHeightRenderTarget = gpuCompute.getCurrentRenderTarget(waterHeightVariable);
+  const velocityRenderTarget = gpuCompute.getCurrentRenderTarget(velocityVariable);
+  const sedimentRenderTarget = gpuCompute.getCurrentRenderTarget(sedimentVariable);
+  const cloudRenderTarget = gpuCompute.getCurrentRenderTarget(cloudVariable);
 
-  renderer.readRenderTargetPixels(
-    currentRenderTarget,
-    0,
-    0,
-    width,
-    height,
-    pixelData,
-  );
+  const width = heightRenderTarget.texture.image.width || 512;
+  const height = heightRenderTarget.texture.image.height || 512;
+  const size = width * height * 4; // RGBA format
+
+  const heightMapData = new Float32Array(size);
+  const waterHeightData = new Float32Array(size);
+  const velocityData = new Float32Array(size);
+  const sedimentData = new Float32Array(size);
+  const cloudsData = new Float32Array(size);
+
+  // Read all render targets
+  renderer.readRenderTargetPixels(heightRenderTarget, 0, 0, width, height, heightMapData);
+  renderer.readRenderTargetPixels(waterHeightRenderTarget, 0, 0, width, height, waterHeightData);
+  renderer.readRenderTargetPixels(velocityRenderTarget, 0, 0, width, height, velocityData);
+  renderer.readRenderTargetPixels(sedimentRenderTarget, 0, 0, width, height, sedimentData);
+  renderer.readRenderTargetPixels(cloudRenderTarget, 0, 0, width, height, cloudsData);
 
   logger.info(
-    { width, height, dataSize: pixelData.length },
-    "[gpu:save] Saved GPU simulation height map state",
+    { width, height, dataSize: size },
+    "[gpu:save] Saved ALL GPU simulation state",
   );
 
   return {
-    heightMapData: pixelData,
+    heightMapData,
+    waterHeightData,
+    velocityData,
+    sedimentData,
+    cloudsData,
     width,
     height,
+    gameTime,
   };
 };
 
 /**
- * Restore GPU simulation height map data to BOTH ping-pong render targets
+ * Create initial textures from saved state for recreation
  */
-export const restoreGPUSimulationState = (
-  heightMapVariable: Variable,
+export const createTexturesFromState = (
   state: GPUSimulationState,
-): boolean => {
-  const initialTexture = heightMapVariable.initialValueTexture;
-  if (!initialTexture) {
-    logger.warn("[gpu:restore] Initial value texture not available");
-    return false;
-  }
-  
-  const initialImageData = initialTexture.image as { width: number; height: number } | null;
-  if (!initialImageData) {
-    logger.warn("[gpu:restore] Initial texture image not available");
-    return false;
-  }
-  
-  const width = initialImageData.width || 512;
-  const height = initialImageData.height || 512;
+): {
+  heightMapTexture: THREE.DataTexture;
+  waterHeightTexture: THREE.DataTexture;
+  velocityTexture: THREE.DataTexture;
+  sedimentTexture: THREE.DataTexture;
+  cloudsTexture: THREE.DataTexture;
+} => {
+  const { width, height } = state;
 
-  // Verify data length matches (RGBA format = width * height * 4)
-  const expectedLength = width * height * 4;
-  if (!state.heightMapData || state.heightMapData.length !== expectedLength) {
-    logger.warn(
-      {
-        savedLength: state.heightMapData?.length,
-        requiredLength: expectedLength,
-      },
-      "[gpu:restore] Height map data length mismatch",
+  const createTexture = (data: Float32Array | null) => {
+    const textureData = data || new Float32Array(width * height * 4);
+    const texture = new THREE.DataTexture(
+      textureData,
+      width,
+      height,
+      THREE.RGBAFormat,
+      THREE.FloatType,
     );
-    return false;
-  }
-
-  // Restore to BOTH render targets (ping-pong buffers)
-  const renderTargets = heightMapVariable.renderTargets as THREE.WebGLRenderTarget[];
-
-  if (!renderTargets || renderTargets.length !== 2) {
-    logger.error(
-      { hasRenderTargets: !!renderTargets, count: renderTargets?.length },
-      "[gpu:restore] Variable does not have expected render targets",
-    );
-    return false;
-  }
-
-  // Restore data to both render targets
-  for (let i = 0; i < 2; i++) {
-    const renderTarget = renderTargets[i];
-    const texture = renderTarget.texture;
-
-    if (!texture) {
-      logger.warn(`[gpu:restore] Render target ${i} texture not available`);
-      continue;
-    }
-
-    const imageData = texture.image as { data: Float32Array };
-    if (!imageData.data) {
-      logger.warn(`[gpu:restore] Render target ${i} image data not available`);
-      continue;
-    }
-
-    // Copy the saved data to this render target's texture
-    imageData.data.set(state.heightMapData);
     texture.needsUpdate = true;
+    return texture;
+  };
 
-    logger.info(
-      { renderTargetIndex: i, dataSize: imageData.data.length },
-      `[gpu:restore] Restored render target ${i}`,
-    );
+  return {
+    heightMapTexture: createTexture(state.heightMapData),
+    waterHeightTexture: createTexture(state.waterHeightData),
+    velocityTexture: createTexture(state.velocityData),
+    sedimentTexture: createTexture(state.sedimentData),
+    cloudsTexture: createTexture(state.cloudsData),
+  };
+};
+
+/**
+ * Destroy all GPU computation variables and render targets
+ * This is necessary before recreating the simulation with restored state
+ */
+export const destroyGpuSimulation = (
+  variables: {
+    heightMapVariable: Variable;
+    waterHeightVariable: Variable;
+    velocityVariable: Variable;
+    sedimentVariable: Variable;
+    cloudVariable: Variable;
+    testingVariable?: Variable;
+  },
+): void => {
+  const allVariables = [
+    variables.heightMapVariable,
+    variables.waterHeightVariable,
+    variables.velocityVariable,
+    variables.sedimentVariable,
+    variables.cloudVariable,
+  ];
+
+  if (variables.testingVariable) {
+    allVariables.push(variables.testingVariable);
   }
 
-  // Also restore the initialValueTexture for consistency
-  if (initialImageData) {
-    const initialImageDataFull = initialTexture.image as { data: Float32Array };
-    if (initialImageDataFull.data) {
-      initialImageDataFull.data.set(state.heightMapData);
-      initialTexture.needsUpdate = true;
+  for (const variable of allVariables) {
+    // Dispose of render targets to free GPU memory
+    if (variable.renderTargets) {
+      for (const renderTarget of variable.renderTargets) {
+        if (renderTarget && renderTarget.dispose) {
+          renderTarget.dispose();
+        }
+      }
+    }
+
+    // Dispose of the texture if it exists
+    if (variable.initialValueTexture) {
+      variable.initialValueTexture.dispose();
+    }
+
+    // Dispose of material if it exists
+    if (variable.material) {
+      variable.material.dispose();
     }
   }
 
-  logger.info(
-    "[gpu:restore] Successfully restored GPU simulation state to all render targets",
-  );
-
-  return true;
+  logger.info("[gpu:destroy] Destroyed all GPU simulation variables and render targets");
 };
 
 /**
