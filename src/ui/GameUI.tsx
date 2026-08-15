@@ -163,14 +163,14 @@ export const GameUI = ({ world }: GameUiProps) => {
             style={styles.button}
             title="Save current state"
           >
-            Save
+            Save Game
           </button>
           <button
             onClick={handleLoadClick}
             style={styles.button}
             title="Load saved state"
           >
-            Load
+            Load Game
           </button>
           <button
             onClick={handleClearClick}
