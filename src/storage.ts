@@ -15,6 +15,10 @@ import {
 import { waterSimulation } from "@/renderer/systems/init/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
+import { getMaterial, MaterialEnum } from "@/scene/resources/material";
+import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
+import { updateTerrainGeometryFromRenderTarget } from "@/scene/systems/updateTerrainGeometry";
+import { getUniforms } from "@/utils/uniformUtils";
 import { getTerrainStateManager } from "@/terrain/TerrainStateManager";
 import {
   type GPUSimulationState,
@@ -483,6 +487,10 @@ export const loadFromWorldStorage = async (
   }
   updateGPUSimulationUniforms(world);
 
+  // Update visualization uniforms to point to the restored simulation textures
+  // This ensures water flow is visible immediately after loading, even when paused
+  updateVisualizationUniformsAfterLoad(world);
+
   logger.info(
     { storageKey },
     "[storage:load:end] Load from in-memory storage complete (simulation paused to preserve restored state)",
@@ -510,6 +518,87 @@ const updateGPUSimulationUniforms = (world: GameWorldContext): void => {
 
   waterSimulation.compute(0, world.gameTime);
 };
+
+/**
+ * Update visualization material uniforms to point to the restored simulation textures.
+ * This is called after loading a saved game to ensure the water flow is visible
+ * immediately, even when the simulation is paused.
+ */
+const updateVisualizationUniformsAfterLoad = (world: GameWorldContext): void => {
+  if (!waterSimulation) {
+    logger.warn(
+      "[storage:updateVisualizationUniformsAfterLoad] waterSimulation not initialized",
+    );
+    return;
+  }
+
+  const { showVelocity } = world;
+  const material = getMaterial(MaterialEnum.WaterFlow) as THREE.ShaderMaterial;
+
+  // Check if this is a testing simulation material
+  const isTestingMaterial = world.visualizationMode === 6;
+
+  if (isTestingMaterial) {
+    logger.debug("[storage:updateVisualizationUniformsAfterLoad] Using TestingSimulation material");
+    const testingMaterial = getMaterial(
+      MaterialEnum.TestingSimulation,
+    ) as THREE.ShaderMaterial;
+    const uniform = getUniforms<import("@/scene/resources/material").TestingVisualizationUniforms>(testingMaterial);
+    const testingTexture = waterSimulation.getTestingTexture();
+    uniform.uTestingTexture.value = testingTexture;
+  } else {
+    // Update water visualization uniforms
+    const usesWaterVisualization =
+      world.visualizationMode === 4 || // Water Flow
+      world.visualizationMode === 5; // Water Flow (show velocity)
+
+    if (usesWaterVisualization) {
+      const uniforms = getUniforms<import("@/scene/resources/material").WaterVisualizationUniforms>(material);
+      uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
+      uniforms.uLightPosition.value.x = world.sunPosition.x;
+      uniforms.uLightPosition.value.y = world.sunPosition.y;
+      uniforms.uLightPosition.value.z = world.sunPosition.z;
+
+      // Get dynamic height map (always needed for other materials)
+      const dynamicHeightMap = waterSimulation.getDynamicHeightMapTexture();
+
+      // Update mesh geometry from GPU height map (wireframe follows contours)
+      const heightMapVariable = waterSimulation.getHeightMapVariable();
+      const gpuCompute = waterSimulation.getGpuCompute();
+      if (gpuCompute) {
+        const heightRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
+        updateTerrainGeometryFromRenderTarget(heightRenderTarget, getRenderer()!);
+      }
+
+      // Update all simulation textures that were not available at material init time
+      setTexture(TextureEnum.HeightMap, dynamicHeightMap);
+
+      uniforms.uHeightMap.value = dynamicHeightMap;
+      uniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
+      uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+      uniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
+
+      // Update surface material map (shared texture used for both visualization and simulation)
+      const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
+      if (surfaceMaterialTexture) {
+        uniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
+      }
+    }
+
+    // Also update other materials that use the height map for displacement
+    const heightVizMaterial = getMaterial(
+      MaterialEnum.HeightVisualization,
+    ) as THREE.ShaderMaterial;
+    if (heightVizMaterial.uniforms.uHeightMap) {
+      heightVizMaterial.uniforms.uHeightMap.value = waterSimulation.getDynamicHeightMapTexture();
+    }
+
+    const slopeMaterial = getMaterial(MaterialEnum.Slope) as THREE.ShaderMaterial;
+    if (slopeMaterial.uniforms.uHeightMap) {
+      slopeMaterial.uniforms.uHeightMap.value = waterSimulation.getDynamicHeightMapTexture();
+    }
+  }
+}
 
 /**
  * Clear ECS state and custom context from in-memory storage
