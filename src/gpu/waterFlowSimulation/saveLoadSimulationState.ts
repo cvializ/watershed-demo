@@ -11,6 +11,7 @@ export interface GPUSimulationState {
   velocityData: Float32Array | null;
   sedimentData: Float32Array | null;
   cloudsData: Float32Array | null;
+  surfaceMaterialData: Float32Array | null; // Terrain painting texture data
   width: number;
   height: number;
   gameTime?: number; // Saved game time for proper resume
@@ -22,6 +23,7 @@ export interface GPUSimulationState {
  * @param gpuCompute - GPUComputationRenderer instance
  * @param renderer - WebGLRenderer instance
  * @param gameTime - Current game time (optional, for proper resume)
+ * @param surfaceMaterialTexture - Optional surface material texture to save
  */
 export const saveGPUSimulationState = (
   variables: {
@@ -34,6 +36,7 @@ export const saveGPUSimulationState = (
   gpuCompute: any, // GPUComputationRenderer
   renderer: THREE.WebGLRenderer,
   gameTime?: number,
+  surfaceMaterialTexture?: THREE.Texture | null,
 ): GPUSimulationState | null => {
   const { heightMapVariable, waterHeightVariable, velocityVariable, sedimentVariable, cloudVariable } = variables;
 
@@ -61,6 +64,19 @@ export const saveGPUSimulationState = (
   renderer.readRenderTargetPixels(sedimentRenderTarget, 0, 0, width, height, sedimentData);
   renderer.readRenderTargetPixels(cloudRenderTarget, 0, 0, width, height, cloudsData);
 
+  // Read surface material texture if provided
+  let surfaceMaterialData: Float32Array | null = null;
+  if (surfaceMaterialTexture) {
+    const size = width * height * 4;
+    
+    // Read the surface material texture directly from its data array if available
+    const textureData = (surfaceMaterialTexture as THREE.DataTexture).image?.data;
+    if (textureData instanceof Float32Array) {
+      // Copy directly from the texture's data array
+      surfaceMaterialData = new Float32Array(textureData.slice(0, size));
+    }
+  }
+
   logger.info(
     { width, height, dataSize: size },
     "[gpu:save] Saved ALL GPU simulation state",
@@ -72,6 +88,7 @@ export const saveGPUSimulationState = (
     velocityData,
     sedimentData,
     cloudsData,
+    surfaceMaterialData,
     width,
     height,
     gameTime,
@@ -89,6 +106,7 @@ export const createTexturesFromState = (
   velocityTexture: THREE.DataTexture;
   sedimentTexture: THREE.DataTexture;
   cloudsTexture: THREE.DataTexture;
+  surfaceMaterialTexture: THREE.DataTexture; // Terrain painting texture
 } => {
   const { width, height } = state;
 
@@ -111,6 +129,7 @@ export const createTexturesFromState = (
     velocityTexture: createTexture(state.velocityData),
     sedimentTexture: createTexture(state.sedimentData),
     cloudsTexture: createTexture(state.cloudsData),
+    surfaceMaterialTexture: createTexture(state.surfaceMaterialData), // Terrain painting texture
   };
 };
 

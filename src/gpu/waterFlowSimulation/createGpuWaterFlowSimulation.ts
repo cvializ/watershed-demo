@@ -169,6 +169,7 @@ export type SavedSimulationTextures = {
   velocityTexture?: THREE.DataTexture;
   sedimentTexture?: THREE.DataTexture;
   cloudsTexture?: THREE.DataTexture;
+  surfaceMaterialTexture?: THREE.DataTexture; // Terrain painting texture
 };
 
 export const createGpuWaterFlowSimulation = (
