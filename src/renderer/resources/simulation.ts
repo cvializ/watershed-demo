@@ -32,6 +32,28 @@ export const createSimulationResource = (
     SIM_SIZE,
     terrainSize,
   );
+  
+  // If we have saved surface material data, restore it
+  if (savedTextures?.surfaceMaterialTexture) {
+    const savedData = savedTextures.surfaceMaterialTexture.image.data as Float32Array;
+    const currentTexture = surfaceMaterialTexture.getTexture();
+    
+    // Copy the saved data into the current texture
+    const currentData = (currentTexture as THREE.DataTexture).image?.data;
+    if (currentData instanceof Float32Array) {
+      // Copy data from saved texture to current texture
+      for (let i = 0; i < Math.min(savedData.length, currentData.length); i++) {
+        currentData[i] = savedData[i];
+      }
+      currentTexture.needsUpdate = true;
+    }
+    
+    logger.info(
+      { savedDataLength: savedData.length },
+      "[simulation:create] Restored surface material texture from saved state",
+    );
+  }
+  
   const surfaceMaterialMap = surfaceMaterialTexture.getTexture();
   setTexture(TextureEnum.SurfaceMaterialMap, surfaceMaterialMap);
 

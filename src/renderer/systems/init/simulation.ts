@@ -17,7 +17,7 @@ import { logger } from "@/utils/logger";
 
 export let waterSimulation: WaterFlowVisualization | null = null;
 export let cloudSphereSystem: CloudSphereSystem | null = null;
-let surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
+let _surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
 export let terrainStateManager: TerrainStateManager | null = null;
 
 /**
@@ -34,25 +34,24 @@ export const recreateSimulationWithSavedState = (
   // Destroy existing simulation if present
   if (waterSimulation) {
     logger.info("[simulation:recreate] Destroying existing simulation");
-    // Note: GPU resources will be cleaned up by destroyGpuSimulation when needed
   }
 
-  // Recreate simulation with saved textures
+  // Recreate simulation with saved textures (surface material is handled in createSimulationResource)
   const simulationResource = createSimulationResource(renderer, savedTextures);
 
   waterSimulation = simulationResource.waterSimulation;
   cloudSphereSystem = simulationResource.cloudSphereSystem;
 
-  // Reuse the surface material texture created in createSimulationResource
-  surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
+  // Use the surface material texture created in createSimulationResource
+  _surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
 
   // Re-initialize terrain painting with new simulation
   const tm = createTerrainPaintingManager();
   terrainStateManager = createTerrainStateManager();
 
-  if (waterSimulation && surfaceMaterialTexture) {
+  if (waterSimulation && _surfaceMaterialTexture) {
     const terrainPainter: TerrainPainter =
-      createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
+      createTerrainPainterFromSurfaceMaterial(_surfaceMaterialTexture);
 
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;
     const terrainMesh = getMesh(MeshEnum.Terrain);
@@ -66,10 +65,17 @@ export const recreateSimulationWithSavedState = (
 
       const paintingSystem = tm.getPaintingSystem();
       if (paintingSystem) {
-        paintingSystem.setSurfaceMaterialTexture(surfaceMaterialTexture);
+        paintingSystem.setSurfaceMaterialTexture(_surfaceMaterialTexture);
       }
     }
   }
+};
+
+/**
+ * Get the current surface material texture
+ */
+export const getSurfaceMaterialTexture = (): SurfaceMaterialTexture | null => {
+  return _surfaceMaterialTexture;
 };
 
 export const simulationInitSystem: RendererInitSystem = (
@@ -85,7 +91,7 @@ export const simulationInitSystem: RendererInitSystem = (
   // Reuse the surface material texture created in createSimulationResource
   // so painting affects the SAME texture used by the water simulation and
   // the water-flow visualization material.
-  surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
+  _surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
 
   // Initialize terrain painting manager and state manager
   const tm = createTerrainPaintingManager();
@@ -98,10 +104,10 @@ export const simulationInitSystem: RendererInitSystem = (
   }
 
   // Get required dependencies
-  if (waterSimulation && surfaceMaterialTexture) {
+  if (waterSimulation && _surfaceMaterialTexture) {
     // Create terrain painter that paints on the shared surface material texture
     const terrainPainter: TerrainPainter =
-      createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
+      createTerrainPainterFromSurfaceMaterial(_surfaceMaterialTexture);
 
     // Use the actual camera from the scene, not a new instance
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;
@@ -117,7 +123,7 @@ export const simulationInitSystem: RendererInitSystem = (
       // Pass surface material texture to painting system for cursor sampling
       const paintingSystem = tm.getPaintingSystem();
       if (paintingSystem) {
-        paintingSystem.setSurfaceMaterialTexture(surfaceMaterialTexture);
+        paintingSystem.setSurfaceMaterialTexture(_surfaceMaterialTexture);
       }
     }
   }

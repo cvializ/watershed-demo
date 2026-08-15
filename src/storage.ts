@@ -213,11 +213,15 @@ export const saveToWorldStorage = async (
     const gpuCompute = waterSimulation.getGpuCompute();
     
     if (gpuCompute) {
+      // Get surface material texture for saving
+      const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
+      
       const gpuState = saveGPUSimulationState(
         allVars,
         gpuCompute,
         renderer,
         world.gameTime,
+        surfaceMaterialTexture, // Pass surface material texture to save
       );
       if (gpuState) {
         // Store GPU state as JSON for persistence
@@ -227,6 +231,7 @@ export const saveToWorldStorage = async (
           velocityData: gpuState.velocityData ? Array.from(gpuState.velocityData) : [],
           sedimentData: gpuState.sedimentData ? Array.from(gpuState.sedimentData) : [],
           cloudsData: gpuState.cloudsData ? Array.from(gpuState.cloudsData) : [],
+          surfaceMaterialData: gpuState.surfaceMaterialData ? Array.from(gpuState.surfaceMaterialData) : [],
           width: gpuState.width,
           height: gpuState.height,
           gameTime: gpuState.gameTime,
@@ -238,9 +243,10 @@ export const saveToWorldStorage = async (
             velocitySize: gpuState.velocityData?.length,
             sedimentSize: gpuState.sedimentData?.length,
             cloudsSize: gpuState.cloudsData?.length,
+            surfaceMaterialSize: gpuState.surfaceMaterialData?.length,
             gameTime: gpuState.gameTime
           },
-          "[storage:save:gpu] Saved ALL GPU simulation state",
+          "[storage:save:gpu] Saved ALL GPU simulation state including terrain painting",
         );
       }
     }
@@ -407,6 +413,7 @@ export const loadFromWorldStorage = async (
         velocityData: gpuData.velocityData ? new Float32Array(gpuData.velocityData) : null,
         sedimentData: gpuData.sedimentData ? new Float32Array(gpuData.sedimentData) : null,
         cloudsData: gpuData.cloudsData ? new Float32Array(gpuData.cloudsData) : null,
+        surfaceMaterialData: gpuData.surfaceMaterialData ? new Float32Array(gpuData.surfaceMaterialData) : null,
         width: gpuData.width,
         height: gpuData.height,
         gameTime: savedGameTime,
@@ -427,17 +434,18 @@ export const loadFromWorldStorage = async (
       // Destroy existing GPU simulation
       destroyGpuSimulation(allVars);
 
-      // Create textures from saved state
+      // Create textures from saved state (includes surface material texture)
       const textures = createTexturesFromState(gpuState);
       logger.info(
         { 
           heightMapSize: textures.heightMapTexture.image.data?.length,
           waterHeightSize: textures.waterHeightTexture.image.data?.length,
+          surfaceMaterialSize: textures.surfaceMaterialTexture.image.data?.length,
         },
-        "[storage:load:gpu] Created textures from saved state",
+        "[storage:load:gpu] Created textures from saved state (including terrain painting)",
       );
 
-      // Recreate simulation with restored textures
+      // Recreate simulation with restored textures (surface material is handled in createSimulationResource)
       const renderer = getRenderer();
       if (renderer) {
         recreateSimulationWithSavedState(
@@ -450,10 +458,11 @@ export const loadFromWorldStorage = async (
             velocityTexture: textures.velocityTexture,
             sedimentTexture: textures.sedimentTexture,
             cloudsTexture: textures.cloudsTexture,
+            surfaceMaterialTexture: textures.surfaceMaterialTexture, // Include surface material texture
           },
         );
         logger.info(
-          "[storage:load:gpu] Successfully recreated simulation with restored state",
+          "[storage:load:gpu] Successfully recreated simulation with restored state including terrain painting",
         );
       } else {
         logger.error(
@@ -471,7 +480,7 @@ export const loadFromWorldStorage = async (
       }
 
       logger.info(
-        "[storage:load:gpu] GPU simulation state restoration complete",
+        "[storage:load:gpu] GPU simulation state restoration complete (includes terrain painting)",
       );
     } catch (error) {
       logger.error(
