@@ -45,10 +45,12 @@ export const updateTerrainGeometryFromRenderTarget = (
       const uvY = uvs.getY(i);
 
       // Convert to texture pixel coordinates
-      // GPUComputationRenderer uses bottom-left origin, same as readRenderTargetPixels
-      // PlaneGeometry UVs also use bottom-left (0,0) to top-right (1,1)
+      // GPUComputationRenderer uses bottom-left origin (y=0 at bottom)
+      // PlaneGeometry UVs use bottom-left (0,0) to top-right (1,1)
+      // readRenderTargetPixels reads from bottom-left origin
+      // No Y flip needed - coordinates already match!
       const texX = Math.floor(uvX * heightMapSize);
-      const texY = Math.floor((1.0 - uvY) * heightMapSize); // Flip Y to match texture storage
+      const texY = Math.floor(uvY * heightMapSize);
 
       // Clamp to bounds
       const clampedX = Math.max(0, Math.min(heightMapSize - 1, texX));
