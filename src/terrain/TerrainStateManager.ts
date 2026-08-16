@@ -3,7 +3,7 @@ import {
   restoreTerrainGeometryState,
   saveTerrainGeometryState,
   type TerrainGeometryState,
-} from "@/scene/resources/mesh";
+} from "@/scene/resources/meshes/terrainGeometryState";
 
 /**
  * Terrain state management for undo/redo and checkpoint functionality.

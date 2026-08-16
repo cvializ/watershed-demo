@@ -12,7 +12,7 @@ test.describe("Terrain Save/Load Verification", () => {
 
     // Get initial terrain state before save
     const initialState = await page.evaluate(() => {
-      const terrainManager = (window as any).terrainStateManager;
+      const terrainManager = window.terrainStateManager;
       if (!terrainManager) {
         return null;
       }
@@ -26,7 +26,8 @@ test.describe("Terrain Save/Load Verification", () => {
 
     console.log("Initial terrain state:", initialState);
     expect(initialState).not.toBeNull();
-    expect((initialState as number[]).length).toBe(10);
+    if (!initialState) throw new Error('Initial state should not be null');
+    expect(initialState.length).toBe(10);
 
     // Save the state
     const saveButton = page.getByTitle("Save current state");
@@ -37,11 +38,15 @@ test.describe("Terrain Save/Load Verification", () => {
 
     // Manually modify terrain positions to simulate erosion
     await page.evaluate(() => {
-      const mesh = (window as any).getTerrainMesh?.();
+      const getTerrainMesh = window.getTerrainMesh;
+      if (!getTerrainMesh) {
+        return;
+      }
+      const mesh = getTerrainMesh();
       if (!mesh) {
         return;
       }
-      const geometry = mesh.geometry as any;
+      const geometry = mesh.geometry;
       const positions = geometry.attributes.position;
       
       // Directly modify the position array to simulate erosion
@@ -56,11 +61,15 @@ test.describe("Terrain Save/Load Verification", () => {
 
     // Get state after erosion (should be different)
     const stateAfterErosion = await page.evaluate(() => {
-      const mesh = (window as any).getTerrainMesh?.();
+      const getTerrainMesh = window.getTerrainMesh;
+      if (!getTerrainMesh) {
+        return null;
+      }
+      const mesh = getTerrainMesh();
       if (!mesh) {
         return null;
       }
-      const geometry = mesh.geometry as any;
+      const geometry = mesh.geometry;
       const positions = geometry.attributes.position;
       return Array.from(positions.array.slice(0, 10));
     });
@@ -69,8 +78,9 @@ test.describe("Terrain Save/Load Verification", () => {
     
     // Verify that erosion actually changed the terrain significantly (only Z values at indices 2, 5, 8)
     const erosionChanged = [2, 5, 8].every((idx: number) => {
-      const val = (initialState as number[])[idx];
-      const erodedVal = (stateAfterErosion as number[])[idx];
+      if (!initialState || !stateAfterErosion) return false;
+      const val = initialState[idx];
+      const erodedVal = stateAfterErosion[idx];
       return Math.abs(val - erodedVal) > 4.0; // Should be changed by ~5.0
     });
     expect(erosionChanged).toBe(true);
@@ -88,7 +98,7 @@ test.describe("Terrain Save/Load Verification", () => {
 
     // Get state after load (should match initial)
     const stateAfterLoad = await page.evaluate(() => {
-      const terrainManager = (window as any).terrainStateManager;
+      const terrainManager = window.terrainStateManager;
       if (!terrainManager) {
         return null;
       }
@@ -103,16 +113,18 @@ test.describe("Terrain Save/Load Verification", () => {
 
     // Verify that terrain was restored to initial state (only Z values at indices 2, 5, 8)
     const positionsRestored = [2, 5, 8].every((idx: number) => {
-      const val = (stateAfterLoad as number[])[idx];
-      const initialVal = (initialState as number[])[idx];
+      if (!stateAfterLoad || !initialState) return false;
+      const val = stateAfterLoad[idx];
+      const initialVal = initialState[idx];
       // After load, should be close to initial (within 0.5 tolerance for simulation drift)
       return Math.abs(val - initialVal) < 0.5;
     });
     
     // Also verify it's different from the eroded state (only Z values)
     const differentFromEroded = [2, 5, 8].every((idx: number) => {
-      const val = (stateAfterLoad as number[])[idx];
-      const erodedVal = (stateAfterErosion as number[])[idx];
+      if (!stateAfterLoad || !stateAfterErosion) return false;
+      const val = stateAfterLoad[idx];
+      const erodedVal = stateAfterErosion[idx];
       return Math.abs(val - erodedVal) > 4.0;
     });
 

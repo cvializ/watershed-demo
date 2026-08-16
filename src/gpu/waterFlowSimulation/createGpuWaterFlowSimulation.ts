@@ -188,7 +188,7 @@ export const createGpuWaterFlowSimulation = (
   const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(
     gpuCompute,
     width,
-    savedTextures?.cloudsTexture, // Pass saved clouds texture
+    savedTextures && savedTextures.cloudsTexture, // Pass saved clouds texture
   );
 
   const { waterSourcesVariable, initWaterSources, addWater, clearWater } =
@@ -201,7 +201,7 @@ export const createGpuWaterFlowSimulation = (
       cloudVariable,
       waterSourcesVariable,
       surfaceMaterialMap ?? null,
-      savedTextures?.waterHeightTexture, // Pass saved water height texture
+      savedTextures && savedTextures.waterHeightTexture, // Pass saved water height texture
     );
   const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
@@ -210,7 +210,7 @@ export const createGpuWaterFlowSimulation = (
     waterHeightVariable,
     surfaceMaterialMap ?? null,
     undefined, // heightMapVariable (will be set later)
-    savedTextures?.velocityTexture, // Pass saved velocity texture
+    savedTextures && savedTextures.velocityTexture, // Pass saved velocity texture
   );
   const { sedimentFlowVariable, initSedimentFlow } = createGpuSedimentFlow(
     gpuCompute,
@@ -219,7 +219,7 @@ export const createGpuWaterFlowSimulation = (
     waterVelocityVariable,
     undefined, // heightMapVariable (will be set later)
     surfaceMaterialMap ?? null,
-    savedTextures?.sedimentTexture, // Pass saved sediment texture
+    savedTextures && savedTextures.sedimentTexture, // Pass saved sediment texture
   );
 
   // Dynamic terrain height: starts from base terrain, modified by sediment erosion/deposition
@@ -228,7 +228,7 @@ export const createGpuWaterFlowSimulation = (
     width,
     heightMapTexture,
     sedimentFlowVariable,
-    savedTextures?.heightMapTexture, // Pass saved height map texture
+    savedTextures && savedTextures.heightMapTexture, // Pass saved height map texture
   );
 
   // Update sediment flow dependencies to include dynamic height map
