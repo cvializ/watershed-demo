@@ -18,12 +18,12 @@ export const worldInitSystem: WorldInitSystem = (world) => {
   createDownslopeArrows(world);
 
   // Add an animal at a specific position
-  const animal1$ = addAnimal(world, { x: 2.0, y: 0.5, z: -3.0 });
+  addAnimal(world, { x: 2.0, y: 0.5, z: -3.0 });
 
   // Add an animal at a random position
-  const animal2$ = addAnimal(world);
+  addAnimal(world);
 
   // Add multiple animals
-  const animal3$ = addAnimal(world, { x: -4.0, y: 0.5, z: 2.0 });
-  const animal4$ = addAnimal(world, { x: 3.0, y: 0.5, z: -4.0 });
+  addAnimal(world, { x: -4.0, y: 0.5, z: 2.0 });
+  addAnimal(world, { x: 3.0, y: 0.5, z: -4.0 });
 };
