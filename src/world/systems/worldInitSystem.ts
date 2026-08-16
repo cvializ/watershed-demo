@@ -1,6 +1,7 @@
 import type { WorldInitSystem } from "@/world/types";
 
 import { logger } from "@/utils/logger";
+import { addAnimal } from "@/world/factories/addAnimal";
 import { createCamera } from "@/world/factories/camera";
 import { createDownslopeArrows } from "@/world/factories/downslopeArrows";
 import { createSunLight } from "@/world/factories/sunLight";
@@ -15,4 +16,14 @@ export const worldInitSystem: WorldInitSystem = (world) => {
   createSunLight(world);
   createSunSphere(world);
   createDownslopeArrows(world);
+
+  // Add an animal at a specific position
+  const animal1$ = addAnimal(world, { x: 2.0, y: 0.5, z: -3.0 });
+
+  // Add an animal at a random position
+  const animal2$ = addAnimal(world);
+
+  // Add multiple animals
+  const animal3$ = addAnimal(world, { x: -4.0, y: 0.5, z: 2.0 });
+  const animal4$ = addAnimal(world, { x: 3.0, y: 0.5, z: -4.0 });
 };
