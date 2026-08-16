@@ -1,6 +1,7 @@
 import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshEnum } from "@/scene/resources/mesh";
+import { createAnimalMeshResource } from "@/scene/resources/meshes/animal";
 import { createDownslopeArrowsMeshResource } from "@/scene/resources/meshes/downslopeArrows";
 import { createSunSphereResource } from "@/scene/resources/meshes/sunSphere";
 import { createTerrainGeometry } from "@/scene/resources/meshes/terrain";
@@ -27,4 +28,5 @@ export const initMeshes: SceneInitSystem = (_world, scene) => {
 
   setObject(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
   setObject(MeshEnum.SunSphere, createSunSphereResource());
+  setObject(MeshEnum.Animal, createAnimalMeshResource());
 };
