@@ -70,8 +70,11 @@ export const saveGPUSimulationState = (
     const size = width * height * 4;
     
     // Read the surface material texture directly from its data array if available
-    const textureData = (surfaceMaterialTexture as THREE.DataTexture).image?.data;
-    if (textureData instanceof Float32Array) {
+    const textureAsDataTexture = surfaceMaterialTexture as THREE.DataTexture;
+    const textureData = textureAsDataTexture.image && 'data' in textureAsDataTexture.image
+      ? (textureAsDataTexture.image.data as Float32Array | undefined)
+      : undefined;
+    if (textureData && textureData instanceof Float32Array) {
       // Copy directly from the texture's data array
       surfaceMaterialData = new Float32Array(textureData.slice(0, size));
     }

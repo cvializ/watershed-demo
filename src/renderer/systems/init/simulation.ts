@@ -20,6 +20,14 @@ export let cloudSphereSystem: CloudSphereSystem | null = null;
 let _surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
 export let terrainStateManager: TerrainStateManager | null = null;
 
+// Global window extensions for debugging
+declare global {
+  interface Window {
+    terrainStateManager?: TerrainStateManager;
+    getTerrainMesh?: () => THREE.Mesh | null;
+  }
+}
+
 /**
  * Recreate the GPU simulation with saved state textures (for save/load)
  */
@@ -99,8 +107,8 @@ export const simulationInitSystem: RendererInitSystem = (
 
   // Expose globally for debugging and testing
   if (typeof window !== "undefined") {
-    (window as any).terrainStateManager = terrainStateManager;
-    (window as any).getTerrainMesh = () => getMesh(MeshEnum.Terrain);
+    window.terrainStateManager = terrainStateManager;
+    window.getTerrainMesh = () => getMesh(MeshEnum.Terrain);
   }
 
   // Get required dependencies

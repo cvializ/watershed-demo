@@ -238,12 +238,12 @@ export const saveToWorldStorage = async (
         });
         logger.info(
           { 
-            heightMapSize: gpuState.heightMapData?.length,
-            waterHeightSize: gpuState.waterHeightData?.length,
-            velocitySize: gpuState.velocityData?.length,
-            sedimentSize: gpuState.sedimentData?.length,
-            cloudsSize: gpuState.cloudsData?.length,
-            surfaceMaterialSize: gpuState.surfaceMaterialData?.length,
+            heightMapSize: gpuState.heightMapData ? gpuState.heightMapData.length : 0,
+            waterHeightSize: gpuState.waterHeightData ? gpuState.waterHeightData.length : 0,
+            velocitySize: gpuState.velocityData ? gpuState.velocityData.length : 0,
+            sedimentSize: gpuState.sedimentData ? gpuState.sedimentData.length : 0,
+            cloudsSize: gpuState.cloudsData ? gpuState.cloudsData.length : 0,
+            surfaceMaterialSize: gpuState.surfaceMaterialData ? gpuState.surfaceMaterialData.length : 0,
             gameTime: gpuState.gameTime
           },
           "[storage:save:gpu] Saved ALL GPU simulation state including terrain painting",
@@ -438,9 +438,9 @@ export const loadFromWorldStorage = async (
       const textures = createTexturesFromState(gpuState);
       logger.info(
         { 
-          heightMapSize: textures.heightMapTexture.image.data?.length,
-          waterHeightSize: textures.waterHeightTexture.image.data?.length,
-          surfaceMaterialSize: textures.surfaceMaterialTexture.image.data?.length,
+          heightMapSize: textures.heightMapTexture.image.data ? (textures.heightMapTexture.image.data as Float32Array).length : 0,
+          waterHeightSize: textures.waterHeightTexture.image.data ? (textures.waterHeightTexture.image.data as Float32Array).length : 0,
+          surfaceMaterialSize: textures.surfaceMaterialTexture.image.data ? (textures.surfaceMaterialTexture.image.data as Float32Array).length : 0,
         },
         "[storage:load:gpu] Created textures from saved state (including terrain painting)",
       );
@@ -450,7 +450,7 @@ export const loadFromWorldStorage = async (
       if (renderer) {
         recreateSimulationWithSavedState(
           world,
-          null as any, // scene not needed here
+          null, // scene not needed here
           renderer,
           {
             heightMapTexture: textures.heightMapTexture,

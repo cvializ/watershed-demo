@@ -8,7 +8,7 @@ import {
   restoreTerrainGeometryState,
   saveTerrainGeometryState,
   type TerrainGeometryState,
-} from "@/scene/resources/mesh";
+} from "@/scene/resources/meshes/terrainGeometryState";
 import {
   createTerrainPaintingSystem,
   type TerrainPaintingSystem,
