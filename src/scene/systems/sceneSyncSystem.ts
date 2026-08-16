@@ -19,7 +19,6 @@ export const sceneSyncSystem: SceneSystem = (world, scene, dt): void => {
       enabled: world.terrainPaintingEnabled,
       brushMaterial: world.terrainBrushMaterial,
       brushRadius: world.terrainBrushRadius,
-      brushStrength: world.terrainBrushStrength,
     });
   }
 };

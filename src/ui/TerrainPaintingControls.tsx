@@ -28,10 +28,6 @@ export const TerrainPaintingControls = ({
     world.terrainBrushRadius = parseFloat(event.target.value);
   };
 
-  const handleStrengthChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    world.terrainBrushStrength = parseFloat(event.target.value);
-  };
-
   const handleTogglePainting = () => {
     world.terrainPaintingEnabled = !world.terrainPaintingEnabled;
   };
@@ -117,23 +113,6 @@ export const TerrainPaintingControls = ({
           onChange={handleRadiusChange}
           style={styles.slider}
           title="Brush radius in world units"
-        />
-      </div>
-
-      <div style={styles.section}>
-        <label htmlFor="brush-strength" style={styles.label}>
-          Brush Strength: {Math.round(world.terrainBrushStrength * 100)}%
-        </label>
-        <input
-          type="range"
-          id="brush-strength"
-          min="0.1"
-          max="1.0"
-          step="0.1"
-          value={world.terrainBrushStrength}
-          onChange={handleStrengthChange}
-          style={styles.slider}
-          title="Painting strength (0-100%)"
         />
       </div>
 

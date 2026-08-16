@@ -11,14 +11,12 @@ export type TerrainPainter = {
    * @param y - Y coordinate in world space (0 to terrainSize)
    * @param materialType - Type of material to paint
    * @param radius - Brush radius in world units
-   * @param strength - Painting strength (0-1, default 1.0)
    */
   paint: (
     x: number,
     y: number,
     materialType: SurfaceMaterialType,
     radius: number,
-    strength?: number,
   ) => void;
 
   /**
@@ -37,11 +35,6 @@ export type TerrainPainter = {
   setBrushRadius: (radius: number) => void;
 
   /**
-   * Set the current brush strength.
-   */
-  setBrushStrength: (strength: number) => void;
-
-  /**
    * Get the current brush material type.
    */
   getBrushMaterial: () => SurfaceMaterialType;
@@ -50,27 +43,15 @@ export type TerrainPainter = {
    * Get the current brush radius.
    */
   getBrushRadius: () => number;
-
-  /**
-   * Get the current brush strength.
-   */
-  getBrushStrength: () => number;
 };
 
 // Creates a terrain painter that wraps the surface material texture.
 const createTerrainPainter = (
-  paintFunction: (
-    x: number,
-    y: number,
-    materialType: SurfaceMaterialType,
-    radius: number,
-    strength?: number,
-  ) => void,
+  paintFunction: (x: number, y: number, materialType: SurfaceMaterialType, radius: number) => void,
   clearFunction: () => void,
 ): TerrainPainter => {
   let currentMaterial: SurfaceMaterialType = "bareDirt";
   let currentRadius: number = 1.0; // Default brush radius in world units
-  let currentStrength: number = 1.0; // Default painting strength
 
   return {
     paint: (
@@ -78,13 +59,11 @@ const createTerrainPainter = (
       y: number,
       materialType?: SurfaceMaterialType,
       radius?: number,
-      strength?: number,
     ): void => {
       const material = materialType ?? currentMaterial;
       const brushRadius = radius ?? currentRadius;
-      const paintStrength = strength ?? currentStrength;
 
-      paintFunction(x, y, material, brushRadius, paintStrength);
+      paintFunction(x, y, material, brushRadius);
     },
 
     clear: (): void => {
@@ -99,20 +78,12 @@ const createTerrainPainter = (
       currentRadius = radius;
     },
 
-    setBrushStrength: (strength: number): void => {
-      currentStrength = Math.max(0, Math.min(1, strength));
-    },
-
     getBrushMaterial: (): SurfaceMaterialType => {
       return currentMaterial;
     },
 
     getBrushRadius: (): number => {
       return currentRadius;
-    },
-
-    getBrushStrength: (): number => {
-      return currentStrength;
     },
   };
 };
@@ -124,13 +95,7 @@ const createTerrainPainter = (
  */
 export const createTerrainPainterFromSurfaceMaterial =
   (surfaceMaterialTexture: {
-    paint: (
-      x: number,
-      y: number,
-      materialType: SurfaceMaterialType,
-      radius: number,
-      strength?: number,
-    ) => void;
+    paint: (x: number, y: number, materialType: SurfaceMaterialType, radius: number) => void;
     clear: () => void;
   }): TerrainPainter => {
     return createTerrainPainter(
