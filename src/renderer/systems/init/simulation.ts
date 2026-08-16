@@ -12,7 +12,10 @@ import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain";
 import { createTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
-import { createTerrainStateManager, type TerrainStateManager } from "@/terrain/TerrainStateManager";
+import {
+  createTerrainStateManager,
+  type TerrainStateManager,
+} from "@/terrain/TerrainStateManager";
 import { logger } from "@/utils/logger";
 
 export let waterSimulation: WaterFlowVisualization | null = null;
@@ -20,7 +23,7 @@ export let cloudSphereSystem: CloudSphereSystem | null = null;
 let _surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
 export let terrainStateManager: TerrainStateManager | null = null;
 
-// Global window extensions for debugging
+// Type declarations for window globals used in debugging/testing
 declare global {
   interface Window {
     terrainStateManager?: TerrainStateManager;
@@ -86,11 +89,7 @@ export const getSurfaceMaterialTexture = (): SurfaceMaterialTexture | null => {
   return _surfaceMaterialTexture;
 };
 
-export const simulationInitSystem: RendererInitSystem = (
-  _world,
-  _scene,
-  renderer,
-) => {
+export const simulationInitSystem: RendererInitSystem = (_world, _scene, renderer) => {
   const simulationResource = createSimulationResource(renderer);
 
   waterSimulation = simulationResource.waterSimulation;
@@ -105,10 +104,11 @@ export const simulationInitSystem: RendererInitSystem = (
   const tm = createTerrainPaintingManager();
   terrainStateManager = createTerrainStateManager();
 
-  // Expose globally for debugging and testing
+  // Expose for debugging and testing (development only)
   if (typeof window !== "undefined") {
-    window.terrainStateManager = terrainStateManager;
-    window.getTerrainMesh = () => getMesh(MeshEnum.Terrain);
+    const win = window as unknown as Record<string, unknown>;
+    win.terrainStateManager = terrainStateManager;
+    win.getTerrainMesh = () => getMesh(MeshEnum.Terrain);
   }
 
   // Get required dependencies

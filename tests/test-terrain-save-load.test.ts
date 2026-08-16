@@ -71,7 +71,8 @@ test.describe("Terrain Save/Load Verification", () => {
       }
       const geometry = mesh.geometry;
       const positions = geometry.attributes.position;
-      return Array.from(positions.array.slice(0, 10));
+      // Convert TypedArray to regular array
+      return Array.from(positions.array as unknown as number[]);
     });
 
     console.log("State after erosion:", stateAfterErosion);
