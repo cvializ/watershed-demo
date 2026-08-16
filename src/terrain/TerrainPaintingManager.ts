@@ -37,7 +37,6 @@ export type TerrainPaintingManager = {
     enabled: boolean;
     brushMaterial: SurfaceMaterialType;
     brushRadius: number;
-    brushStrength: number;
   }) => void;
 
   /** Update in game loop */
@@ -88,7 +87,6 @@ export const createTerrainPaintingManager = (): TerrainPaintingManager => {
     enabled: true,
     brushMaterial: "bareDirt",
     brushRadius: 2.0,
-    brushStrength: 1.0,
   });
 
   _terrainPaintingManager = {
@@ -120,19 +118,16 @@ export const createTerrainPaintingManager = (): TerrainPaintingManager => {
       enabled,
       brushMaterial,
       brushRadius,
-      brushStrength,
     }: {
       enabled: boolean;
       brushMaterial: SurfaceMaterialType;
       brushRadius: number;
-      brushStrength: number;
     }) => {
       if (paintingSystemInstance) {
         paintingSystemInstance.updateConfig({
           enabled,
           brushMaterial,
           brushRadius,
-          brushStrength,
         });
       }
     },

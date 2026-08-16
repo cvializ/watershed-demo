@@ -31,7 +31,6 @@ export const createGameWorldContext = () => ({
   terrainPaintingEnabled: true,
   terrainBrushMaterial: "bareDirt" as SurfaceMaterialType,
   terrainBrushRadius: 2.0,
-  terrainBrushStrength: 1.0,
 });
 
 export const togglePause = (world: GameWorldContext): void => {

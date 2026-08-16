@@ -55,14 +55,12 @@ export type SurfaceMaterialTexture = {
    * @param y - Y coordinate in world space (0 to terrainSize)
    * @param materialType - Type of material to paint
    * @param radius - Brush radius in world units
-   * @param strength - Painting strength (0-1, default 1.0)
    */
   paint: (
     x: number,
     y: number,
     materialType: SurfaceMaterialType,
     radius: number,
-    strength?: number,
   ) => void;
 
   /**
@@ -138,9 +136,9 @@ export const createSurfaceMaterialTexture = (
   // Create data array (RGBA float32)
   const data = new Float32Array(size * size * 4);
 
-  // Initialize with bare dirt (material type ID = 0.0)
+  // Initialize with grass (material type ID = 1.0)
   for (let i = 0; i < size * size; i++) {
-    data[i * 4 + 0] = MATERIAL_TYPE_IDS.bareDirt; // R: material type
+    data[i * 4 + 0] = MATERIAL_TYPE_IDS.grass; // R: material type
     data[i * 4 + 1] = 0.0; // G: reserved
     data[i * 4 + 2] = 0.0; // B: reserved
     data[i * 4 + 3] = 1.0; // A: alpha
@@ -169,7 +167,6 @@ export const createSurfaceMaterialTexture = (
       y: number,
       materialType: SurfaceMaterialType,
       radius: number,
-      strength: number = 1.0,
     ): void => {
       const { u, v } = worldToUV(x, y);
       const materialId = MATERIAL_TYPE_IDS[materialType];
@@ -188,19 +185,9 @@ export const createSurfaceMaterialTexture = (
           const distanceSquared = dx * dx + dy * dy;
 
           if (distanceSquared <= radiusSquared) {
-            // Calculate brush falloff (smooth edge)
-            const distance = Math.sqrt(distanceSquared);
-            const falloff = 1.0 - distance / radiusPixels;
-            const paintStrength = strength * falloff;
-
+            // Discrete painting: directly set the material ID with no blending
             const index = py * size + px;
-            const currentMaterial = data[index * 4 + 0];
-
-            // Blend material types (simple linear interpolation)
-            const blendedMaterial =
-              currentMaterial * (1.0 - paintStrength) +
-              materialId * paintStrength;
-            data[index * 4 + 0] = blendedMaterial;
+            data[index * 4 + 0] = materialId;
           }
         }
       }
@@ -210,7 +197,7 @@ export const createSurfaceMaterialTexture = (
 
     clear: (): void => {
       for (let i = 0; i < size * size; i++) {
-        data[i * 4 + 0] = MATERIAL_TYPE_IDS.bareDirt;
+        data[i * 4 + 0] = MATERIAL_TYPE_IDS.grass;
         data[i * 4 + 1] = 0.0;
         data[i * 4 + 2] = 0.0;
         data[i * 4 + 3] = 1.0;
@@ -243,10 +230,10 @@ export const createSurfaceMaterialTexture = (
       const index = pixelY * size + pixelX;
       const materialId = data[index * 4 + 0];
 
-      // Convert material ID to type
-      if (materialId < 0.5) {
+      // Convert material ID to type using exact thresholds for discrete values
+      if (materialId === MATERIAL_TYPE_IDS.bareDirt) {
         return "bareDirt";
-      } else if (materialId < 1.5) {
+      } else if (materialId === MATERIAL_TYPE_IDS.grass) {
         return "grass";
       } else {
         return "rocks";

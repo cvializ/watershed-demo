@@ -16,9 +16,6 @@ export type TerrainPaintingConfig = {
 
   /** Brush radius in world units */
   brushRadius: number;
-
-  /** Painting strength (0-1) */
-  brushStrength: number;
 };
 
 /**
@@ -78,7 +75,6 @@ export type TerrainPaintingSystem = {
  *   enabled: true,
  *   brushMaterial: "grass",
  *   brushRadius: 2.0,
- *   brushStrength: 1.0,
  * });
  *
  * // In your game loop:
@@ -99,7 +95,6 @@ export const createTerrainPaintingSystem = (
     enabled: initialConfig.enabled ?? true,
     brushMaterial: initialConfig.brushMaterial ?? "bareDirt",
     brushRadius: initialConfig.brushRadius ?? 2.0,
-    brushStrength: initialConfig.brushStrength ?? 1.0,
   };
 
   let terrainPainter: TerrainPainter | null = null;
@@ -252,7 +247,6 @@ export const createTerrainPaintingSystem = (
         y,
         config.brushMaterial,
         config.brushRadius,
-        config.brushStrength,
       );
     } else {
       console.log("[painting] No terrain intersection found");
@@ -315,8 +309,6 @@ export const createTerrainPaintingSystem = (
         config.brushMaterial = newConfig.brushMaterial;
       if (newConfig.brushRadius !== undefined)
         config.brushRadius = newConfig.brushRadius;
-      if (newConfig.brushStrength !== undefined)
-        config.brushStrength = newConfig.brushStrength;
     },
 
     getConfig: (): TerrainPaintingConfig => {
