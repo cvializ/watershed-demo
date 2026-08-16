@@ -3,6 +3,7 @@ import { f32, str } from "bitecs/serialization";
 /** Tag components */
 export const Camera = {};
 export const Terrain = {};
+export const Animal = {};
 
 export const Renderable = {};
 export const Hidden = {};

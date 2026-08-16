@@ -14,6 +14,7 @@ export const MeshEnum = {
   CloudMesh: "CloudMesh",
   SunSphere: "SunSphere",
   TerrainWireframeOverlay: "TerrainWireframeOverlay",
+  Animal: "Animal",
 } as const;
 
 export type MeshEnum = (typeof MeshEnum)[keyof typeof MeshEnum];
