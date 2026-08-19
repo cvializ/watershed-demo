@@ -12,6 +12,10 @@ export const createAnimalMeshResource = () => {
   });
   const animalMesh = new THREE.Mesh(geometry, material);
 
+  // Enable shadow casting from animals
+  animalMesh.castShadow = true;
+  animalMesh.receiveShadow = true;
+
   // Render after terrain (higher render order ensures it appears on top)
   animalMesh.renderOrder = 1;
 

@@ -3,6 +3,7 @@ uniform vec2 uHeightMapSize;   // Size of the height map texture for normal calc
 
 varying vec2 vUv;
 varying vec3 vNormal;
+varying vec3 vWorldPosition; // Pass world position to fragment shader for shadow calculation
 
 void main() {
     vUv = uv;
@@ -13,6 +14,10 @@ void main() {
 
     // Use mesh normals (computed from actual geometry)
     vNormal = normalize(normal);
+
+    // Calculate and pass world position for shadow calculation
+    vec4 worldPosition = modelMatrix * vec4(displacedPosition, 1.0);
+    vWorldPosition = worldPosition.xyz;
 
     // Transform position - no displacement applied
     gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);

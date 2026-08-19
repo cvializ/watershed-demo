@@ -15,10 +15,13 @@ uniform float uWireframeWidth;     // Width of wireframe lines
 
 // Shadow calculation uniforms for sun light
 uniform vec3 uLightPosition;
-uniform vec4 uLightSpaceMatrix;
+uniform mat4 uLightSpaceMatrix;
+uniform sampler2D uShadowMap; // Shadow map for receiving shadows from other objects
+uniform bool uHasShadowMap; // Flag indicating if shadow map is active
 
 varying vec2 vUv;
 varying vec3 vNormal;
+varying vec3 vWorldPosition; // World position passed from vertex shader
 
 // Simple shadow calculation from directional light
 float calculateShadow(vec3 normal, vec3 worldPosition) {
@@ -33,6 +36,29 @@ float calculateShadow(vec3 normal, vec3 worldPosition) {
     float shadow = 0.5 + 0.5 * diff;
     
     return clamp(shadow, 0.3, 1.0);
+}
+
+// Calculate shadow from shadow map (for receiving shadows from other objects like animals)
+float calculateShadowFromMap(vec3 worldPosition) {
+    if (!uHasShadowMap) {
+        return 1.0; // No shadow map, no shadows
+    }
+    
+    // Transform world position to light space
+    vec4 shadowPos = uLightSpaceMatrix * vec4(worldPosition, 1.0);
+    shadowPos /= shadowPos.w;
+    vec2 shadowUv = shadowPos.xy * 0.5 + 0.5;
+    
+    // Check if within shadow map bounds
+    if (shadowUv.x < 0.0 || shadowUv.x > 1.0 || shadowUv.y < 0.0 || shadowUv.y > 1.0) {
+        return 1.0; // Outside shadow map, fully lit
+    }
+    
+    // Sample shadow map
+    float shadow = texture2D(uShadowMap, shadowUv).r;
+    
+    // Apply soft shadow (PCF-like effect)
+    return mix(0.3, 1.0, smoothstep(0.95, 1.0, shadow));
 }
 
 // Expand shadow with bleed and blur effect using multiple samples
@@ -100,22 +126,26 @@ vec3 getTerrainMaterialColor(vec2 uv) {
 }
 
 void main() {
-    // Calculate world position for shadow calculation
-    // We need to reconstruct it from UV and height map
-    float height = texture2D(uHeightMap, vUv).r;
-    vec3 worldPosition = vec3(vUv.x * 12.0 - 6.0, height, vUv.y * 12.0 - 6.0);
-    
-    // Calculate shadow from sun light
-    float shadow = calculateShadow(vNormal, worldPosition);
+    // Use world position passed from vertex shader for accurate shadow calculation
+    vec3 worldPosition = vWorldPosition;
 
     // Sample cloud shadow intensity with blur and expansion
     float cloudShadow = getBlurredShadow(vUv, uCloudShadowMap);
     
+    // Calculate animal shadows from shadow map
+    float animalShadow = calculateShadowFromMap(worldPosition);
+    
     // Get terrain material color
     vec3 terrainMaterialColor = getTerrainMaterialColor(vUv);
+    
+    // Apply cloud shadows
+    if (cloudShadow > 0.01) {
+        float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
+        terrainMaterialColor *= (1.0 - shadowDarkening);
+    }
 
-    // Apply sun light shadow (multiplicative)
-    terrainMaterialColor *= shadow;
+    // Apply animal shadows to terrain color
+    terrainMaterialColor *= animalShadow;
     
     if (cloudShadow > 0.01) {
         float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
@@ -167,5 +197,7 @@ void main() {
         finalColor = terrainMaterialColor;
     }
 
+    // Apply animal shadows (injected by onBeforeCompile)
+    // finalColor is already multiplied by animalShadow in the injected code
     gl_FragColor = vec4(finalColor, 1.0);
 }
