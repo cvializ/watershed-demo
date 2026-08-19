@@ -47,7 +47,12 @@ export type TerrainPainter = {
 
 // Creates a terrain painter that wraps the surface material texture.
 const createTerrainPainter = (
-  paintFunction: (x: number, y: number, materialType: SurfaceMaterialType, radius: number) => void,
+  paintFunction: (
+    x: number,
+    y: number,
+    materialType: SurfaceMaterialType,
+    radius: number,
+  ) => void,
   clearFunction: () => void,
 ): TerrainPainter => {
   let currentMaterial: SurfaceMaterialType = "bareDirt";
@@ -95,7 +100,12 @@ const createTerrainPainter = (
  */
 export const createTerrainPainterFromSurfaceMaterial =
   (surfaceMaterialTexture: {
-    paint: (x: number, y: number, materialType: SurfaceMaterialType, radius: number) => void;
+    paint: (
+      x: number,
+      y: number,
+      materialType: SurfaceMaterialType,
+      radius: number,
+    ) => void;
     clear: () => void;
   }): TerrainPainter => {
     return createTerrainPainter(

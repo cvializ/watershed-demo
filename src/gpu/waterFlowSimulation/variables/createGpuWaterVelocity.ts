@@ -53,7 +53,8 @@ export const createGpuWaterVelocity = (
   logger.info("[gpu:water-velocity:create]");
 
   // Use saved texture if provided, otherwise create initial texture
-  const velocityTexture = savedTexture || createInitialVelocityTexture(width).texture;
+  const velocityTexture =
+    savedTexture || createInitialVelocityTexture(width).texture;
   const waterVelocityVariable = gpuCompute.addVariable(
     "waterVelocity",
     waterVelocityFragmentShader,

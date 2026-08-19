@@ -1,15 +1,22 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
-import { Animal, MeshRef, Name, Position, Renderable, Velocity } from "@/components/components";
+import {
+  Animal,
+  MeshRef,
+  Name,
+  Position,
+  Renderable,
+  Velocity,
+} from "@/components/components";
 import { MeshEnum } from "@/scene/resources/mesh";
 
 /**
  * Creates an animal entity in the world.
  * Animals have a mesh reference, position, and are renderable.
- * 
+ *
  * @param world - The ECS world
  * @param x - X position in world space
- * @param y - Y position in world space  
+ * @param y - Y position in world space
  * @param z - Z position in world space
  * @returns The entity ID of the created animal
  */

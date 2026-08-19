@@ -56,9 +56,8 @@ export const createMeshInstance = (
 /**
  * Get the per-entity instance for an entity, if one has been created.
  */
-export const getMeshInstance = (
-  entity$: number,
-): THREE.Mesh | undefined => entityInstances.get(entity$);
+export const getMeshInstance = (entity$: number): THREE.Mesh | undefined =>
+  entityInstances.get(entity$);
 
 /**
  * Resolve the mesh to use for an entity.

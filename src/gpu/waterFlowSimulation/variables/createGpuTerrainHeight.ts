@@ -60,7 +60,9 @@ const createGpuTerrainHeight = (
   logger.info("[gpu:terrain-height:create]");
 
   // Use saved texture if provided, otherwise create initial texture from base height map
-  const terrainHeightTexture = savedTexture || createInitialTerrainHeightTexture(width, baseHeightMapTexture).texture;
+  const terrainHeightTexture =
+    savedTexture ||
+    createInitialTerrainHeightTexture(width, baseHeightMapTexture).texture;
 
   const heightMapVariable = gpuCompute.addVariable(
     "heightMap",

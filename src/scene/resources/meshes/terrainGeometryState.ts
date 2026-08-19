@@ -19,9 +19,7 @@ export const saveTerrainGeometryState = (): TerrainGeometryState | null => {
   const terrainMesh = getMesh(MeshEnum.Terrain);
 
   if (!terrainMesh) {
-    logger.warn(
-      "[terrain:state] Terrain mesh not found, cannot save state",
-    );
+    logger.warn("[terrain:state] Terrain mesh not found, cannot save state");
     return null;
   }
 
@@ -62,9 +60,7 @@ export const restoreTerrainGeometryState = (
   const wireframeOverlay = getMesh(MeshEnum.TerrainWireframeOverlay);
 
   if (!terrainMesh) {
-    logger.warn(
-      "[terrain:state] Terrain mesh not found, cannot restore state",
-    );
+    logger.warn("[terrain:state] Terrain mesh not found, cannot restore state");
     return;
   }
 
@@ -111,9 +107,7 @@ export const restoreTerrainGeometryState = (
         wireframePositions.needsUpdate = true;
         wireframeGeometry.computeVertexNormals();
 
-        logger.debug(
-          "[terrain:state] Wireframe overlay geometry restored",
-        );
+        logger.debug("[terrain:state] Wireframe overlay geometry restored");
       }
     }
   }

@@ -4,8 +4,8 @@ import {
   loadFromWorldStorage,
   saveToWorldStorage,
 } from "@/storage";
-import { logger } from "@/utils/logger";
 import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
+import { logger } from "@/utils/logger";
 
 import { TerrainPaintingControls } from "./TerrainPaintingControls";
 
@@ -28,7 +28,9 @@ export const GameUI = ({ world }: GameUiProps) => {
     const manager = getTerrainPaintingManager();
     if (manager === null) return false;
     const paintingSystem = manager.getPaintingSystem();
-    return paintingSystem !== null ? paintingSystem.saveSurfaceMaterials() : false;
+    return paintingSystem !== null
+      ? paintingSystem.saveSurfaceMaterials()
+      : false;
   };
 
   // Load surface materials from painting system
@@ -36,7 +38,9 @@ export const GameUI = ({ world }: GameUiProps) => {
     const manager = getTerrainPaintingManager();
     if (manager === null) return false;
     const paintingSystem = manager.getPaintingSystem();
-    return paintingSystem !== null ? paintingSystem.loadSurfaceMaterials() : false;
+    return paintingSystem !== null
+      ? paintingSystem.loadSurfaceMaterials()
+      : false;
   };
   // Map internal visualization mode numbers to UI labels (not used but kept for reference)
   const _materialOptions: { id: number; label: string }[] = [

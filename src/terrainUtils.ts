@@ -11,8 +11,7 @@ export const calculateHeight = (x: number, y: number): number => {
   const frequency = 0.15;
 
   const height =
-    baseHeight +
-    Math.sin(x * frequency) * Math.cos(y * frequency) * scale;
+    baseHeight + Math.sin(x * frequency) * Math.cos(y * frequency) * scale;
 
   return height;
 };

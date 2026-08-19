@@ -4,8 +4,8 @@
  * terrainStateManager and getTerrainMesh via window object.
  */
 
-import { getTerrainStateManager } from "src/terrain/TerrainStateManager";
 import { getTerrainMesh } from "src/scene/resources/mesh";
+import { getTerrainStateManager } from "src/terrain/TerrainStateManager";
 
 /**
  * Set up window globals for testing purposes.

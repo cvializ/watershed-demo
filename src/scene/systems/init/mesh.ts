@@ -3,11 +3,11 @@ import type { SceneInitSystem } from "@/scene/types";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { createAnimalMeshResource } from "@/scene/resources/meshes/animal";
 import { createDownslopeArrowsMeshResource } from "@/scene/resources/meshes/downslopeArrows";
-import { registerMeshInstanceFactory } from "@/scene/resources/meshInstances";
 import { createSunSphereResource } from "@/scene/resources/meshes/sunSphere";
 import { createTerrainGeometry } from "@/scene/resources/meshes/terrain";
 import { createTerrainMeshResource } from "@/scene/resources/meshes/terrain";
 import { createTerrainWireframeOverlayMesh } from "@/scene/resources/meshes/terrainWireframeOverlay";
+import { registerMeshInstanceFactory } from "@/scene/resources/meshInstances";
 import { setObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
 

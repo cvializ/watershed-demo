@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Terrain Save/Load Verification", () => {
-  test("should save and restore terrain geometry state correctly", async ({ page }) => {
+  test("should save and restore terrain geometry state correctly", async ({
+    page,
+  }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
@@ -26,7 +28,7 @@ test.describe("Terrain Save/Load Verification", () => {
 
     console.log("Initial terrain state:", initialState);
     expect(initialState).not.toBeNull();
-    if (!initialState) throw new Error('Initial state should not be null');
+    if (!initialState) throw new Error("Initial state should not be null");
     expect(initialState.length).toBe(10);
 
     // Save the state
@@ -48,13 +50,13 @@ test.describe("Terrain Save/Load Verification", () => {
       }
       const geometry = mesh.geometry;
       const positions = geometry.attributes.position;
-      
+
       // Directly modify the position array to simulate erosion
       for (let i = 0; i < Math.min(10, positions.count); i++) {
         const currentZ = positions.getZ(i);
         positions.setZ(i, currentZ - 5.0); // Lower the terrain by 5.0
       }
-      
+
       positions.needsUpdate = true;
       geometry.computeVertexNormals();
     });
@@ -76,7 +78,7 @@ test.describe("Terrain Save/Load Verification", () => {
     });
 
     console.log("State after erosion:", stateAfterErosion);
-    
+
     // Verify that erosion actually changed the terrain significantly (only Z values at indices 2, 5, 8)
     const erosionChanged = [2, 5, 8].every((idx: number) => {
       if (!initialState || !stateAfterErosion) return false;
@@ -120,7 +122,7 @@ test.describe("Terrain Save/Load Verification", () => {
       // After load, should be close to initial (within 0.5 tolerance for simulation drift)
       return Math.abs(val - initialVal) < 0.5;
     });
-    
+
     // Also verify it's different from the eroded state (only Z values)
     const differentFromEroded = [2, 5, 8].every((idx: number) => {
       if (!stateAfterLoad || !stateAfterErosion) return false;
@@ -130,7 +132,7 @@ test.describe("Terrain Save/Load Verification", () => {
     });
 
     console.log({ positionsRestored, differentFromEroded });
-    
+
     expect(positionsRestored).toBe(true);
     expect(differentFromEroded).toBe(true);
   });
