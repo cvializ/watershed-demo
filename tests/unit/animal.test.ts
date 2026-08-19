@@ -1,7 +1,7 @@
 import { createWorld } from "bitecs";
 import { expect, test } from "@playwright/test";
 
-import { Animal, Position } from "src/components/components";
+import { Animal, Position, Velocity } from "src/components/components";
 import { addAnimal } from "src/world/factories/addAnimal";
 import { createAnimal } from "src/world/factories/animal";
 import { query } from "bitecs";
@@ -69,5 +69,29 @@ test.describe("Animal", () => {
     expect(animals).toContain(animal1$);
     expect(animals).toContain(animal2$);
     expect(animals).toContain(animal3$);
+  });
+
+  test("should create animal with Velocity component", () => {
+    const world = createWorld();
+
+    const animal$ = createAnimal(world, 0, 0.5, 0);
+
+    // Check that Velocity component is present and initialized to zero
+    expect(Velocity.x[animal$]).toBe(0);
+    expect(Velocity.y[animal$]).toBe(0);
+    expect(Velocity.z[animal$]).toBe(0);
+  });
+
+  test("should query animals with Position and Velocity", () => {
+    const world = createWorld();
+
+    const animal1$ = addAnimal(world, { x: 2.0, y: 0.5, z: 2.0 });
+    const animal2$ = addAnimal(world, { x: -2.0, y: 0.5, z: -2.0 });
+
+    // Query animals with both Position and Velocity components
+    const animals = query(world, [Animal, Position, Velocity]);
+    expect(animals.length).toBe(2);
+    expect(animals).toContain(animal1$);
+    expect(animals).toContain(animal2$);
   });
 });

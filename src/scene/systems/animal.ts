@@ -2,17 +2,18 @@ import { query } from "bitecs";
 
 import type { SceneSystem } from "@/scene/types";
 
-import { Animal, Position } from "@/components/components";
+import { Animal, Position, Velocity } from "@/components/components";
 import { getSurfaceMaterialTexture } from "@/renderer/systems/init/simulation";
 import { logger } from "@/utils/logger";
 
 /**
- * Animal system - makes animals eat grass in their vicinity.
- * Anywhere on the terrain with grass and an animal will slowly become bare dirt.
+ * Animal system - makes animals move toward grass and eat it.
+ * Animals will wander toward areas with grass and graze on it,
+ * converting grass to bare dirt in their vicinity.
  */
-export const animalSystem: SceneSystem = (world, _scene, _dt): void => {
-  // Get all animal entities
-  const animals$ = query(world, [Animal, Position]);
+export const animalSystem: SceneSystem = (world, _scene, dt): void => {
+  // Get all animal entities with Position and Velocity
+  const animals$ = query(world, [Animal, Position, Velocity]);
 
   if (animals$.length === 0) {
     return;
@@ -25,29 +26,100 @@ export const animalSystem: SceneSystem = (world, _scene, _dt): void => {
     return;
   }
 
-  // Grazing parameters
+  // Movement parameters
+  const movementSpeed = 2.0; // World units per second
   const grazingRadius = 1.5; // World units - how far the animal can reach
+  const grassDetectionRadius = 4.0; // How far animals can detect grass
+  const wanderSpeed = 1.0; // Speed when wandering without target
+
+  // Terrain and texture configuration
+  const terrainSize = 12; // Physical size of terrain (-6 to +6)
+  const textureSize = 128; // Texture resolution
+  const terrainCenter = terrainSize / 2; // 6 - half size for coordinate conversion
 
   for (const entity$ of animals$) {
     const x = Position.x[entity$];
     const z = Position.z[entity$];
 
-    // Get the animal's position on the terrain surface
-    // Animals are positioned at ground level, so we use their x and z coordinates
-    // to determine where they're grazing on the terrain
-    
-    // Convert world coordinates to terrain-local coordinates (0 to terrainSize)
-    const terrainSize = 12; // Match the terrain size from simulation
-    const textureX = (x + terrainSize / 2);
-    const textureY = (z + terrainSize / 2);
+    // Find nearest grass patch within detection radius
+    let targetX = 0;
+    let targetZ = 0;
+    let foundGrass = false;
+    let closestDistance = Infinity;
+
+    // Search for grass in a grid pattern within detection radius
+    const searchSteps = 8; // Number of points to check in each direction
+    for (let i = 0; i <= searchSteps; i++) {
+      const angle = (i / searchSteps) * Math.PI * 2;
+      for (let distance = 0; distance <= grassDetectionRadius; distance += grassDetectionRadius / searchSteps) {
+        const checkX = x + Math.cos(angle) * distance;
+        const checkZ = z + Math.sin(angle) * distance;
+
+        // Check if within terrain bounds (-terrainCenter to +terrainCenter)
+        if (checkX < -terrainCenter || checkX > terrainCenter || checkZ < -terrainCenter || checkZ > terrainCenter) {
+          continue;
+        }
+
+        // Convert world coordinates to texture coordinates (0 to terrainSize)
+        const texX = checkX + terrainCenter;
+        const texZ = checkZ + terrainCenter;
+
+        const material = surfaceMaterialTexture.getMaterialAtPosition(texX, texZ);
+        if (material === "grass") {
+          const distSquared = distance * distance;
+          if (distSquared < closestDistance) {
+            closestDistance = distSquared;
+            targetX = checkX;
+            targetZ = checkZ;
+            foundGrass = true;
+          }
+        }
+      }
+    }
+
+    // Update velocity based on whether we found grass
+    if (foundGrass) {
+      // Move toward the grass
+      const dx = targetX - x;
+      const dz = targetZ - z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+
+      if (distance > 0.1) {
+        // Normalize and apply speed
+        const speed = movementSpeed;
+        Velocity.x[entity$] = (dx / distance) * speed;
+        Velocity.z[entity$] = (dz / distance) * speed;
+      } else {
+        // At target, stop moving
+        Velocity.x[entity$] = 0;
+        Velocity.z[entity$] = 0;
+      }
+    } else {
+      // No grass found, wander slowly
+      const wanderAngle = Date.now() * 0.001 + entity$;
+      Velocity.x[entity$] = Math.cos(wanderAngle) * wanderSpeed;
+      Velocity.z[entity$] = Math.sin(wanderAngle) * wanderSpeed;
+    }
+
+    // Apply velocity to position (with dt for frame-rate independence)
+    Position.x[entity$] += Velocity.x[entity$] * dt;
+    Position.z[entity$] += Velocity.z[entity$] * dt;
+
+    // Keep animals within terrain bounds (-terrainCenter to +terrainCenter)
+    Position.x[entity$] = Math.max(-terrainCenter, Math.min(terrainCenter, Position.x[entity$]));
+    Position.z[entity$] = Math.max(-terrainCenter, Math.min(terrainCenter, Position.z[entity$]));
+
+    // Convert world coordinates to texture coordinates (0 to terrainSize)
+    const textureX = Position.x[entity$] + terrainCenter;
+    const textureZ = Position.z[entity$] + terrainCenter;
 
     // Check and convert grass to bare dirt within grazing radius
-    const radiusPixels = (grazingRadius / terrainSize) * 128; // Assuming 128x128 texture
+    const radiusPixels = (grazingRadius / terrainSize) * textureSize;
     const radiusSquared = radiusPixels * radiusPixels;
 
     // Get the center pixel coordinates for efficient iteration
-    const centerX = textureX / terrainSize * (128 - 1);
-    const centerY = (1.0 - textureY / terrainSize) * (128 - 1); // Flip Y to match texture coordinates
+    const centerX = (textureX / terrainSize) * (textureSize - 1);
+    const centerY = ((terrainSize - textureZ) / terrainSize) * (textureSize - 1); // Flip Y to match texture coordinates
 
     // Iterate over pixels within the grazing radius
     const searchRadius = Math.ceil(radiusPixels);
@@ -63,14 +135,14 @@ export const animalSystem: SceneSystem = (world, _scene, _dt): void => {
           const pixelY = Math.floor(centerY + py);
 
           // Clamp to valid texture range
-          if (pixelX >= 0 && pixelX < 128 && pixelY >= 0 && pixelY < 128) {
-            const worldX = textureX + (px / (128 - 1)) * terrainSize;
-            const worldY = textureY - (py / (128 - 1)) * terrainSize; // Account for Y flip
+          if (pixelX >= 0 && pixelX < textureSize && pixelY >= 0 && pixelY < textureSize) {
+            const worldX = textureX + (px / (textureSize - 1)) * terrainSize;
+            const worldZ = textureZ - (py / (textureSize - 1)) * terrainSize; // Account for Y flip
 
             // Check if this position has grass and convert to bare dirt
             const currentMaterial = surfaceMaterialTexture.getMaterialAtPosition(
               Math.max(0, Math.min(terrainSize, worldX)),
-              Math.max(0, Math.min(terrainSize, worldY))
+              Math.max(0, Math.min(terrainSize, worldZ))
             );
 
             if (currentMaterial === "grass") {
@@ -78,7 +150,7 @@ export const animalSystem: SceneSystem = (world, _scene, _dt): void => {
               // This creates gradual grazing over time
               surfaceMaterialTexture.paint(
                 Math.max(0, Math.min(terrainSize, worldX)),
-                Math.max(0, Math.min(terrainSize, worldY)),
+                Math.max(0, Math.min(terrainSize, worldZ)),
                 "bareDirt",
                 0.1 // Small brush for gradual effect
               );
