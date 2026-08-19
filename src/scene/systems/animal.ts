@@ -4,20 +4,18 @@ import type { SceneSystem } from "@/scene/types";
 
 import { Animal, Position, Velocity } from "@/components/components";
 import { getSurfaceMaterialTexture } from "@/renderer/systems/init/simulation";
-import { logger } from "@/utils/logger";
 
-// Animal movement state tracking
+// Animal movement state - simplified navigation approach
 const animalMovementState = new Map<number, {
-  targetX: number;
-  targetZ: number;
-  timeAtTarget: number;
   wanderAngle: number;
+  directionChangeTime: number;
 }>();
 
 /**
  * Animal system - makes animals move toward grass and eat it.
- * Animals will wander toward areas with grass and graze on it,
- * converting grass to bare dirt in their vicinity.
+ * Uses a biased random walk navigation: animals wander with periodic direction changes,
+ * but are pulled toward areas with grass. This prevents getting stuck while still
+ * allowing them to find and graze on grass patches.
  */
 export const animalSystem: SceneSystem = (world, _scene, dt): void => {
   // Get all animal entities with Position and Velocity
@@ -30,18 +28,16 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
   // Get the surface material texture to modify grass
   const surfaceMaterialTexture = getSurfaceMaterialTexture();
   if (!surfaceMaterialTexture) {
-    logger.warn("[animal:system] Surface material texture not available");
     return;
   }
 
-  // Movement parameters
-  const movementSpeed = 0.5; // World units per second (slower movement)
-  const grazingRadius = 0.5; // World units - smaller eating radius
-  const grassDetectionRadius = 8.0; // How far animals can detect grass (larger detection area)
-  const wanderSpeed = 0.3; // Speed when wandering without target (slower)
-  const maxTimeAtTarget = 2.0; // Seconds before animal moves on from current location
-  const stopThreshold = 0.5; // Distance threshold for "reached target"
-  const minTargetDistance = 0.3; // Minimum distance to consider as a valid target (prevents targeting current position)
+  // Movement parameters - simplified navigation
+  const movementSpeed = 0.5; // World units per second
+  const grazingRadius = 0.5; // World units - eating radius
+  const grassDetectionRadius = 8.0; // How far animals can detect grass
+  const wanderSpeed = 0.35; // Speed when wandering
+  const directionChangeInterval = 4.0; // Seconds between random direction changes
+  const grassBiasStrength = 0.3; // How strongly animals are pulled toward grass (0-1)
 
   // Terrain and texture configuration
   const terrainSize = 12; // Physical size of terrain (-6 to +6)
@@ -55,99 +51,104 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
     // Initialize movement state for this animal if needed
     if (!animalMovementState.has(entity$)) {
       animalMovementState.set(entity$, {
-        targetX: x,
-        targetZ: z,
-        timeAtTarget: 0,
         wanderAngle: Math.random() * Math.PI * 2,
+        directionChangeTime: Date.now(),
       });
     }
     const state = animalMovementState.get(entity$)!;
 
-    // Find nearest grass patch within detection radius (excluding current position)
-    let targetX = 0;
-    let targetZ = 0;
-    let foundGrass = false;
-    let closestDistance = Infinity;
-
-    // Search for grass in a spiral pattern within detection radius
-    // This gives better coverage than radial grid search
-    const numRings = 5; // Number of concentric rings to check
-    const pointsPerRing = 16; // Points per ring for good coverage
-    
-    for (let ring = 1; ring <= numRings; ring++) {
-      const distance = (ring / numRings) * grassDetectionRadius;
-      
-      for (let i = 0; i < pointsPerRing; i++) {
-        const angle = (i / pointsPerRing) * Math.PI * 2 + (ring * 0.5); // Offset each ring
-        const checkX = x + Math.cos(angle) * distance;
-        const checkZ = z + Math.sin(angle) * distance;
-
-        // Check if within terrain bounds (-terrainCenter to +terrainCenter)
-        if (checkX < -terrainCenter || checkX > terrainCenter || checkZ < -terrainCenter || checkZ > terrainCenter) {
-          continue;
-        }
-
-        // Convert world coordinates to texture coordinates (0 to terrainSize)
+    // Step 1: Check if there's grass nearby (within grazing radius)
+    let hasGrassNearby = false;
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+      const checkX = x + Math.cos(angle) * grazingRadius;
+      const checkZ = z + Math.sin(angle) * grazingRadius;
+      if (checkX >= -terrainCenter && checkX <= terrainCenter && 
+          checkZ >= -terrainCenter && checkZ <= terrainCenter) {
         const texX = checkX + terrainCenter;
         const texZ = checkZ + terrainCenter;
-
-        const material = surfaceMaterialTexture.getMaterialAtPosition(texX, texZ);
-        if (material === "grass" && distance >= minTargetDistance) {
-          const distSquared = distance * distance;
-          if (distSquared < closestDistance) {
-            closestDistance = distSquared;
-            targetX = checkX;
-            targetZ = checkZ;
-            foundGrass = true;
-          }
+        if (surfaceMaterialTexture.getMaterialAtPosition(texX, texZ) === "grass") {
+          hasGrassNearby = true;
+          break;
         }
       }
     }
 
-    // Update velocity based on whether we found grass
-    if (foundGrass) {
-      // Move toward the grass, but keep moving even when close
-      const dx = targetX - x;
-      const dz = targetZ - z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-
-      if (distance > stopThreshold) {
-        // Not yet at target, move toward it at full speed
-        state.timeAtTarget = 0; // Reset timer when moving
-        Velocity.x[entity$] = (dx / distance) * movementSpeed;
-        Velocity.z[entity$] = (dz / distance) * movementSpeed;
-      } else {
-        // At or near target - keep moving slowly to explore the area
-        state.timeAtTarget += dt;
+    // Step 2: Calculate grass gradient (direction toward most grass)
+    let grassDirectionX = 0;
+    let grassDirectionZ = 0;
+    
+    if (!hasGrassNearby) {
+      // Sample grass in multiple directions at detection radius
+      const sampleCount = 8;
+      for (let i = 0; i < sampleCount; i++) {
+        const angle = (i / sampleCount) * Math.PI * 2;
+        const checkX = x + Math.cos(angle) * grassDetectionRadius;
+        const checkZ = z + Math.sin(angle) * grassDetectionRadius;
         
-        // If we've been at this location too long, move on to find new grass
-        if (state.timeAtTarget > maxTimeAtTarget) {
-          // Reset time and continue wandering to find new grass
-          state.timeAtTarget = 0;
-          state.wanderAngle += Math.PI / 4; // Turn 45 degrees
-          Velocity.x[entity$] = Math.cos(state.wanderAngle) * wanderSpeed;
-          Velocity.z[entity$] = Math.sin(state.wanderAngle) * wanderSpeed;
-        } else {
-          // Still grazing - move slowly in a circle around the target
-          const grazeAngle = Date.now() * 0.5 + entity$;
-          Velocity.x[entity$] = Math.cos(grazeAngle) * (movementSpeed * 0.2);
-          Velocity.z[entity$] = Math.sin(grazeAngle) * (movementSpeed * 0.2);
+        if (checkX >= -terrainCenter && checkX <= terrainCenter && 
+            checkZ >= -terrainCenter && checkZ <= terrainCenter) {
+          // Count grass in a small area around this point
+          let grassCount = 0;
+          for (let j = 0; j < 4; j++) {
+            const innerAngle = (j / 4) * Math.PI * 2;
+            const innerX = checkX + Math.cos(innerAngle) * 1.0;
+            const innerZ = checkZ + Math.sin(innerAngle) * 1.0;
+            if (innerX >= -terrainCenter && innerX <= terrainCenter &&
+                innerZ >= -terrainCenter && innerZ <= terrainCenter) {
+              const innerTexX = innerX + terrainCenter;
+              const innerTexZ = innerZ + terrainCenter;
+              if (surfaceMaterialTexture.getMaterialAtPosition(innerTexX, innerTexZ) === "grass") {
+                grassCount++;
+              }
+            }
+          }
+          
+          // Add to gradient weighted by grass count
+          grassDirectionX += Math.cos(angle) * grassCount;
+          grassDirectionZ += Math.sin(angle) * grassCount;
         }
       }
-    } else {
-      // No grass found, wander with smooth direction changes
-      state.wanderAngle += dt * 0.5; // Gradual angle change (30 degrees per second)
-      Velocity.x[entity$] = Math.cos(state.wanderAngle) * wanderSpeed;
-      Velocity.z[entity$] = Math.sin(state.wanderAngle) * wanderSpeed;
     }
 
-    // Debug output (uncomment to see in console)
-    if (entity$ === 1) { // Only log for first animal to avoid spam
-      const currentDist = foundGrass ? Math.sqrt((targetX - x) ** 2 + (targetZ - z) ** 2) : 0;
-      console.log(`Animal ${entity$}: pos=(${x.toFixed(2)}, ${z.toFixed(2)}), foundGrass=${foundGrass}, target=(${targetX.toFixed(2)}, ${targetZ.toFixed(2)}), dist=${currentDist.toFixed(2)}, vel=(${Velocity.x[entity$].toFixed(2)}, ${Velocity.z[entity$].toFixed(2)})`);
+    // Step 3: Update wander direction periodically
+    const now = Date.now();
+    if (now - state.directionChangeTime > directionChangeInterval * 1000) {
+      // Change to a new random direction
+      state.wanderAngle = Math.random() * Math.PI * 2;
+      state.directionChangeTime = now;
     }
 
-    // Apply velocity to position (with dt for frame-rate independence)
+    // Step 4: Calculate final velocity - blend wander direction with grass gradient
+    const wanderDirX = Math.cos(state.wanderAngle);
+    const wanderDirZ = Math.sin(state.wanderAngle);
+    
+    // Normalize grass direction if it has magnitude
+    const grassMagnitude = Math.sqrt(grassDirectionX ** 2 + grassDirectionZ ** 2);
+    let finalDirX = wanderDirX;
+    let finalDirZ = wanderDirZ;
+    
+    if (grassMagnitude > 0) {
+      const grassDirX = grassDirectionX / grassMagnitude;
+      const grassDirZ = grassDirectionZ / grassMagnitude;
+      
+      // Blend: wander direction + biased pull toward grass
+      finalDirX = wanderDirX * (1 - grassBiasStrength) + grassDirX * grassBiasStrength;
+      finalDirZ = wanderDirZ * (1 - grassBiasStrength) + grassDirZ * grassBiasStrength;
+      
+      // Normalize the result
+      const finalMagnitude = Math.sqrt(finalDirX ** 2 + finalDirZ ** 2);
+      if (finalMagnitude > 0) {
+        finalDirX /= finalMagnitude;
+        finalDirZ /= finalMagnitude;
+      }
+    }
+
+    // Apply speed based on whether we have grass nearby or not
+    const currentSpeed = hasGrassNearby ? movementSpeed * 0.3 : wanderSpeed;
+    Velocity.x[entity$] = finalDirX * currentSpeed;
+    Velocity.z[entity$] = finalDirZ * currentSpeed;
+
+    // Step 5: Apply velocity to position (with dt for frame-rate independence)
     Position.x[entity$] += Velocity.x[entity$] * dt;
     Position.z[entity$] += Velocity.z[entity$] * dt;
 
@@ -155,11 +156,11 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
     Position.x[entity$] = Math.max(-terrainCenter, Math.min(terrainCenter, Position.x[entity$]));
     Position.z[entity$] = Math.max(-terrainCenter, Math.min(terrainCenter, Position.z[entity$]));
 
-    // Convert world coordinates to texture coordinates (0 to terrainSize)
+    // Step 6: Convert world coordinates to texture coordinates (0 to terrainSize)
     const textureX = Position.x[entity$] + terrainCenter;
     const textureZ = Position.z[entity$] + terrainCenter;
 
-    // Check and convert grass to bare dirt within grazing radius
+    // Step 7: Check and convert grass to bare dirt within grazing radius
     const radiusPixels = (grazingRadius / terrainSize) * textureSize;
     const radiusSquared = radiusPixels * radiusPixels;
 
@@ -206,8 +207,10 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
       }
     }
 
-    logger.debug(
-      `[animal:system] Animal ${entity$} grazing at (${x}, ${z})`
-    );
+    // Debug output - log every 5 seconds for first animal to see behavior over time
+    const debugInterval = 5000; // 5 seconds
+    if (entity$ === 1 && Math.abs(Date.now() % debugInterval) < 50) {
+      console.log(`Animal ${entity$}: pos=(${x.toFixed(2)}, ${z.toFixed(2)}), grassNearby=${hasGrassNearby}, wanderAngle=${state.wanderAngle.toFixed(2)}, vel=(${Velocity.x[entity$].toFixed(2)}, ${Velocity.z[entity$].toFixed(2)})`);
+    }
   }
 };
