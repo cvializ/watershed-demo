@@ -110,7 +110,7 @@ export const createGpuWaterHeight = (
   );
   uniforms.terrainHeightmap = { value: heightMapTexture };
   uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
-  uniforms.baseDrainageRate = { value: 0.01 }; // Default: slow drainage
+  uniforms.baseDrainageRate = { value: 0.003 }; // Low drainage: water collects in low areas
   uniforms.waterSourcesMap = { value: null };
   uniforms.cloudShadowMap = { value: null };
   uniforms.surfaceMaterialMap = { value: surfaceMaterialMap ?? null };
