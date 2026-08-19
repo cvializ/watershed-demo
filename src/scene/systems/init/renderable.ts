@@ -5,6 +5,12 @@ import type { SceneInitSystem } from "@/scene/types";
 
 import { MeshRef, ObjectRef, Renderable } from "@/components/components";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
+import {
+  createMeshInstance,
+  disposeMeshInstance,
+  getMeshInstance,
+  hasMeshInstanceFactory,
+} from "@/scene/resources/meshInstances";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { logger } from "@/utils/logger";
@@ -15,13 +21,28 @@ export const initRenderables: SceneInitSystem = (world, scene): void => {
   // Handle MeshRef + Renderable entities
   observe(world, onAdd(MeshRef, Renderable), (entity$) => {
     logger.debug("RENDERABLE ADDED");
-    scene.add(getMesh(MeshRef.ref[entity$] as MeshEnum));
+    const meshId = MeshRef.ref[entity$] as MeshEnum;
+    if (hasMeshInstanceFactory(meshId)) {
+      // Mesh types that need one object per entity get a fresh instance
+      scene.add(createMeshInstance(entity$, meshId));
+      return;
+    }
+    scene.add(getMesh(meshId));
   });
 
   observe(world, onRemove(MeshRef, Renderable), (eid$) => {
     logger.debug("RENDERABLE REMOVED");
     logger.debug(`Remove mesh ${MeshRef.ref[eid$]}`);
-    scene.remove(getMesh(MeshRef.ref[eid$] as MeshEnum));
+    const meshId = MeshRef.ref[eid$] as MeshEnum;
+    if (hasMeshInstanceFactory(meshId)) {
+      const instance = getMeshInstance(eid$);
+      if (instance) {
+        scene.remove(instance);
+        disposeMeshInstance(eid$);
+      }
+      return;
+    }
+    scene.remove(getMesh(meshId));
   });
 
   // Handle ObjectRef + Renderable entities

@@ -3,6 +3,7 @@ import type { SceneInitSystem } from "@/scene/types";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { createAnimalMeshResource } from "@/scene/resources/meshes/animal";
 import { createDownslopeArrowsMeshResource } from "@/scene/resources/meshes/downslopeArrows";
+import { registerMeshInstanceFactory } from "@/scene/resources/meshInstances";
 import { createSunSphereResource } from "@/scene/resources/meshes/sunSphere";
 import { createTerrainGeometry } from "@/scene/resources/meshes/terrain";
 import { createTerrainMeshResource } from "@/scene/resources/meshes/terrain";
@@ -28,5 +29,8 @@ export const initMeshes: SceneInitSystem = (_world, scene) => {
 
   setObject(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
   setObject(MeshEnum.SunSphere, createSunSphereResource());
-  setObject(MeshEnum.Animal, createAnimalMeshResource());
+
+  // Animals are many-to-one: each animal entity needs its own mesh instance
+  // rather than a single shared object, so register a per-entity factory.
+  registerMeshInstanceFactory(MeshEnum.Animal, createAnimalMeshResource);
 };
