@@ -1,8 +1,8 @@
 import * as THREE from "three";
 
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
-import type { TerrainPainter } from "@/terrain/paintTerrain";
 import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
+import type { TerrainPainter } from "@/terrain/paintTerrain";
 
 /**
  * Configuration for terrain painting interaction.
@@ -242,12 +242,7 @@ export const createTerrainPaintingSystem = (
       );
 
       // Paint at this location
-      terrainPainter.paint(
-        x,
-        y,
-        config.brushMaterial,
-        config.brushRadius,
-      );
+      terrainPainter.paint(x, y, config.brushMaterial, config.brushRadius);
     } else {
       console.log("[painting] No terrain intersection found");
       lastWorldPosition = null;

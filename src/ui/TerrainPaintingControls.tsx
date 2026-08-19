@@ -37,8 +37,6 @@ export const TerrainPaintingControls = ({
     window.dispatchEvent(new CustomEvent("terrain-paint-clear"));
   };
 
-  
-
   // Get material under cursor for display
   const getMaterialUnderCursor = (): string => {
     if (!paintingSystem) return "N/A";

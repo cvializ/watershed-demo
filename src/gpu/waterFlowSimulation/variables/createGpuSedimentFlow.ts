@@ -56,7 +56,8 @@ export const createGpuSedimentFlow = (
   logger.info("[gpu:sediment-flow:create]");
 
   // Use saved texture if provided, otherwise create initial texture
-  const sedimentFlowTexture = savedTexture || createInitialSedimentFlowTexture(width).texture;
+  const sedimentFlowTexture =
+    savedTexture || createInitialSedimentFlowTexture(width).texture;
   const sedimentFlowVariable = gpuCompute.addVariable(
     "sedimentFlow",
     sedimentFlowFragmentShader,

@@ -1,8 +1,8 @@
-import { createWorld } from "bitecs";
 import { expect, test } from "@playwright/test";
-import * as THREE from "three";
-
+import { createWorld } from "bitecs";
 import { createGameWorldContext } from "src/context";
+import { MeshEnum } from "src/scene/resources/mesh";
+import { createAnimalMeshResource } from "src/scene/resources/meshes/animal";
 import {
   createMeshInstance,
   disposeMeshInstance,
@@ -12,11 +12,10 @@ import {
   resetMeshInstances,
   resolveEntityMesh,
 } from "src/scene/resources/meshInstances";
-import { createAnimalMeshResource } from "src/scene/resources/meshes/animal";
-import { MeshEnum } from "src/scene/resources/mesh";
 import { initRenderables } from "src/scene/systems/init/renderable";
 import { positionSystem } from "src/scene/systems/position";
 import { createAnimal } from "src/world/factories/animal";
+import * as THREE from "three";
 
 test.describe("meshInstances", () => {
   test.beforeEach(() => {

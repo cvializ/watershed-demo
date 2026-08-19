@@ -39,22 +39,29 @@ function findGlobalVariables(
 
       if (parent) {
         // Check for window.xxx = ... or global.xxx = ... or globalThis.xxx = ...
-        if (ts.isElementAccessExpression(parent) || ts.isPropertyAssignment(parent)) {
-          const expr = parent as ts.ElementAccessExpression | ts.PropertyAssignment;
+        if (
+          ts.isElementAccessExpression(parent) ||
+          ts.isPropertyAssignment(parent)
+        ) {
+          const expr = parent as
+            | ts.ElementAccessExpression
+            | ts.PropertyAssignment;
 
           // Check if accessing a global object
-          const target = 'expression' in expr ? expr.expression : (expr as any).name;
+          const target =
+            "expression" in expr ? expr.expression : (expr as any).name;
 
           if (ts.isIdentifier(target)) {
-            const globalNames = ['window', 'global', 'globalThis'];
+            const globalNames = ["window", "global", "globalThis"];
             if (globalNames.includes(target.text)) {
               const propName = ts.isPropertyAssignment(expr)
                 ? (expr.name as ts.Identifier).text
-                : 'unknown';
+                : "unknown";
 
-              const line = sourceFile.getLineAndCharacterOfPosition(
-                currentNode.getFullStart()
-              ).line + 1;
+              const line =
+                sourceFile.getLineAndCharacterOfPosition(
+                  currentNode.getFullStart(),
+                ).line + 1;
 
               violations.push({
                 file: path.relative(process.cwd(), sourceFile.fileName),
@@ -73,14 +80,15 @@ function findGlobalVariables(
       const propAccess = currentNode as ts.PropertyAccessExpression;
 
       if (ts.isIdentifier(propAccess.expression)) {
-        const globalNames = ['window', 'global', 'globalThis'];
+        const globalNames = ["window", "global", "globalThis"];
         if (globalNames.includes(propAccess.expression.text)) {
           // Check if this is part of an assignment
           const parent = currentNode.parent;
           if (parent && ts.isExpressionStatement(parent)) {
-            const line = sourceFile.getLineAndCharacterOfPosition(
-              currentNode.getFullStart()
-            ).line + 1;
+            const line =
+              sourceFile.getLineAndCharacterOfPosition(
+                currentNode.getFullStart(),
+              ).line + 1;
 
             violations.push({
               file: path.relative(process.cwd(), sourceFile.fileName),
@@ -91,11 +99,14 @@ function findGlobalVariables(
           } else if (parent && ts.isBinaryExpression(parent)) {
             const binaryExpr = parent as ts.BinaryExpression;
             // Check if this property access is on the left side of an assignment
-            if (binaryExpr.left === currentNode && 
-                binaryExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-              const line = sourceFile.getLineAndCharacterOfPosition(
-                currentNode.getFullStart()
-              ).line + 1;
+            if (
+              binaryExpr.left === currentNode &&
+              binaryExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken
+            ) {
+              const line =
+                sourceFile.getLineAndCharacterOfPosition(
+                  currentNode.getFullStart(),
+                ).line + 1;
 
               violations.push({
                 file: path.relative(process.cwd(), sourceFile.fileName),
@@ -114,22 +125,27 @@ function findGlobalVariables(
       const elemAccess = currentNode as ts.ElementAccessExpression;
 
       if (ts.isIdentifier(elemAccess.expression)) {
-        const globalNames = ['window', 'global', 'globalThis'];
+        const globalNames = ["window", "global", "globalThis"];
         if (globalNames.includes(elemAccess.expression.text)) {
           // Check if the argument is a string literal (property name)
-          if (elemAccess.argumentExpression && 
-              ts.isStringLiteral(elemAccess.argumentExpression)) {
+          if (
+            elemAccess.argumentExpression &&
+            ts.isStringLiteral(elemAccess.argumentExpression)
+          ) {
             const propName = elemAccess.argumentExpression.text;
 
             // Check if this is part of an assignment
             const parent = currentNode.parent;
             if (parent && ts.isBinaryExpression(parent)) {
               const binaryExpr = parent as ts.BinaryExpression;
-              if (binaryExpr.left === currentNode && 
-                  binaryExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-                const line = sourceFile.getLineAndCharacterOfPosition(
-                  currentNode.getFullStart()
-                ).line + 1;
+              if (
+                binaryExpr.left === currentNode &&
+                binaryExpr.operatorToken.kind === ts.SyntaxKind.EqualsToken
+              ) {
+                const line =
+                  sourceFile.getLineAndCharacterOfPosition(
+                    currentNode.getFullStart(),
+                  ).line + 1;
 
                 violations.push({
                   file: path.relative(process.cwd(), sourceFile.fileName),
@@ -220,7 +236,7 @@ function main() {
 
   console.log("Checking for custom global variables...\n");
   console.log(
-    "This check ensures the codebase uses module exports instead of global variables.\n"
+    "This check ensures the codebase uses module exports instead of global variables.\n",
   );
 
   const filesToCheck: string[] = [];
@@ -240,11 +256,9 @@ function main() {
 
   // Output results
   if (allViolations.length > 0) {
+    console.error("❌ FAILED: Custom global variables found!\n");
     console.error(
-      "❌ FAILED: Custom global variables found!\n"
-    );
-    console.error(
-      "Global variables are forbidden. Use module exports instead.\n"
+      "Global variables are forbidden. Use module exports instead.\n",
     );
 
     // Group violations by file for better readability
@@ -264,7 +278,7 @@ function main() {
     }
 
     console.error(
-      `Summary: ${allViolations.length} global variable(s) found in ${violationsByFile.size} file(s)`
+      `Summary: ${allViolations.length} global variable(s) found in ${violationsByFile.size} file(s)`,
     );
     process.exit(1);
   } else {

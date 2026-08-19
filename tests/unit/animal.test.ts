@@ -1,10 +1,9 @@
-import { createWorld } from "bitecs";
 import { expect, test } from "@playwright/test";
-
+import { createWorld } from "bitecs";
+import { query } from "bitecs";
 import { Animal, Position, Velocity } from "src/components/components";
 import { addAnimal } from "src/world/factories/addAnimal";
 import { createAnimal } from "src/world/factories/animal";
-import { query } from "bitecs";
 
 test.describe("Animal", () => {
   test("should create an animal entity with required components", () => {

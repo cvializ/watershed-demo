@@ -1,5 +1,7 @@
 import type { Variable } from "three/addons/misc/GPUComputationRenderer.js";
+
 import * as THREE from "three";
+
 import { logger } from "@/utils/logger";
 
 /**
@@ -38,13 +40,23 @@ export const saveGPUSimulationState = (
   gameTime?: number,
   surfaceMaterialTexture?: THREE.Texture | null,
 ): GPUSimulationState | null => {
-  const { heightMapVariable, waterHeightVariable, velocityVariable, sedimentVariable, cloudVariable } = variables;
+  const {
+    heightMapVariable,
+    waterHeightVariable,
+    velocityVariable,
+    sedimentVariable,
+    cloudVariable,
+  } = variables;
 
   // Read from current render targets
-  const heightRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
-  const waterHeightRenderTarget = gpuCompute.getCurrentRenderTarget(waterHeightVariable);
-  const velocityRenderTarget = gpuCompute.getCurrentRenderTarget(velocityVariable);
-  const sedimentRenderTarget = gpuCompute.getCurrentRenderTarget(sedimentVariable);
+  const heightRenderTarget =
+    gpuCompute.getCurrentRenderTarget(heightMapVariable);
+  const waterHeightRenderTarget =
+    gpuCompute.getCurrentRenderTarget(waterHeightVariable);
+  const velocityRenderTarget =
+    gpuCompute.getCurrentRenderTarget(velocityVariable);
+  const sedimentRenderTarget =
+    gpuCompute.getCurrentRenderTarget(sedimentVariable);
   const cloudRenderTarget = gpuCompute.getCurrentRenderTarget(cloudVariable);
 
   const width = heightRenderTarget.texture.image.width || 512;
@@ -58,22 +70,58 @@ export const saveGPUSimulationState = (
   const cloudsData = new Float32Array(size);
 
   // Read all render targets
-  renderer.readRenderTargetPixels(heightRenderTarget, 0, 0, width, height, heightMapData);
-  renderer.readRenderTargetPixels(waterHeightRenderTarget, 0, 0, width, height, waterHeightData);
-  renderer.readRenderTargetPixels(velocityRenderTarget, 0, 0, width, height, velocityData);
-  renderer.readRenderTargetPixels(sedimentRenderTarget, 0, 0, width, height, sedimentData);
-  renderer.readRenderTargetPixels(cloudRenderTarget, 0, 0, width, height, cloudsData);
+  renderer.readRenderTargetPixels(
+    heightRenderTarget,
+    0,
+    0,
+    width,
+    height,
+    heightMapData,
+  );
+  renderer.readRenderTargetPixels(
+    waterHeightRenderTarget,
+    0,
+    0,
+    width,
+    height,
+    waterHeightData,
+  );
+  renderer.readRenderTargetPixels(
+    velocityRenderTarget,
+    0,
+    0,
+    width,
+    height,
+    velocityData,
+  );
+  renderer.readRenderTargetPixels(
+    sedimentRenderTarget,
+    0,
+    0,
+    width,
+    height,
+    sedimentData,
+  );
+  renderer.readRenderTargetPixels(
+    cloudRenderTarget,
+    0,
+    0,
+    width,
+    height,
+    cloudsData,
+  );
 
   // Read surface material texture if provided
   let surfaceMaterialData: Float32Array | null = null;
   if (surfaceMaterialTexture) {
     const size = width * height * 4;
-    
+
     // Read the surface material texture directly from its data array if available
     const textureAsDataTexture = surfaceMaterialTexture as THREE.DataTexture;
-    const textureData = textureAsDataTexture.image && 'data' in textureAsDataTexture.image
-      ? (textureAsDataTexture.image.data as Float32Array | undefined)
-      : undefined;
+    const textureData =
+      textureAsDataTexture.image && "data" in textureAsDataTexture.image
+        ? (textureAsDataTexture.image.data as Float32Array | undefined)
+        : undefined;
     if (textureData && textureData instanceof Float32Array) {
       // Copy directly from the texture's data array
       surfaceMaterialData = new Float32Array(textureData.slice(0, size));
@@ -140,16 +188,14 @@ export const createTexturesFromState = (
  * Destroy all GPU computation variables and render targets
  * This is necessary before recreating the simulation with restored state
  */
-export const destroyGpuSimulation = (
-  variables: {
-    heightMapVariable: Variable;
-    waterHeightVariable: Variable;
-    velocityVariable: Variable;
-    sedimentVariable: Variable;
-    cloudVariable: Variable;
-    testingVariable?: Variable;
-  },
-): void => {
+export const destroyGpuSimulation = (variables: {
+  heightMapVariable: Variable;
+  waterHeightVariable: Variable;
+  velocityVariable: Variable;
+  sedimentVariable: Variable;
+  cloudVariable: Variable;
+  testingVariable?: Variable;
+}): void => {
   const allVariables = [
     variables.heightMapVariable,
     variables.waterHeightVariable,
@@ -183,7 +229,9 @@ export const destroyGpuSimulation = (
     }
   }
 
-  logger.info("[gpu:destroy] Destroyed all GPU simulation variables and render targets");
+  logger.info(
+    "[gpu:destroy] Destroyed all GPU simulation variables and render targets",
+  );
 };
 
 /**
@@ -206,14 +254,7 @@ export const getGPUHeightMapData = (
 
   // Read the actual pixel data from the render target
   const pixelData = new Float32Array(width * height * 4);
-  renderer.readRenderTargetPixels(
-    renderTarget,
-    0,
-    0,
-    width,
-    height,
-    pixelData,
-  );
+  renderer.readRenderTargetPixels(renderTarget, 0, 0, width, height, pixelData);
 
   return pixelData;
 };

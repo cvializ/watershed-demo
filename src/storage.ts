@@ -7,26 +7,24 @@ import * as THREE from "three";
 
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
-import { getControls } from "@/renderer/resources/camera";
-import { getRenderer } from "@/renderer/resources/renderer";
-import {
-  recreateSimulationWithSavedState,
-} from "@/renderer/systems/init/simulation";
-import { waterSimulation } from "@/renderer/systems/init/simulation";
-import { GeneralObjectEnum } from "@/scene/resources/object";
-import { getObject } from "@/scene/resources/objectCache";
-import { getMaterial, MaterialEnum } from "@/scene/resources/material";
-import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
-import { updateTerrainGeometryFromRenderTarget } from "@/scene/systems/updateTerrainGeometry";
-import { getUniforms } from "@/utils/uniformUtils";
-import { getTerrainStateManager } from "@/terrain/TerrainStateManager";
 import {
   type GPUSimulationState,
   saveGPUSimulationState,
   createTexturesFromState,
   destroyGpuSimulation,
 } from "@/gpu/waterFlowSimulation/saveLoadSimulationState";
+import { getControls } from "@/renderer/resources/camera";
+import { getRenderer } from "@/renderer/resources/renderer";
+import { recreateSimulationWithSavedState } from "@/renderer/systems/init/simulation";
+import { waterSimulation } from "@/renderer/systems/init/simulation";
+import { getMaterial, MaterialEnum } from "@/scene/resources/material";
+import { GeneralObjectEnum } from "@/scene/resources/object";
+import { getObject } from "@/scene/resources/objectCache";
+import { getTexture, setTexture, TextureEnum } from "@/scene/resources/texture";
+import { updateTerrainGeometryFromRenderTarget } from "@/scene/systems/updateTerrainGeometry";
+import { getTerrainStateManager } from "@/terrain/TerrainStateManager";
 import { logger } from "@/utils/logger";
+import { getUniforms } from "@/utils/uniformUtils";
 
 /**
  * Create a serializer for the ECS world
@@ -211,11 +209,11 @@ export const saveToWorldStorage = async (
   if (waterSimulation && renderer) {
     const allVars = waterSimulation.getAllVariables();
     const gpuCompute = waterSimulation.getGpuCompute();
-    
+
     if (gpuCompute) {
       // Get surface material texture for saving
       const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
-      
+
       const gpuState = saveGPUSimulationState(
         allVars,
         gpuCompute,
@@ -226,25 +224,47 @@ export const saveToWorldStorage = async (
       if (gpuState) {
         // Store GPU state as JSON for persistence
         gpuSimulationState = JSON.stringify({
-          heightMapData: gpuState.heightMapData ? Array.from(gpuState.heightMapData) : [],
-          waterHeightData: gpuState.waterHeightData ? Array.from(gpuState.waterHeightData) : [],
-          velocityData: gpuState.velocityData ? Array.from(gpuState.velocityData) : [],
-          sedimentData: gpuState.sedimentData ? Array.from(gpuState.sedimentData) : [],
-          cloudsData: gpuState.cloudsData ? Array.from(gpuState.cloudsData) : [],
-          surfaceMaterialData: gpuState.surfaceMaterialData ? Array.from(gpuState.surfaceMaterialData) : [],
+          heightMapData: gpuState.heightMapData
+            ? Array.from(gpuState.heightMapData)
+            : [],
+          waterHeightData: gpuState.waterHeightData
+            ? Array.from(gpuState.waterHeightData)
+            : [],
+          velocityData: gpuState.velocityData
+            ? Array.from(gpuState.velocityData)
+            : [],
+          sedimentData: gpuState.sedimentData
+            ? Array.from(gpuState.sedimentData)
+            : [],
+          cloudsData: gpuState.cloudsData
+            ? Array.from(gpuState.cloudsData)
+            : [],
+          surfaceMaterialData: gpuState.surfaceMaterialData
+            ? Array.from(gpuState.surfaceMaterialData)
+            : [],
           width: gpuState.width,
           height: gpuState.height,
           gameTime: gpuState.gameTime,
         });
         logger.info(
-          { 
-            heightMapSize: gpuState.heightMapData ? gpuState.heightMapData.length : 0,
-            waterHeightSize: gpuState.waterHeightData ? gpuState.waterHeightData.length : 0,
-            velocitySize: gpuState.velocityData ? gpuState.velocityData.length : 0,
-            sedimentSize: gpuState.sedimentData ? gpuState.sedimentData.length : 0,
+          {
+            heightMapSize: gpuState.heightMapData
+              ? gpuState.heightMapData.length
+              : 0,
+            waterHeightSize: gpuState.waterHeightData
+              ? gpuState.waterHeightData.length
+              : 0,
+            velocitySize: gpuState.velocityData
+              ? gpuState.velocityData.length
+              : 0,
+            sedimentSize: gpuState.sedimentData
+              ? gpuState.sedimentData.length
+              : 0,
             cloudsSize: gpuState.cloudsData ? gpuState.cloudsData.length : 0,
-            surfaceMaterialSize: gpuState.surfaceMaterialData ? gpuState.surfaceMaterialData.length : 0,
-            gameTime: gpuState.gameTime
+            surfaceMaterialSize: gpuState.surfaceMaterialData
+              ? gpuState.surfaceMaterialData.length
+              : 0,
+            gameTime: gpuState.gameTime,
           },
           "[storage:save:gpu] Saved ALL GPU simulation state including terrain painting",
         );
@@ -258,7 +278,10 @@ export const saveToWorldStorage = async (
   );
 
   // Store in memory with terrain checkpoint and GPU state if available
-  const storageData: GameStorage & { terrain?: string; gpuSimulation?: string } = {
+  const storageData: GameStorage & {
+    terrain?: string;
+    gpuSimulation?: string;
+  } = {
     ecs: serialized.ecs,
     context: serialized.context,
   };
@@ -298,7 +321,12 @@ export const loadFromWorldStorage = async (
     return;
   }
 
-  const { ecs: ecsSerialized, context: contextSerialized, terrain: terrainCheckpoint, gpuSimulation: gpuSimulationState } = stored;
+  const {
+    ecs: ecsSerialized,
+    context: contextSerialized,
+    terrain: terrainCheckpoint,
+    gpuSimulation: gpuSimulationState,
+  } = stored;
 
   logger.info(
     { ecsFound: !!ecsSerialized, contextFound: !!contextSerialized },
@@ -365,7 +393,10 @@ export const loadFromWorldStorage = async (
   // Restore terrain geometry state from checkpoint if available
   const terrainStateManager = getTerrainStateManager();
   logger.info(
-    { hasTerrainManager: !!terrainStateManager, hasCheckpoint: !!terrainCheckpoint },
+    {
+      hasTerrainManager: !!terrainStateManager,
+      hasCheckpoint: !!terrainCheckpoint,
+    },
     "[storage:load:terrain] Checking terrain state restoration",
   );
   if (terrainStateManager && terrainCheckpoint) {
@@ -393,7 +424,10 @@ export const loadFromWorldStorage = async (
     }
   } else {
     logger.warn(
-      { hasTerrainManager: !!terrainStateManager, hasCheckpoint: !!terrainCheckpoint },
+      {
+        hasTerrainManager: !!terrainStateManager,
+        hasCheckpoint: !!terrainCheckpoint,
+      },
       "[storage:load:terrain] Skipping terrain restoration - missing manager or checkpoint",
     );
   }
@@ -408,12 +442,24 @@ export const loadFromWorldStorage = async (
       const gpuData = JSON.parse(gpuSimulationState);
       const savedGameTime = gpuData.gameTime;
       const gpuState: GPUSimulationState = {
-        heightMapData: gpuData.heightMapData ? new Float32Array(gpuData.heightMapData) : null,
-        waterHeightData: gpuData.waterHeightData ? new Float32Array(gpuData.waterHeightData) : null,
-        velocityData: gpuData.velocityData ? new Float32Array(gpuData.velocityData) : null,
-        sedimentData: gpuData.sedimentData ? new Float32Array(gpuData.sedimentData) : null,
-        cloudsData: gpuData.cloudsData ? new Float32Array(gpuData.cloudsData) : null,
-        surfaceMaterialData: gpuData.surfaceMaterialData ? new Float32Array(gpuData.surfaceMaterialData) : null,
+        heightMapData: gpuData.heightMapData
+          ? new Float32Array(gpuData.heightMapData)
+          : null,
+        waterHeightData: gpuData.waterHeightData
+          ? new Float32Array(gpuData.waterHeightData)
+          : null,
+        velocityData: gpuData.velocityData
+          ? new Float32Array(gpuData.velocityData)
+          : null,
+        sedimentData: gpuData.sedimentData
+          ? new Float32Array(gpuData.sedimentData)
+          : null,
+        cloudsData: gpuData.cloudsData
+          ? new Float32Array(gpuData.cloudsData)
+          : null,
+        surfaceMaterialData: gpuData.surfaceMaterialData
+          ? new Float32Array(gpuData.surfaceMaterialData)
+          : null,
         width: gpuData.width,
         height: gpuData.height,
         gameTime: savedGameTime,
@@ -437,10 +483,17 @@ export const loadFromWorldStorage = async (
       // Create textures from saved state (includes surface material texture)
       const textures = createTexturesFromState(gpuState);
       logger.info(
-        { 
-          heightMapSize: textures.heightMapTexture.image.data ? (textures.heightMapTexture.image.data as Float32Array).length : 0,
-          waterHeightSize: textures.waterHeightTexture.image.data ? (textures.waterHeightTexture.image.data as Float32Array).length : 0,
-          surfaceMaterialSize: textures.surfaceMaterialTexture.image.data ? (textures.surfaceMaterialTexture.image.data as Float32Array).length : 0,
+        {
+          heightMapSize: textures.heightMapTexture.image.data
+            ? (textures.heightMapTexture.image.data as Float32Array).length
+            : 0,
+          waterHeightSize: textures.waterHeightTexture.image.data
+            ? (textures.waterHeightTexture.image.data as Float32Array).length
+            : 0,
+          surfaceMaterialSize: textures.surfaceMaterialTexture.image.data
+            ? (textures.surfaceMaterialTexture.image.data as Float32Array)
+                .length
+            : 0,
         },
         "[storage:load:gpu] Created textures from saved state (including terrain painting)",
       );
@@ -471,7 +524,7 @@ export const loadFromWorldStorage = async (
       }
 
       // Restore gameTime to the saved value so simulation continues from correct point
-      if (typeof savedGameTime === 'number') {
+      if (typeof savedGameTime === "number") {
         world.gameTime = savedGameTime;
         logger.info(
           { restoredGameTime: savedGameTime },
@@ -490,7 +543,10 @@ export const loadFromWorldStorage = async (
     }
   } else {
     logger.warn(
-      { hasWaterSimulation: !!waterSimulation, hasGPUState: !!gpuSimulationState },
+      {
+        hasWaterSimulation: !!waterSimulation,
+        hasGPUState: !!gpuSimulationState,
+      },
       "[storage:load:gpu] Skipping GPU restoration - missing simulation or checkpoint",
     );
   }
@@ -533,7 +589,9 @@ const updateGPUSimulationUniforms = (world: GameWorldContext): void => {
  * This is called after loading a saved game to ensure the water flow is visible
  * immediately, even when the simulation is paused.
  */
-const updateVisualizationUniformsAfterLoad = (world: GameWorldContext): void => {
+const updateVisualizationUniformsAfterLoad = (
+  world: GameWorldContext,
+): void => {
   if (!waterSimulation) {
     logger.warn(
       "[storage:updateVisualizationUniformsAfterLoad] waterSimulation not initialized",
@@ -548,11 +606,16 @@ const updateVisualizationUniformsAfterLoad = (world: GameWorldContext): void => 
   const isTestingMaterial = world.visualizationMode === 6;
 
   if (isTestingMaterial) {
-    logger.debug("[storage:updateVisualizationUniformsAfterLoad] Using TestingSimulation material");
+    logger.debug(
+      "[storage:updateVisualizationUniformsAfterLoad] Using TestingSimulation material",
+    );
     const testingMaterial = getMaterial(
       MaterialEnum.TestingSimulation,
     ) as THREE.ShaderMaterial;
-    const uniform = getUniforms<import("@/scene/resources/material").TestingVisualizationUniforms>(testingMaterial);
+    const uniform =
+      getUniforms<
+        import("@/scene/resources/material").TestingVisualizationUniforms
+      >(testingMaterial);
     const testingTexture = waterSimulation.getTestingTexture();
     uniform.uTestingTexture.value = testingTexture;
   } else {
@@ -562,7 +625,10 @@ const updateVisualizationUniformsAfterLoad = (world: GameWorldContext): void => 
       world.visualizationMode === 5; // Water Flow (show velocity)
 
     if (usesWaterVisualization) {
-      const uniforms = getUniforms<import("@/scene/resources/material").WaterVisualizationUniforms>(material);
+      const uniforms =
+        getUniforms<
+          import("@/scene/resources/material").WaterVisualizationUniforms
+        >(material);
       uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
       uniforms.uLightPosition.value.x = world.sunPosition.x;
       uniforms.uLightPosition.value.y = world.sunPosition.y;
@@ -575,8 +641,12 @@ const updateVisualizationUniformsAfterLoad = (world: GameWorldContext): void => 
       const heightMapVariable = waterSimulation.getHeightMapVariable();
       const gpuCompute = waterSimulation.getGpuCompute();
       if (gpuCompute) {
-        const heightRenderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
-        updateTerrainGeometryFromRenderTarget(heightRenderTarget, getRenderer()!);
+        const heightRenderTarget =
+          gpuCompute.getCurrentRenderTarget(heightMapVariable);
+        updateTerrainGeometryFromRenderTarget(
+          heightRenderTarget,
+          getRenderer()!,
+        );
       }
 
       // Update all simulation textures that were not available at material init time
@@ -599,21 +669,28 @@ const updateVisualizationUniformsAfterLoad = (world: GameWorldContext): void => 
       MaterialEnum.HeightVisualization,
     ) as THREE.ShaderMaterial;
     if (heightVizMaterial.uniforms.uHeightMap) {
-      heightVizMaterial.uniforms.uHeightMap.value = waterSimulation.getDynamicHeightMapTexture();
+      heightVizMaterial.uniforms.uHeightMap.value =
+        waterSimulation.getDynamicHeightMapTexture();
     }
 
-    const slopeMaterial = getMaterial(MaterialEnum.Slope) as THREE.ShaderMaterial;
+    const slopeMaterial = getMaterial(
+      MaterialEnum.Slope,
+    ) as THREE.ShaderMaterial;
     if (slopeMaterial.uniforms.uHeightMap) {
-      slopeMaterial.uniforms.uHeightMap.value = waterSimulation.getDynamicHeightMapTexture();
+      slopeMaterial.uniforms.uHeightMap.value =
+        waterSimulation.getDynamicHeightMapTexture();
     }
   }
-}
+};
 
 /**
  * Clear ECS state and custom context from in-memory storage
  */
 export const clearWorldStorage = (storageKey = "ecs-snapshot"): void => {
-  logger.info({ storageKey }, "[storage:clear:start] Clearing in-memory storage");
+  logger.info(
+    { storageKey },
+    "[storage:clear:start] Clearing in-memory storage",
+  );
   inMemoryStorage.delete(storageKey);
   logger.info({ storageKey }, "[storage:clear:end] Storage cleared");
 };

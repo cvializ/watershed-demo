@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
-
 import type { TerrainGeometryState } from "src/scene/resources/meshes/terrainGeometryState";
+
+import { expect, test } from "@playwright/test";
 import { cloneTerrainGeometryState } from "src/scene/resources/meshes/terrainGeometryState";
 
 test.describe("Terrain State Management", () => {
@@ -64,7 +64,7 @@ test.describe("Terrain State Management", () => {
 
     expect(cloned.positions.length).toBe(1000);
     expect(cloned.positions).not.toBe(largePositions);
-    
+
     // Verify all values are copied correctly
     for (let i = 0; i < 1000; i++) {
       expect(cloned.positions[i]).toBe(i);

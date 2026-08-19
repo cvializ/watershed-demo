@@ -89,7 +89,11 @@ export const getSurfaceMaterialTexture = (): SurfaceMaterialTexture | null => {
   return _surfaceMaterialTexture;
 };
 
-export const simulationInitSystem: RendererInitSystem = (_world, _scene, renderer) => {
+export const simulationInitSystem: RendererInitSystem = (
+  _world,
+  _scene,
+  renderer,
+) => {
   const simulationResource = createSimulationResource(renderer);
 
   waterSimulation = simulationResource.waterSimulation;
