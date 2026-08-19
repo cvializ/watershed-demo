@@ -25,6 +25,12 @@ varying vec3 vWorldPosition; // World position passed from vertex shader
 
 // Simple shadow calculation from directional light
 float calculateShadow(vec3 normal, vec3 worldPosition) {
+    // Check if sun is above horizon (y > 0)
+    // If sun is below horizon, return ambient lighting only (no directional shadows)
+    if (uLightPosition.y <= 0.0) {
+        return 0.3; // Ambient lighting when sun is below horizon - terrain stays visible
+    }
+    
     // Direction from fragment to light
     vec3 lightDir = normalize(uLightPosition - worldPosition);
     
@@ -129,6 +135,9 @@ void main() {
     // Use world position passed from vertex shader for accurate shadow calculation
     vec3 worldPosition = vWorldPosition;
 
+    // Calculate sunlight lighting based on surface normal and light direction
+    float sunLighting = calculateShadow(vNormal, worldPosition);
+
     // Sample cloud shadow intensity with blur and expansion
     float cloudShadow = getBlurredShadow(vUv, uCloudShadowMap);
     
@@ -138,18 +147,18 @@ void main() {
     // Get terrain material color
     vec3 terrainMaterialColor = getTerrainMaterialColor(vUv);
     
-    // Apply cloud shadows
-    if (cloudShadow > 0.01) {
+    // Apply sunlight lighting first
+    terrainMaterialColor *= sunLighting;
+    
+    // Apply cloud shadows only when sun is above horizon
+    if (uLightPosition.y > 0.0 && cloudShadow > 0.01) {
         float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
         terrainMaterialColor *= (1.0 - shadowDarkening);
     }
 
-    // Apply animal shadows to terrain color
-    terrainMaterialColor *= animalShadow;
-    
-    if (cloudShadow > 0.01) {
-        float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
-        terrainMaterialColor *= (1.0 - shadowDarkening);
+    // Apply animal shadows only when sun is above horizon
+    if (uLightPosition.y > 0.0) {
+        terrainMaterialColor *= animalShadow;
     }
 
     // Sample water height and velocity

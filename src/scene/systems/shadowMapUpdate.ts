@@ -28,7 +28,9 @@ export const shadowMapUpdateSystem: SceneSystem = (_world, _scene): void => {
   if (waterMaterial && waterMaterial.uniforms) {
     // Update shadow map uniform if it exists
     if (waterMaterial.uniforms.uShadowMap) {
-      const shadowTexture = sunLight.shadow.map?.texture ?? null;
+      const shadowTexture = sunLight.shadow.map
+        ? sunLight.shadow.map.texture
+        : null;
       waterMaterial.uniforms.uShadowMap.value = shadowTexture;
       // Set flag indicating whether shadow map is available
       if (waterMaterial.uniforms.uHasShadowMap) {
