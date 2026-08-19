@@ -152,7 +152,7 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
     // Debug output (uncomment to see in console)
     if (entity$ === 1) { // Only log for first animal to avoid spam
       const currentDist = foundGrass ? Math.sqrt((targetX - x) ** 2 + (targetZ - z) ** 2) : 0;
-      console.log(`Animal ${entity$}: pos=(${x.toFixed(2)}, ${z.toFixed(2)}), foundGrass=${foundGrass}, dist=${currentDist.toFixed(2)}, vel=(${Velocity.x[entity$].toFixed(2)}, ${Velocity.z[entity$].toFixed(2)})`);
+      console.log(`Animal ${entity$}: pos=(${x.toFixed(2)}, ${z.toFixed(2)}), foundGrass=${foundGrass}, target=(${targetX.toFixed(2)}, ${targetZ.toFixed(2)}), dist=${currentDist.toFixed(2)}, vel=(${Velocity.x[entity$].toFixed(2)}, ${Velocity.z[entity$].toFixed(2)})`);
     }
 
     // Apply velocity to position (with dt for frame-rate independence)
