@@ -34,8 +34,6 @@ function findGlobalVariables(
   function visit(currentNode: ts.Node) {
     // Check for assignments to global objects
     if (currentNode.kind === ts.SyntaxKind.PropertyAssignment) {
-      const propAssign = currentNode as ts.PropertyAssignment;
-
       // Get the parent object literal or expression
       const parent = currentNode.parent;
 
