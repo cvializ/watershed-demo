@@ -12,5 +12,8 @@ export const createAnimalMeshResource = () => {
   });
   const animalMesh = new THREE.Mesh(geometry, material);
 
+  // Render after terrain (higher render order ensures it appears on top)
+  animalMesh.renderOrder = 1;
+
   return animalMesh;
 };
