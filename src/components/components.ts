@@ -18,6 +18,12 @@ export const Position = {
   z: f32([]),
 };
 
+export const Velocity = {
+  x: f32([]),
+  y: f32([]),
+  z: f32([]),
+};
+
 export const MeshRef = {
   ref: str([]),
 };

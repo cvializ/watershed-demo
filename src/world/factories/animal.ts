@@ -1,6 +1,6 @@
 import { addComponent, addEntity, type World } from "bitecs";
 
-import { Animal, MeshRef, Name, Position, Renderable } from "@/components/components";
+import { Animal, MeshRef, Name, Position, Renderable, Velocity } from "@/components/components";
 import { MeshEnum } from "@/scene/resources/mesh";
 
 /**
@@ -29,6 +29,12 @@ export function createAnimal(
   Position.x[entity$] = x;
   Position.y[entity$] = y;
   Position.z[entity$] = z;
+
+  // Add Velocity component (initially zero)
+  addComponent(world, entity$, Velocity);
+  Velocity.x[entity$] = 0;
+  Velocity.y[entity$] = 0;
+  Velocity.z[entity$] = 0;
 
   // Add MeshRef component (using a simple sphere mesh for the animal)
   addComponent(world, entity$, MeshRef);
