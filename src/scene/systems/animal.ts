@@ -62,17 +62,22 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
     }
     const state = animalMovementState.get(entity$)!;
 
-    // Find nearest grass patch within detection radius
+    // Find nearest grass patch within detection radius (excluding current position)
     let targetX = 0;
     let targetZ = 0;
     let foundGrass = false;
     let closestDistance = Infinity;
 
-    // Search for grass in a grid pattern within detection radius
-    const searchSteps = 8; // Number of points to check in each direction
-    for (let i = 0; i <= searchSteps; i++) {
-      const angle = (i / searchSteps) * Math.PI * 2;
-      for (let distance = 0; distance <= grassDetectionRadius; distance += grassDetectionRadius / searchSteps) {
+    // Search for grass in a spiral pattern within detection radius
+    // This gives better coverage than radial grid search
+    const numRings = 5; // Number of concentric rings to check
+    const pointsPerRing = 16; // Points per ring for good coverage
+    
+    for (let ring = 1; ring <= numRings; ring++) {
+      const distance = (ring / numRings) * grassDetectionRadius;
+      
+      for (let i = 0; i < pointsPerRing; i++) {
+        const angle = (i / pointsPerRing) * Math.PI * 2 + (ring * 0.5); // Offset each ring
         const checkX = x + Math.cos(angle) * distance;
         const checkZ = z + Math.sin(angle) * distance;
 
@@ -141,6 +146,12 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
       state.wanderAngle += dt * 0.5; // Gradual angle change
       Velocity.x[entity$] = Math.cos(state.wanderAngle) * wanderSpeed;
       Velocity.z[entity$] = Math.sin(state.wanderAngle) * wanderSpeed;
+    }
+
+    // Debug output (uncomment to see in console)
+    if (entity$ === 1) { // Only log for first animal to avoid spam
+      const currentDist = foundGrass ? Math.sqrt((targetX - x) ** 2 + (targetZ - z) ** 2) : 0;
+      console.log(`Animal ${entity$}: pos=(${x.toFixed(2)}, ${z.toFixed(2)}), foundGrass=${foundGrass}, dist=${currentDist.toFixed(2)}, vel=(${Velocity.x[entity$].toFixed(2)}, ${Velocity.z[entity$].toFixed(2)})`);
     }
 
     // Apply velocity to position (with dt for frame-rate independence)
