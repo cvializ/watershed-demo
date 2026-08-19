@@ -18,6 +18,9 @@ export type WaterVisualizationUniforms = {
   // Wireframe overlay uniforms
   uWireframeColor: THREE.IUniform<THREE.Color>;
   uWireframeWidth: THREE.IUniform<number>;
+  // Shadow map for receiving shadows from other objects
+  uShadowMap: THREE.IUniform<THREE.Texture | null>;
+  uHasShadowMap: THREE.IUniform<boolean>;
 };
 
 /**
@@ -57,11 +60,17 @@ export const createWaterVisualizationMaterialResource = ({
     // Wireframe overlay - enabled by default (yellow lines, width 2.0)
     uWireframeColor: { value: new THREE.Color(1.0, 1.0, 0.0) }, // Yellow
     uWireframeWidth: { value: 2.0 }, // Set to 0 to disable
+    // Shadow map for receiving shadows from other objects (will be set by renderer)
+    uShadowMap: { value: null },
+    uHasShadowMap: { value: false },
   };
-  return new THREE.ShaderMaterial({
+
+  const material = new THREE.ShaderMaterial({
     uniforms,
     vertexShader: waterVisualizationVert,
     fragmentShader: waterVisualizationFrag,
     side: THREE.DoubleSide,
   });
+
+  return material;
 };
