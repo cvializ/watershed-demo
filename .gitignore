@@ -5,3 +5,4 @@ node_modules/
 *playwright*
 test-results
 /docs/
+.pi-subagents
