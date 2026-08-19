@@ -41,6 +41,7 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
   const wanderSpeed = 0.3; // Speed when wandering without target (slower)
   const maxTimeAtTarget = 2.0; // Seconds before animal moves on from current location
   const stopThreshold = 0.5; // Distance threshold for "reached target"
+  const minTargetDistance = 0.3; // Minimum distance to consider as a valid target (prevents targeting current position)
 
   // Terrain and texture configuration
   const terrainSize = 12; // Physical size of terrain (-6 to +6)
@@ -91,7 +92,7 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
         const texZ = checkZ + terrainCenter;
 
         const material = surfaceMaterialTexture.getMaterialAtPosition(texX, texZ);
-        if (material === "grass") {
+        if (material === "grass" && distance >= minTargetDistance) {
           const distSquared = distance * distance;
           if (distSquared < closestDistance) {
             closestDistance = distSquared;
