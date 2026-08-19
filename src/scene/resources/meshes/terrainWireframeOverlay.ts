@@ -28,13 +28,14 @@ export const createTerrainWireframeOverlayMesh = (
     transparent: true,
     opacity: 0.15, // More transparent to see terrain colors underneath
     side: THREE.DoubleSide, // Ensure wireframe is visible from all angles
-    depthTest: false, // Disable depth testing to ensure wireframe always renders on top
+    depthTest: true, // Enable depth testing so animals render on top of wireframe
   });
 
   const mesh = new THREE.Mesh(overlayGeometry, material);
   mesh.rotation.x = -Math.PI / 2;
 
   // Set higher render order to ensure wireframe renders on top of terrain
+  // but respects depth so animals appear above it
   mesh.renderOrder = 2;
 
   return mesh;

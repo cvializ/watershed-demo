@@ -44,7 +44,7 @@ export const createTerrainMeshResource = (geometry?: THREE.BufferGeometry) => {
   const terrain = new THREE.Mesh(terrainGeometry);
   terrain.rotation.x = -Math.PI / 2;
 
-  // Ensure terrain renders before wireframe overlay
+  // Ensure terrain renders first (lowest render order)
   terrain.renderOrder = 0;
 
   return terrain;
