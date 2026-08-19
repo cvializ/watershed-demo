@@ -106,45 +106,37 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
 
     // Update velocity based on whether we found grass
     if (foundGrass) {
-      // Move toward the grass
+      // Move toward the grass, but keep moving even when close
       const dx = targetX - x;
       const dz = targetZ - z;
       const distance = Math.sqrt(dx * dx + dz * dz);
 
       if (distance > stopThreshold) {
-        // Not yet at target, move toward it
+        // Not yet at target, move toward it at full speed
         state.timeAtTarget = 0; // Reset timer when moving
         Velocity.x[entity$] = (dx / distance) * movementSpeed;
         Velocity.z[entity$] = (dz / distance) * movementSpeed;
       } else {
-        // At or near target, increment time at target
+        // At or near target - keep moving slowly to explore the area
         state.timeAtTarget += dt;
         
-        // If we've been at this location too long, move on
+        // If we've been at this location too long, move on to find new grass
         if (state.timeAtTarget > maxTimeAtTarget) {
-          // Find a new grass target or start wandering
-          const newDistance = Math.sqrt((targetX - x) ** 2 + (targetZ - z) ** 2);
-          if (newDistance > grazingRadius * 2) {
-            // Still some grass nearby, move toward edge of grazing area
-            const angle = Math.atan2(targetZ - z, targetX - x);
-            Velocity.x[entity$] = Math.cos(angle) * movementSpeed;
-            Velocity.z[entity$] = Math.sin(angle) * movementSpeed;
-          } else {
-            // No more grass nearby, start wandering
-            state.wanderAngle += 0.5; // Slowly change direction
-            Velocity.x[entity$] = Math.cos(state.wanderAngle) * wanderSpeed;
-            Velocity.z[entity$] = Math.sin(state.wanderAngle) * wanderSpeed;
-          }
+          // Reset time and continue wandering to find new grass
+          state.timeAtTarget = 0;
+          state.wanderAngle += Math.PI / 4; // Turn 45 degrees
+          Velocity.x[entity$] = Math.cos(state.wanderAngle) * wanderSpeed;
+          Velocity.z[entity$] = Math.sin(state.wanderAngle) * wanderSpeed;
         } else {
-          // Still grazing, move slowly around the target area
-          const wanderAngle = Date.now() * 0.2 + entity$;
-          Velocity.x[entity$] = Math.cos(wanderAngle) * (movementSpeed * 0.3);
-          Velocity.z[entity$] = Math.sin(wanderAngle) * (movementSpeed * 0.3);
+          // Still grazing - move slowly in a circle around the target
+          const grazeAngle = Date.now() * 0.5 + entity$;
+          Velocity.x[entity$] = Math.cos(grazeAngle) * (movementSpeed * 0.2);
+          Velocity.z[entity$] = Math.sin(grazeAngle) * (movementSpeed * 0.2);
         }
       }
     } else {
       // No grass found, wander with smooth direction changes
-      state.wanderAngle += dt * 0.5; // Gradual angle change
+      state.wanderAngle += dt * 0.5; // Gradual angle change (30 degrees per second)
       Velocity.x[entity$] = Math.cos(state.wanderAngle) * wanderSpeed;
       Velocity.z[entity$] = Math.sin(state.wanderAngle) * wanderSpeed;
     }
