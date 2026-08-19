@@ -27,10 +27,10 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
   }
 
   // Movement parameters
-  const movementSpeed = 2.0; // World units per second
-  const grazingRadius = 1.5; // World units - how far the animal can reach
+  const movementSpeed = 0.5; // World units per second (slower movement)
+  const grazingRadius = 0.5; // World units - smaller eating radius
   const grassDetectionRadius = 4.0; // How far animals can detect grass
-  const wanderSpeed = 1.0; // Speed when wandering without target
+  const wanderSpeed = 0.3; // Speed when wandering without target (slower)
 
   // Terrain and texture configuration
   const terrainSize = 12; // Physical size of terrain (-6 to +6)
