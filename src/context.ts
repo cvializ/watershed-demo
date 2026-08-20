@@ -28,7 +28,7 @@ export const createGameWorldContext = () => ({
   // Pause state
   isPaused: false,
   // Terrain painting state
-  terrainPaintingEnabled: true,
+  terrainPaintingEnabled: false,
   terrainBrushMaterial: "bareDirt" as SurfaceMaterialType,
   terrainBrushRadius: 2.0,
 });
