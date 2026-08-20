@@ -4,6 +4,8 @@ import type { SceneSystem } from "@/scene/types";
 
 import { Animal, Position, Velocity } from "@/components/components";
 import { getSurfaceMaterialTexture } from "@/renderer/systems/init/simulation";
+import { ANIMAL_RADIUS } from "@/scene/resources/meshes/animal";
+import { getTerrainHeightAt } from "@/scene/resources/meshes/terrainHeightSampler";
 
 // Animal movement state - simplified navigation approach
 const animalMovementState = new Map<
@@ -187,6 +189,18 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
       -terrainCenter,
       Math.min(terrainCenter, Position.z[entity$]),
     );
+
+    // Step 5.5: Seat the animal on the terrain surface.
+    // Position the sphere's center one radius above the ground so it sits on
+    // top of the terrain and stays fully visible above it, regardless of the
+    // local slope/height.
+    const terrainHeight = getTerrainHeightAt(
+      Position.x[entity$],
+      Position.z[entity$],
+    );
+    if (terrainHeight !== null) {
+      Position.y[entity$] = terrainHeight + ANIMAL_RADIUS;
+    }
 
     // Step 6: Convert world coordinates to texture coordinates (0 to terrainSize)
     const textureX = Position.x[entity$] + terrainCenter;
