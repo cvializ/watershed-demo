@@ -54,12 +54,6 @@ const getCount = (counter: Counter): number => counter.count;
 
 ---
 
-## Development Approach
-
-- **Plan in incrementally verifiable chunks**: Break down all plans into small, testable increments that can be implemented and verified sequentially
-- Each chunk should produce observable progress - a passing test, working feature, or verifiable output
-- Implement in a TDD style: define the expected behavior first, then implement to pass tests
-
 ## TypeScript Import Conventions
 
 - **Use ES Module syntax**: When writing TypeScript code in a `src/` directory, use ES Module syntax (`import`/`export`) by default. Only use CommonJS (`require`/`module.exports`) when absolutely necessary (e.g., for runtime dynamic imports or Node.js APIs that require it). Node.js has solid ES Module support, and modern tooling handles ESM well.
@@ -254,65 +248,6 @@ type StatusMap = Record<"pending" | "in-progress" | "completed", number>;
 const statusCounts: StatusMap = { pending: 0, "in-progress": 0, completed: 0 };
 ```
 
-**Examples**:
-
-```ts
-// DON'T do this
-const data = fetchSomeData() as any;
-data.someProperty; // No type checking!
-
-// DO this - define proper types
-interface UserData {
-  id: number;
-  name: string;
-  email?: string;
-}
-
-const data = fetchSomeData() as UserData;
-data.id; // Type checked!
-
-// Or use unknown and type guard
-const processData = (data: unknown): void => {
-  if (typeof data === "object" && data !== null) {
-    // Safe to work with known structure
-  }
-};
-```
-
-### Build System Configuration for Absolute Imports
-
-Ensure your build system supports ES Module imports and absolute imports from the `src/` directory:
-
-**TypeScript (`tsconfig.json`)**:
-
-```json
-{
-  "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
-    "paths": {
-      "src/*": ["./src/*"]
-    }
-  }
-}
-```
-
-**Vite (`vite.config.ts`)**:
-
-```ts
-import { defineConfig } from "vite";
-import path from "path";
-
-export default defineConfig({
-  resolve: {
-    alias: {
-      src: path.resolve(__dirname, "./src"),
-    },
-  },
-});
-```
-
 ### Strict Functional Programming Policy
 
 **DO NOT GENERATE CLASSES unless explicitly requested.** This project follows a strict functional programming approach and you must adhere to it:
@@ -332,11 +267,6 @@ export default defineConfig({
 ### Function Syntax Preferences
 
 **Prefer arrow functions over function declarations and function expressions**: Arrow functions provide several advantages for functional programming:
-
-- **Lexical `this` binding**: No need to worry about `this` context changing, avoiding common bugs
-- **Concise syntax**: Shorter, more readable code especially for callbacks and short functions
-- **No own `this`/`arguments`**: Prevents accidental shadowing of outer scope values
-- **Better for functional patterns**: Aligns naturally with map/filter/reduce and other FP techniques
 
 **Examples**:
 
@@ -367,8 +297,6 @@ function processItems(items: Item[]): Item[] {
 
 **Note**: The only exception is when you need a function with its own `this` binding (e.g., certain class methods or constructor patterns).
 
-- Use TypeScript with strict mode enabled for all new code
-
 ## Code Style & Testing
 
 - **Unit testing is mandatory**: Every public function or module must have corresponding unit tests
@@ -381,7 +309,6 @@ function processItems(items: Item[]): Item[] {
 
 - `/src` - Application code
 - `/tests` - Test files
-- `/docs` - Documentation
 
 ## Build Commands
 
@@ -397,44 +324,11 @@ npm run build    # Build for production
 
 - Always run tests before committing
 - Run tests locally before completing work
-- Update documentation when adding features
 - Never commit credentials or API keys
 
 ## Barrel File Convention
 
 **Never create export barrel files**: Do not create index.ts or barrel files that re-export multiple modules. Each module should export its contents directly, and imports should use explicit paths to individual files rather than importing from a barrel file.
-
-## System Filename Convention
-
-**Avoid the word "system" in filenames**: System filenames should not include the word "system" except for the official `init` and `sync` system files.
-
-**Examples - DON'T do this**:
-
-```ts
-// DON'T use 'system' in filename
-core - system.ts;
-audio - system.ts;
-video - system.ts;
-```
-
-**Examples - DO this instead**:
-
-```ts
-// Use descriptive names without 'system'
-core.ts;
-audio.ts;
-video.ts;
-
-// OK - official system files
-init.ts;
-sync.ts;
-```
-
-**Reasons for this policy**:
-
-- **Clarity**: Descriptive names without "system" are clearer about what the module does
-- **Consistency**: The project has specific `init` and `sync` files that serve as entry points; keeping other files free of "system" avoids confusion
-- **Simplicity**: Shorter, more direct names are easier to work with
 
 ## Pre-Completion Checklist
 
