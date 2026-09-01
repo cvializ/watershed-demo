@@ -3,7 +3,6 @@ import type { Variable } from "three/addons/misc/GPUComputationRenderer.js";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
-import type { SedimentFlowUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
 import type { WaterHeightUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 
 import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTexture";
@@ -23,6 +22,12 @@ export type WaterFlowVisualization = {
    * @param gameTime - Total game time for testing effects
    */
   compute: (deltaTime: number, gameTime?: number) => void;
+
+  /**
+   * Forward the world erosion slider into sediment transport capacity.
+   * @param erosionRate - Value from world.erosionRate
+   */
+  setSedimentErosionRate: (erosionRate: number) => void;
 
   /**
    * Adds water at a specific location on the terrain.
@@ -203,42 +208,39 @@ export const createGpuWaterFlowSimulation = (
       surfaceMaterialMap ?? null,
       savedTextures && savedTextures.waterHeightTexture, // Pass saved water height texture
     );
+  // Dynamic terrain height (the bed): starts from base terrain, later modified by sediment.
+  // Creation order matters for dependency declaration only - never for data availability, because
+  // every cross-variable read is the last committed frame (plan section 2). The bed is created
+  // before the variables that must name it, then linked to sediment once both exist (A12).
+  const { heightMapVariable, linkBedToSediment } = createGpuTerrainHeight(
+    gpuCompute,
+    width,
+    heightMapTexture,
+    savedTextures && savedTextures.heightMapTexture, // Pass saved height map texture
+  );
   const { waterVelocityVariable, initWaterVelocity } = createGpuWaterVelocity(
     gpuCompute,
     width,
-    heightMapTexture,
     waterHeightVariable,
+    heightMapVariable, // dynamic bed via the injected dependency sampler (A11)
     surfaceMaterialMap ?? null,
-    undefined, // heightMapVariable (will be set later)
     savedTextures && savedTextures.velocityTexture, // Pass saved velocity texture
   );
-  const { sedimentFlowVariable, initSedimentFlow } = createGpuSedimentFlow(
-    gpuCompute,
-    width,
-    heightMapTexture,
-    waterVelocityVariable,
-    undefined, // heightMapVariable (will be set later)
-    surfaceMaterialMap ?? null,
-    savedTextures && savedTextures.sedimentTexture, // Pass saved sediment texture
-  );
+  const { sedimentFlowVariable, updateSedimentFlow, setErosionRate } =
+    createGpuSedimentFlow(
+      gpuCompute,
+      width,
+      heightMapTexture, // static base displacement -> erodible-depth proxy (A2)
+      waterVelocityVariable,
+      waterHeightVariable,
+      heightMapVariable,
+      surfaceMaterialMap ?? null,
+      savedTextures && savedTextures.sedimentTexture, // Pass saved sediment texture
+    );
 
-  // Dynamic terrain height: starts from base terrain, modified by sediment erosion/deposition
-  const { heightMapVariable } = createGpuTerrainHeight(
-    gpuCompute,
-    width,
-    heightMapTexture,
-    sedimentFlowVariable,
-    savedTextures && savedTextures.heightMapTexture, // Pass saved height map texture
-  );
+  // Both variables exist now, so the bed's authoritative dependency list is declared exactly once.
+  linkBedToSediment(sedimentFlowVariable);
 
-  // Update sediment flow dependencies to include dynamic height map
-  gpuCompute.setVariableDependencies(sedimentFlowVariable, [
-    waterVelocityVariable,
-    sedimentFlowVariable,
-    heightMapVariable,
-  ]);
-
-  // Sediment flow uniform to use dynamic height map - set after init
   const { testingVariable, initTesting, updateTesting } = createTestingTexture(
     gpuCompute,
     width,
@@ -249,18 +251,9 @@ export const createGpuWaterFlowSimulation = (
     logger.error({ err: error }, "gpu compute init error");
   }
 
-  // Update sediment flow uniform to use dynamic height map after init
-  const sedimentUniforms = getUniforms<SedimentFlowUniforms>(
-    sedimentFlowVariable.material,
-  );
-  sedimentUniforms.uHeightMap = {
-    value: gpuCompute.getCurrentRenderTarget(heightMapVariable).texture,
-  };
-
   initWaterSources();
   initWaterHeight();
   initWaterVelocity();
-  initSedimentFlow();
   initTesting();
 
   // Initialize surface material map uniform
@@ -272,12 +265,15 @@ export const createGpuWaterFlowSimulation = (
   }
 
   return {
-    compute: (_deltaTime: number, gameTime: number = 0) => {
+    compute: (deltaTime: number, gameTime: number = 0) => {
       // Update clouds with global time reference for save/load support
       updateClouds(gameTime);
 
       // Update water height with global time reference for save/load support
       updateWaterHeight(gameTime);
+
+      // Scale the sediment coefficients to this frame's elapsed time (plan S6)
+      updateSedimentFlow(deltaTime);
 
       // Update testing texture with global time reference
       updateTesting(gameTime);
@@ -310,6 +306,10 @@ export const createGpuWaterFlowSimulation = (
       gpuCompute.getCurrentRenderTarget(sedimentFlowVariable).texture,
     getTestingVariable: () => testingVariable,
     getSedimentFlowVariable: () => sedimentFlowVariable,
+    setSedimentErosionRate: (erosionRate: number) => {
+      // Forwarded to the transport-capacity coefficient; nothing writes world.erosionRate back
+      setErosionRate(erosionRate);
+    },
     getWaterHeightVariable: () => waterHeightVariable,
     getCloudVariable: () => cloudVariable,
     getHeightMapVariable: () => heightMapVariable,

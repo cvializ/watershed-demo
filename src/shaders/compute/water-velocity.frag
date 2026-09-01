@@ -1,6 +1,7 @@
 #include <common>
 
-uniform sampler2D uHeightMap;
+// Terrain arrives through the `heightMap` sampler that GPUComputationRenderer injects for this
+// variable's declared dependency (plan S3/A11), so it is deliberately not declared here.
 uniform sampler2D uWaterHeightmap;
 uniform sampler2D surfaceMaterialMap; // Surface material texture
 
@@ -43,7 +44,7 @@ void main() {
     }
 
     // Get current terrain height
-    float terrainHeight = texture2D(uHeightMap, uv).r;
+    float terrainHeight = texture2D(heightMap, uv).r;
     
     // Find the downslope neighbor and calculate elevation drop
     const vec2 directions[8] = vec2[](
@@ -71,7 +72,7 @@ void main() {
         if (neighborUV.x >= 0.0 && neighborUV.x <= 1.0 &&
             neighborUV.y >= 0.0 && neighborUV.y <= 1.0) {
             
-            float neighborTerrainHeight = texture2D(uHeightMap, neighborUV).r;
+            float neighborTerrainHeight = texture2D(heightMap, neighborUV).r;
             float neighborWaterHeight = texture2D(uWaterHeightmap, neighborUV).r;
             float neighborTotalHeight = neighborTerrainHeight + neighborWaterHeight;
             

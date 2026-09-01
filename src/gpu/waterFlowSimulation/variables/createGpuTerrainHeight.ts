@@ -54,7 +54,6 @@ const createGpuTerrainHeight = (
   gpuCompute: GPUComputationRenderer,
   width: number,
   baseHeightMapTexture: THREE.Texture,
-  sedimentFlowVariable: Variable,
   savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:terrain-height:create]");
@@ -70,14 +69,23 @@ const createGpuTerrainHeight = (
     terrainHeightTexture,
   );
 
-  // Terrain height depends on itself (feedback) and sediment flow (erosion source)
-  gpuCompute.setVariableDependencies(heightMapVariable, [
-    sedimentFlowVariable,
-    heightMapVariable,
-  ]);
+  // Only the self-dependency can be declared here: bed and sediment mutually reference each other,
+  // and GPUComputationRenderer needs both Variable objects to exist before either dependency list
+  // can name the other. linkBedToSediment() below completes the pair exactly once (plan A12).
+  gpuCompute.setVariableDependencies(heightMapVariable, [heightMapVariable]);
 
   return {
     heightMapVariable,
+    /**
+     * Declares the bed's authoritative dependency list: its own previous value plus the sediment
+     * variable whose alpha channel carries the signed bed delta to integrate.
+     */
+    linkBedToSediment: (sedimentFlowVariable: Variable): void => {
+      gpuCompute.setVariableDependencies(heightMapVariable, [
+        sedimentFlowVariable,
+        heightMapVariable,
+      ]);
+    },
   };
 };
 
