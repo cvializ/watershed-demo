@@ -10,7 +10,6 @@ import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
 export type WaterVelocityUniforms = {
-  uHeightMap: THREE.IUniform<THREE.Texture>;
   uWaterHeightmap: THREE.IUniform<THREE.Texture | null>;
   surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
 };
@@ -41,13 +40,21 @@ const createInitialVelocityTexture = (
   return { texture, data };
 };
 
+/**
+ * Creates the water velocity computation.
+ *
+ * Terrain comes from the *dynamic* bed through the injected `heightMap` dependency sampler (plan
+ * S3/A11): sediment routes along this single velocity field, so if velocity were computed from the
+ * static base terrain while erosion carved the dynamic bed, export and import predicates would
+ * disagree about where water goes. The pinned `uWaterHeightmap` custom uniform stays as-is for now
+ * (plan section 7 records it for a separate pass).
+ */
 export const createGpuWaterVelocity = (
   gpuCompute: GPUComputationRenderer,
   width: number,
-  heightMapTexture: THREE.Texture,
   waterHeightVariable: Variable,
+  heightMapVariable: Variable,
   surfaceMaterialMap?: THREE.Texture | null,
-  heightMapVariable?: Variable,
   savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:water-velocity:create]");
@@ -61,12 +68,10 @@ export const createGpuWaterVelocity = (
     velocityTexture,
   );
 
-  const dependencies = [waterHeightVariable];
-  if (heightMapVariable) {
-    // Water velocity depends on dynamic height map (modified by erosion)
-    dependencies.push(heightMapVariable);
-  }
-  gpuCompute.setVariableDependencies(waterVelocityVariable, dependencies);
+  gpuCompute.setVariableDependencies(waterVelocityVariable, [
+    waterHeightVariable,
+    heightMapVariable, // dynamic bed: flow follows the incised surface, not the base terrain
+  ]);
 
   return {
     waterVelocityVariable,
@@ -75,12 +80,6 @@ export const createGpuWaterVelocity = (
       const uniforms = getUniforms<WaterVelocityUniforms>(
         waterVelocityVariable.material,
       );
-      // Use dynamic height map if available (modified by erosion), otherwise use base height map
-      uniforms.uHeightMap = {
-        value: heightMapVariable
-          ? gpuCompute.getCurrentRenderTarget(heightMapVariable).texture
-          : heightMapTexture,
-      };
       uniforms.uWaterHeightmap = {
         value: gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
       };
