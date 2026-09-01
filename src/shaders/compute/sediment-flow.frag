@@ -7,8 +7,8 @@
 uniform sampler2D uBaseHeightMap; // Static base displacement -> immovable bedrock proxy (A2)
 uniform sampler2D surfaceMaterialMap; // Surface material id per cell (A9)
 
-// Parameters (S6/A8). Erosion/deposition exchange is wired in the next step of the delivery order
-// (A17); transport is already live, which is why these are declared and bound now.
+// Parameters (S6/A8) and the A5-A7 constants below. Exchange at the bed is added after transport in
+// the same pass, and both clamps are mass-returning, so nothing here needs a re-normalisation.
 uniform float erosionCoefficient; // driven by world.erosionRate
 uniform float capacityExponent;
 uniform float criticalSpeed;
@@ -35,6 +35,16 @@ const vec2 DIRECTION_STEPS[8] = vec2[](
 // Constants from plan A5-A7. Every divide is guarded: NaN in one texel would poison the bed forever.
 const float EPS = 1e-7;
 const float ADVECT_HALF_SPEED = 0.1; // phi reaches half its cap at this speed
+const float SLOPE_GAIN = 20.0; // how strongly a downhill drop amplifies bed shear (A5)
+const float WET_THRESHOLD = 0.01; // depth below which settling stops being boosted
+
+// Step 4 promotes ERODIBILITY and DEPOSITION_FACTOR to per-material tables (A9). They stay separate
+// multipliers even while both are 1: only erosion carries erodibility, which is what lets a lake bed
+// resist being cut while remaining a good place to drop sediment.
+const float ERODIBILITY = 1.0; // uniform across the grid until surfaceMaterialMap drives it
+const float DEPOSITION_FACTOR = 1.0; // plan A7 default
+const float CAPACITY_CEILING = 0.25; // depth * speed is unbounded: capacity has to saturate (A6)
+const float STILL_WATER_BOOST = 8.0; // settling multiplier in still water (A7, section 4.5)
 
 int OPPOSITE_INDEX(int index) {
     return index < 4 ? index + 4 : index - 4; // N<->S, NE<->SW, E<->W, SE<->NW
@@ -42,6 +52,58 @@ int OPPOSITE_INDEX(int index) {
 
 bool insideGrid(vec2 uv) {
     return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
+}
+
+/**
+ * Transport capacity of the flow at `p` (A6). The raw product excess * depth * capacityExponent is
+ * unbounded in steep terrain, and an unbounded capacity pins erosion at the availability limit every
+ * step - which cuts a channel straight down to bedrock within a few frames. min() with the ceiling
+ * saturates without destroying mass: capacity only ever limits how much may move.
+ */
+float capacityOf(float speed, float depth) {
+    float excess = max(speed - criticalSpeed, 0.0);
+    return min(
+        CAPACITY_CEILING,
+        pow(excess * depth * capacityExponent, capacityExponent)
+    );
+}
+
+/**
+ * Bed shear proxy (A5): u^2 * (1 + SLOPE_GAIN * slopeDrop), with slopeDrop the descent along the flow
+ * direction over one texel. A cell that is only getting deeper keeps eroding: nothing here references a
+ * previous frame, so there is no positive feedback through a stored gradient (section 4.5).
+ */
+float bedShearAt(
+    vec2 p,
+    vec2 flowDirection,
+    float speed,
+    vec2 cellSize
+) {
+    // heightMap.r is the bed; terrain-height.frag owns it and this variable only reads it (section 2).
+    float ownBed = texture2D(heightMap, p).r;
+    float downBed = texture2D(
+        heightMap,
+        clamp(p + flowDirection * cellSize, vec2(0.0), vec2(1.0))
+    ).r;
+
+    float slopeDrop = max(ownBed - downBed, 0.0);
+    return speed * speed * (1.0 + SLOPE_GAIN * slopeDrop);
+}
+
+/**
+ * How much of the bed in texel `p` may be cut without crossing the immovable floor (A2). The
+ * pending bed delta is included: this pass' neighbours may already have scheduled material out of that
+ * cell, and ignoring it would let two cells each cut the same gram in one step. The max() makes a base
+ * map that dips below its own erodibleDepth harmless rather than NaN-producing.
+ */
+float availableSoilAt(vec2 p) {
+    float scheduledBedDelta = texture2D(sedimentFlow, p).a;
+    float bedAfterScheduledDelta = texture2D(heightMap, p).r + scheduledBedDelta;
+
+    float baseHeight = texture2D(uBaseHeightMap, p).r;
+    float bedrock = baseHeight - erodibleDepth;
+
+    return max(bedAfterScheduledDelta - bedrock, 0.0);
 }
 
 /**
@@ -120,17 +182,57 @@ void main() {
         }
     }
 
-    // Exchange at the bed is added in the next step (E = D = 0 here), so no bed delta is scheduled:
-    // terrain-height.frag keeps the bed exactly where it is while load advects.
-    float erosion = 0.0;
-    float deposition = 0.0;
-    float suspendedLoad = remaining + influx + erosion - deposition;
-    float bedDelta = deposition - erosion;
+    // Step 8: exchange at the bed, deliberately AFTER transport (A3). Erosion is bounded by availability
+    // (A2), so the cut cannot cross the immovable floor even when a neighbour scheduled part of that same
+    // cell away in this very step. Erodibility is uniform until step 4 surfaces the material tables (A9).
+    float depth = max(texture2D(waterHeight, uv).r, 0.0);
+    float capacity = capacityOf(speed, depth);
 
+    // A5: shear scales with u^2 and is amplified by the descent along the flow direction; material that
+    // can be detached this step is additionally rate-limited (S6 dtScale), never made unbounded.
+    float bedShear = bedShearAt(uv, transportDirection, speed, cellSize);
+    float criticalShear = criticalSpeed * criticalSpeed; // shear is in units of speed^2
+
+    // A5 puts erodibility on the detach term (not on capacity): material resistance and transport
+    // capacity are different physical things, and step 4 sources them from different tables.
+    // detachRate is the plan's section 4.7 rate limit - 1 means no limit, smaller values only slow the
+    // detachment down, so it cannot change where mass ends up, just how quickly it gets there.
+    float detachLimit = erosionCoefficient *
+        ERODIBILITY *
+        detachRate *
+        max(bedShear - criticalShear, 0.0);
+    float carryLimit = max(capacity - remaining, 0.0); // how much more this cell's flow can hold (A6)
+    float availableSoil = availableSoilAt(uv);
+
+    // Erosion is bounded by the capacity gap, so carried <= capacity. That is what stops this pairing
+    // from short-circuiting: material eroded in this pass can never settle in the same pass, because
+    // settling only draws down load above local capacity - i.e. material that arrived from somewhere
+    // else, or moved into slower water. Step 5 retunes rates; it must not remove this property.
+    float erosion = min(availableSoil, dtScale * min(detachLimit, carryLimit));
+    float carried = remaining + erosion;
+
+    // Step 9: settling. A7: quiescent water drops its load faster; the boost is applied as a rate
+    // multiplier, so it changes how fast material settles, never how much exists.
+    float wet = smoothstep(0.0, WET_THRESHOLD, depth);
+    float stillWaterBoost = mix(STILL_WATER_BOOST, 1.0, wet);
+
+    float settleLimit = dtScale * settleRate * DEPOSITION_FACTOR * max(carried - capacity, 0.0) *
+        stillWaterBoost;
+
+    // The min() with carried is the mass-returning half of this pairing: it bounds settling by inventory
+    // instead of minting height (section 4.5).
+    float deposition = min(carried, settleLimit);
+
+    float suspendedLoad = carried - deposition + influx;
+    float bedDelta = deposition - erosion; // signed: terrain-height.frag applies it next pass (A1)
+
+    // No trailing max() on the load: deposition <= carried makes carried - deposition >= 0 structurally,
+    // so a negative value could only come from a broken clamp - and a clamp here would hide that leak
+    // instead of reporting it (the test suite asserts load >= 0 per texel for exactly this reason).
     gl_FragColor = vec4(
         transportDirection.x,
         transportDirection.y,
-        max(suspendedLoad, 0.0), // structural already; guards only against float noise
+        suspendedLoad,
         bedDelta
     );
 }
