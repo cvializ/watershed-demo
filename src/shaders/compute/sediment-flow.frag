@@ -38,13 +38,50 @@ const float ADVECT_HALF_SPEED = 0.1; // phi reaches half its cap at this speed
 const float SLOPE_GAIN = 20.0; // how strongly a downhill drop amplifies bed shear (A5)
 const float WET_THRESHOLD = 0.01; // depth below which settling stops being boosted
 
-// Step 4 promotes ERODIBILITY and DEPOSITION_FACTOR to per-material tables (A9). They stay separate
-// multipliers even while both are 1: only erosion carries erodibility, which is what lets a lake bed
-// resist being cut while remaining a good place to drop sediment.
-const float ERODIBILITY = 1.0; // uniform across the grid until surfaceMaterialMap drives it
-const float DEPOSITION_FACTOR = 1.0; // plan A7 default
+// Surface material factors (A9), keyed off surfaceMaterialMap.r with the same < 0.5 / < 1.5 thresholds
+// water-velocity.frag uses, so one painted map drives friction, infiltration and erodibility coherently.
+// The two tables stay separate multipliers rather than one: only erosion carries erodibility (A3), which
+// is what lets a lake bed resist being cut while remaining a good place to drop sediment.
+const float ERODIBILITY_BARE_DIRT = 1.0; // baseline: nothing is holding this soil together
+const float ERODIBILITY_GRASS = 0.3; // roots bind soil, so vegetated banks survive (A9)
+const float ERODIBILITY_ROCKS = 0.1; // rock resists being cut almost entirely
+
+const float DEPOSITION_FACTOR_BARE_DIRT = 1.0; // baseline settling
+const float DEPOSITION_FACTOR_GRASS = 1.5; // stems trap sediment (A9)
+const float DEPOSITION_FACTOR_ROCKS = 0.8; // smooth rock lets it keep moving
+
 const float CAPACITY_CEILING = 0.25; // depth * speed is unbounded: capacity has to saturate (A6)
 const float STILL_WATER_BOOST = 8.0; // settling multiplier in still water (A7, section 4.5)
+
+/**
+ * How readily the bed at `materialId` gives up grains to flowing water (A9). Applied to the detachment
+ * term only, never to capacity: A3 evaluates it there, and multiplying resistance into both the amount
+ * the flow may carry and the amount it may take would count the same material property twice - which
+ * would make grassy cells erode less AND deposit sooner for one factor.
+ */
+float erodibilityOf(float materialId) {
+    if (materialId < 0.5) {
+        return ERODIBILITY_BARE_DIRT;
+    } else if (materialId < 1.5) {
+        return ERODIBILITY_GRASS;
+    } else {
+        return ERODIBILITY_ROCKS;
+    }
+}
+
+/**
+ * How readily quiescent water gives up its load onto `materialId` (A9). Vegetation traps sediment, so the
+ * factor > 1 for grass speeds up settling where the flow is already dropping its bed load.
+ */
+float depositionFactorOf(float materialId) {
+    if (materialId < 0.5) {
+        return DEPOSITION_FACTOR_BARE_DIRT;
+    } else if (materialId < 1.5) {
+        return DEPOSITION_FACTOR_GRASS;
+    } else {
+        return DEPOSITION_FACTOR_ROCKS;
+    }
+}
 
 int OPPOSITE_INDEX(int index) {
     return index < 4 ? index + 4 : index - 4; // N<->S, NE<->SW, E<->W, SE<->NW
@@ -182,9 +219,14 @@ void main() {
         }
     }
 
+    // Material for this cell: one tap serves both exchange terms. The sampler can never be null - with no
+    // painted map, createGpuSedimentFlow binds a 1x1 all-dirt texture (A8), which is exactly the neutral
+    // pair of factors below, so no presence flag is needed.
+    float materialId = texture2D(surfaceMaterialMap, uv).r;
+
     // Step 8: exchange at the bed, deliberately AFTER transport (A3). Erosion is bounded by availability
     // (A2), so the cut cannot cross the immovable floor even when a neighbour scheduled part of that same
-    // cell away in this very step. Erodibility is uniform until step 4 surfaces the material tables (A9).
+    // cell away in this very step, and it is limited by what the material will give up (A9).
     float depth = max(texture2D(waterHeight, uv).r, 0.0);
     float capacity = capacityOf(speed, depth);
 
@@ -193,12 +235,13 @@ void main() {
     float bedShear = bedShearAt(uv, transportDirection, speed, cellSize);
     float criticalShear = criticalSpeed * criticalSpeed; // shear is in units of speed^2
 
-    // A5 puts erodibility on the detach term (not on capacity): material resistance and transport
-    // capacity are different physical things, and step 4 sources them from different tables.
-    // detachRate is the plan's section 4.7 rate limit - 1 means no limit, smaller values only slow the
-    // detachment down, so it cannot change where mass ends up, just how quickly it gets there.
+    // A9 puts erodibility on the detach term (not on capacity): material resistance and transport
+    // capacity are different physical things, sourced from different tables. Grass at 0.3 is what keeps a
+    // vegetated bank standing while the same flow guts bare soil next to it.
+    // detachRate is the plan's rate limit - 1 means no limit, smaller values only slow the detachment
+    // down, so it cannot change where mass ends up, just how quickly it gets there.
     float detachLimit = erosionCoefficient *
-        ERODIBILITY *
+        erodibilityOf(materialId) *
         detachRate *
         max(bedShear - criticalShear, 0.0);
     float carryLimit = max(capacity - remaining, 0.0); // how much more this cell's flow can hold (A6)
@@ -216,7 +259,12 @@ void main() {
     float wet = smoothstep(0.0, WET_THRESHOLD, depth);
     float stillWaterBoost = mix(STILL_WATER_BOOST, 1.0, wet);
 
-    float settleLimit = dtScale * settleRate * DEPOSITION_FACTOR * max(carried - capacity, 0.0) *
+    // A9's deposition factor is a rate multiplier too: grass at 1.5 drops load faster where water is
+    // already slack enough to be dropping any - it cannot deposit material the cell is not holding.
+    float settleLimit = dtScale *
+        settleRate *
+        depositionFactorOf(materialId) *
+        max(carried - capacity, 0.0) *
         stillWaterBoost;
 
     // The min() with carried is the mass-returning half of this pairing: it bounds settling by inventory
