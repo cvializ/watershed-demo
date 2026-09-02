@@ -2,9 +2,9 @@ import * as THREE from "three";
 
 import type { SceneSystem } from "@/scene/types";
 
+import { getMaterial, MaterialEnum } from "@/scene/resources/material";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
-import { getMaterial, MaterialEnum } from "@/scene/resources/material";
 
 /**
  * Updates shadow map uniforms for materials that need to receive shadows

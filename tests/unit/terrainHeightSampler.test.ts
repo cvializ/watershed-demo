@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
-import * as THREE from "three";
-
-import { calculateHeight } from "src/terrainUtils";
 import { getMesh, MeshEnum, setMesh } from "src/scene/resources/mesh";
 import { createTerrainGeometry } from "src/scene/resources/meshes/terrain";
 import {
   getTerrainHeightAt,
   resetTerrainHeightSampler,
 } from "src/scene/resources/meshes/terrainHeightSampler";
+import { calculateHeight } from "src/terrainUtils";
+import * as THREE from "three";
 
 const terrainSize = 12;
 const halfSize = terrainSize / 2;
@@ -81,12 +80,12 @@ test.describe("getTerrainHeightAt", () => {
     const worldX = midLocalX;
     const worldZ = -midLocalY;
 
-    const expected = (
-      calculateHeight(a.x, a.y) +
-      calculateHeight(b.x, b.y) +
-      calculateHeight(c.x, c.y) +
-      calculateHeight(d.x, d.y)
-    ) / 4;
+    const expected =
+      (calculateHeight(a.x, a.y) +
+        calculateHeight(b.x, b.y) +
+        calculateHeight(c.x, c.y) +
+        calculateHeight(d.x, d.y)) /
+      4;
 
     const sampled = getTerrainHeightAt(worldX, worldZ);
     expect(sampled).not.toBeNull();
