@@ -707,6 +707,12 @@ await test("vegetation traps sediment that bare soil and rock let travel on", as
       material: () => materialId,
     });
 
+    // Pinned rather than inherited, because this scenario reads a ratio out of one pass and that only works while
+    // no cell saturates against `carried`: settling is bounded by dtScale * settleRate * factor * 8 (dry cells get
+    // the still-water boost), so the measured table stays honest only below settleRate = 1 / (8 * 1.5). Inheriting
+    // the module default would mean a later retune of A8's rates silently turns this assertion into 1.0 == 1.0.
+    graph.sedimentUniforms.settleRate.value = 0.06;
+
     computeOnce(graph);
 
     const deposited = bandExchange(
