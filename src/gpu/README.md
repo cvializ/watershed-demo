@@ -17,11 +17,12 @@ const variable = gpuCompute.addVariable(name, fragmentShader, initialTexture);
 gpuCompute.setVariableDependencies(variable, [dependency1, dependency2]);
 ```
 
-**Pattern**: This is a **Dependency Graph** or **Directed Acyclic Graph (DAG)** pattern where:
+**Pattern**: This is a **Dependency Graph** pattern where:
 
 - Each `Variable` is a node
-- Dependencies define edges between nodes
-- The renderer topologically sorts variables to determine compute order
+- Dependencies define edges between nodes, and GCR injects one sampler per edge under the dependency's own name (`waterVelocity`, `heightMap`, ...). Re-declaring such a sampler in a shader is a compile error, so any variable read from another variable needs no custom uniform of its own.
+- `compute()` steps variables in **insertion order** - the order of their `addVariable()` calls. There is no topological sort and no cycle detection. Each dependency uniform is bound to `depVar.renderTargets[currentTextureIndex]`, i.e. the **last committed frame**, so creation order matters for declaration only, never for data availability.
+- Edges are allowed to form a cycle. `heightMap` (the dynamic bed) reads `sedimentFlow` and `sedimentFlow` reads `heightMap`; because both read the last committed render target, that loop resolves into a deliberate one-step lag rather than half-updated data.
 
 ---
 
@@ -54,13 +55,20 @@ export const createGpuWaterHeight = (
 
 The system decomposes simulation into independent variables:
 
-| Variable        | Purpose                    | Dependencies          |
-| --------------- | -------------------------- | --------------------- |
-| `cloudDensity`  | Animated procedural clouds | Self (temporal)       |
-| `waterSources`  | Water addition points      | Self                  |
-| `waterHeight`   | Surface water depth        | Clouds, Sources, Self |
-| `waterVelocity` | Flow direction/magnitude   | WaterHeight           |
-| `testing`       | Time-based testing effect  | Self                  |
+| Variable        | Purpose                                             | Dependencies                           |
+| --------------- | --------------------------------------------------- | -------------------------------------- |
+| `cloudDensity`  | Animated procedural clouds                          | Self (temporal)                        |
+| `waterSources`  | Water addition points                               | Self                                   |
+| `waterHeight`   | Surface water depth                                 | Clouds, Sources, Self                  |
+| `heightMap`     | Dynamic bed: base terrain plus accumulated sediment | SedimentFlow, Self                     |
+| `waterVelocity` | Flow direction/magnitude over the dynamic bed       | WaterHeight, HeightMap                 |
+| `sedimentFlow`  | Suspended load + scheduled bed delta                | Velocity, WaterHeight, HeightMap, Self |
+| `testing`       | Time-based testing effect                           | None (no declared dependencies)        |
+
+Dependencies are each declared exactly once, inside the factory that owns the variable. The one
+exception is forced by the bed/sediment cycle: GCR needs both `Variable`s to exist before either list
+can name the other, so `createGpuTerrainHeight` starts with its self-dependency only and returns
+`linkBedToSediment(sedimentFlowVariable)` for the orchestrator to call once both exist.
 
 ---
 
@@ -73,13 +81,25 @@ The GPU computation system embodies dataflow programming:
 - **Nodes**: Shader programs that transform input textures to output
 - **Edges**: Texture dependencies between variables
 - **Buffers**: Textures storing state across frames (double-buffered by GPUComputationRenderer)
-- **Execution**: Triggered by `gpuCompute.compute()` which propagates data through the graph
+- **Execution**: Triggered by `gpuCompute.compute()`, which steps every variable once in insertion order, reading each dependency's last committed render target
 
 ```
 Clouds ──────┐
-             ├──→ WaterHeight → Velocity
-Sources ─────┘
-Testing ───────→ (visualization)
+             ├──→ WaterHeight ──→ WaterVelocity ──┬──→ SedimentFlow ──┐  (scheduled bed delta)
+Sources ─────┘                     ↑              │                   │
+                                HeightMap ←────────┴───────────────────┘
+
+Each arrow is a declared dependency, i.e. an injected sampler:
+  waterHeight   → clouds, sources, self
+  waterVelocity → waterHeight, heightMap     (routing follows the incised bed, not the seed terrain)
+  sedimentFlow  → waterVelocity, waterHeight, heightMap, self
+  heightMap     → sedimentFlow, self         (the bed applies what sediment scheduled)
+
+heightMap ⇄ sedimentFlow is a genuine cycle. GCR neither sorts nor rejects it: both sides read the last
+committed target, so one pass of exchange lands in the bed on the next. WaterVelocity is the routing
+source of truth - sediment never computes its own D8, which is what keeps export and import symmetric.
+The Testing Simulation view (mode 6) renders the sedimentFlow texture; `testing` itself declares no
+dependencies and feeds nothing.
 ```
 
 ---
@@ -171,6 +191,42 @@ export type WaterHeightUniforms = {
 - Next frame reads from that texture as input
 - Managed transparently by the renderer
 
+### Sediment Flow Texel Layout
+
+`sedimentFlow` is an RGBA32F texture whose channels are load-bearing, not incidental (plan A1):
+
+| Channel | Meaning                                                                            |
+| ------- | ---------------------------------------------------------------------------------- |
+| R, G    | Unit transport direction (zero where the cell is dry or still)                     |
+| B       | Suspended load in bed-equivalent height units                                      |
+| A       | Signed bed delta scheduled for the next committed bed step: `deposition - erosion` |
+
+Channel A is a _schedule_, not a rate: `terrain-height.frag` adds it to the bed on the next committed
+step, which is why the debug view (mode 6) draws positive values as deposition and negative ones as
+erosion. Both channels are mass-conserving by construction - export and import in
+`sediment-flow.frag` are two evaluations of the same `outfluxAt()` helper on the same texel read.
+
+### Sediment Parameters
+
+`createGpuSedimentFlow` keeps parameters as custom uniforms (textures it reads from other variables
+come through declared dependencies instead) and sets these defaults:
+
+| Uniform              | Default | Role                                                              |
+| -------------------- | ------- | ----------------------------------------------------------------- |
+| `erosionCoefficient` | 0.01    | Driven by `world.erosionRate` via `setErosionRate()`              |
+| `capacityExponent`   | 1.5     | Shape of the transport-capacity curve                             |
+| `criticalSpeed`      | 0.02    | Below this, flow neither cuts nor carries                         |
+| `detachRate`         | 0.004   | Rate limit on detachment (1 = unlimited)                          |
+| `settleRate`         | 0.06    | Rate limit on settling                                            |
+| `transferCap`        | 0.5     | Max fraction of a cell's load exported per step                   |
+| `erodibleDepth`      | 0.35    | Bedrock floor = base displacement - this                          |
+| `dtScale`            | 1.0     | Set every frame by `updateSedimentFlow(dt)`, clamped to [0.25, 2] |
+
+`createGpuWaterFlowSimulation.compute()` calls `updateClouds`, `updateWaterHeight`,
+`updateSedimentFlow` and `updateTesting` before `gpuCompute.compute()`. The erosion slider reaches the
+shader through `setSedimentErosionRate(world.erosionRate)` → `setErosionRate`, so nothing outside the
+simulation writes these uniforms directly.
+
 ### Temporal Feedback
 
 Variables can depend on themselves for temporal integration:
@@ -204,12 +260,16 @@ src/gpu/
 ├── testingSimulation/         # Testing texture simulation
 │   └── createTestingTexture.ts
 └── waterFlowSimulation/       # Water flow simulation
-    ├── createGpuWaterFlowSimulation.ts  # Main factory
+    ├── createGpuWaterFlowSimulation.ts  # Main factory: creates, links and computes every variable
+    ├── createCloudSphereSystem.ts       # Cloud sphere geometry companion
+    ├── saveLoadSimulationState.ts       # Render-target snapshots for save/load
     └── variables/             # Individual GPU variables
-        ├── createGpuClouds.ts       # Cloud animation
-        ├── createGpuWaterSources.ts # Water addition points
-        ├── createGpuWaterHeight.ts  # Surface water depth
-        └── createGpuWaterVelocity.ts # Flow computation
+        ├── createGpuClouds.ts         # Cloud animation
+        ├── createGpuWaterSources.ts   # Water addition points
+        ├── createGpuWaterHeight.ts    # Surface water depth
+        ├── createGpuTerrainHeight.ts  # Dynamic bed (integrates sediment deltas)
+        ├── createGpuWaterVelocity.ts  # D8 flow computation
+        └── createGpuSedimentFlow.ts   # Suspended load + scheduled bed delta
 ```
 
 ---
