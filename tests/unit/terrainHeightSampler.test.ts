@@ -59,12 +59,59 @@ test.describe("getTerrainHeightAt", () => {
       [-0.2, -0.9],
     ];
 
+    const cellSize = terrainSize / segments;
+
     for (const [worldX, worldZ] of samples) {
       // world.x = local.x, world.z = -local.y  =>  local = (worldX, -worldZ)
-      const expected = calculateHeight(worldX, -worldZ);
       const sampled = getTerrainHeightAt(worldX, worldZ);
       expect(sampled).not.toBeNull();
-      expect(sampled as number).toBeCloseTo(expected, 4);
+
+      // The mesh only samples the analytic field once per vertex at 0.15 unit spacing,
+      // so comparing straight against calculateHeight can no longer be tight: on rugged
+      // terrain bilinear interpolation differs from the analytic height by up to ~0.17
+      // (measured), which is far too loose to catch a weighting or half-cell bug.
+      // Compare instead against the cell blend recomputed here from grid arithmetic, and
+      // keep a loose analytic bound purely as a sanity check on the field itself.
+      const localX = worldX;
+      const localY = -worldZ;
+      const cellIndexX = Math.floor((localX + halfSize) / cellSize);
+      const cellIndexY = Math.floor((halfSize - localY) / cellSize);
+      const weightX =
+        (localX - localVertex(cellIndexX, cellIndexY).x) / cellSize;
+      const weightY =
+        (localVertex(cellIndexX, cellIndexY).y - localY) / cellSize;
+
+      const cornerHeight = (dx: number, dy: number): number => {
+        const vertex = localVertex(cellIndexX + dx, cellIndexY + dy);
+        return calculateHeight(vertex.x, vertex.y);
+      };
+
+      const expectedBlend =
+        cornerHeight(0, 0) * (1 - weightX) * (1 - weightY) +
+        cornerHeight(1, 0) * weightX * (1 - weightY) +
+        cornerHeight(0, 1) * (1 - weightX) * weightY +
+        cornerHeight(1, 1) * weightX * weightY;
+
+      expect(Math.abs((sampled as number) - expectedBlend)).toBeLessThan(1e-4);
+
+      const cornerHeights = [
+        cornerHeight(0, 0),
+        cornerHeight(1, 0),
+        cornerHeight(0, 1),
+        cornerHeight(1, 1),
+      ];
+      // A bilinear sample has to sit inside its own cell's height range.
+      expect(sampled as number).toBeGreaterThanOrEqual(
+        Math.min(...cornerHeights) - 1e-4,
+      );
+      expect(sampled as number).toBeLessThanOrEqual(
+        Math.max(...cornerHeights) + 1e-4,
+      );
+
+      // Analytic agreement, bounded by mesh curvature rather than rounding.
+      expect(
+        Math.abs((sampled as number) - calculateHeight(worldX, -worldZ)),
+      ).toBeLessThan(0.2);
     }
   });
 
