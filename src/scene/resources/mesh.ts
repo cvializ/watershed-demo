@@ -26,10 +26,3 @@ export const getMesh = (id: MeshEnum) => {
 export const setMesh = (id: MeshEnum, value: THREE.Mesh) => {
   setObject(id, value);
 };
-
-/**
- * Get current terrain mesh for debugging/verification
- */
-export const getTerrainMesh = (): THREE.Mesh | null => {
-  return getMesh(MeshEnum.Terrain);
-};

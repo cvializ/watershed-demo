@@ -233,28 +233,3 @@ export const destroyGpuSimulation = (variables: {
     "[gpu:destroy] Destroyed all GPU simulation variables and render targets",
   );
 };
-
-/**
- * Get current GPU height map data from render target for debugging/verification
- */
-export const getGPUHeightMapData = (
-  heightMapVariable: Variable,
-  gpuCompute: any, // GPUComputationRenderer
-  renderer: THREE.WebGLRenderer,
-): Float32Array | null => {
-  const renderTarget = gpuCompute.getCurrentRenderTarget(heightMapVariable);
-  const texture = renderTarget.texture;
-
-  if (!texture) {
-    return null;
-  }
-
-  const width = texture.image.width || 512;
-  const height = texture.image.height || 512;
-
-  // Read the actual pixel data from the render target
-  const pixelData = new Float32Array(width * height * 4);
-  renderer.readRenderTargetPixels(renderTarget, 0, 0, width, height, pixelData);
-
-  return pixelData;
-};
