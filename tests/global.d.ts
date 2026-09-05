@@ -1,6 +1,7 @@
 /**
  * Type declarations for window globals used in testing.
- * These are set up by tests/setup-test-globals.ts for browser-based tests.
+ * These are exposed in development by src/renderer/systems/init/simulation.ts
+ * when the simulation initializes, and read by browser-based tests.
  */
 
 import type { TerrainStateManager } from "src/terrain/TerrainStateManager";

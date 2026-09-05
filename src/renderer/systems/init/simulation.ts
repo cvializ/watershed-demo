@@ -21,7 +21,7 @@ import { logger } from "@/utils/logger";
 export let waterSimulation: WaterFlowVisualization | null = null;
 export let cloudSphereSystem: CloudSphereSystem | null = null;
 let _surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
-export let terrainStateManager: TerrainStateManager | null = null;
+let terrainStateManager: TerrainStateManager | null = null;
 
 // Type declarations for window globals used in debugging/testing
 declare global {
