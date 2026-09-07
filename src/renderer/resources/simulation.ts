@@ -6,6 +6,7 @@ import {
   type SavedSimulationTextures,
 } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
 import { MeshEnum, setMesh } from "@/scene/resources/mesh";
+import { setSurfaceMaterialTexture } from "@/scene/resources/surfaceMaterialTexture";
 import { setTexture, TextureEnum } from "@/scene/resources/texture";
 import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
 import {
@@ -62,6 +63,9 @@ export const createSimulationResource = (
 
   const surfaceMaterialMap = surfaceMaterialTexture.getTexture();
   setTexture(TextureEnum.SurfaceMaterialMap, surfaceMaterialMap);
+  // Publish the manager too: terrain readers and grazers need the material
+  // lookups, not just the GPU texture.
+  setSurfaceMaterialTexture(surfaceMaterialTexture);
 
   const waterSimulation = createGpuWaterFlowSimulation(
     SIM_SIZE,

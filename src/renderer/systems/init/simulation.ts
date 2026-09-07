@@ -1,7 +1,6 @@
 import * as THREE from "three";
 
 import type { RendererInitSystem } from "@/renderer/types";
-import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 import type { TerrainPainter } from "@/terrain/paintTerrain";
 
 import { type CloudSphereSystem } from "@/gpu/waterFlowSimulation/createCloudSphereSystem";
@@ -10,6 +9,7 @@ import { createSimulationResource } from "@/renderer/resources/simulation";
 import { MeshEnum, getMesh } from "@/scene/resources/mesh";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
+import { getSurfaceMaterialTexture } from "@/scene/resources/surfaceMaterialTexture";
 import { createTerrainPainterFromSurfaceMaterial } from "@/terrain/paintTerrain";
 import { createTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import {
@@ -20,7 +20,6 @@ import { logger } from "@/utils/logger";
 
 export let waterSimulation: WaterFlowVisualization | null = null;
 export let cloudSphereSystem: CloudSphereSystem | null = null;
-let _surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
 let terrainStateManager: TerrainStateManager | null = null;
 
 // Type declarations for window globals used in debugging/testing
@@ -53,16 +52,15 @@ export const recreateSimulationWithSavedState = (
   waterSimulation = simulationResource.waterSimulation;
   cloudSphereSystem = simulationResource.cloudSphereSystem;
 
-  // Use the surface material texture created in createSimulationResource
-  _surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
-
   // Re-initialize terrain painting with new simulation
   const tm = createTerrainPaintingManager();
   terrainStateManager = createTerrainStateManager();
 
-  if (waterSimulation && _surfaceMaterialTexture) {
+  // createSimulationResource published the rebuilt manager on the scene holder
+  const surfaceMaterialTexture = getSurfaceMaterialTexture();
+  if (waterSimulation && surfaceMaterialTexture) {
     const terrainPainter: TerrainPainter =
-      createTerrainPainterFromSurfaceMaterial(_surfaceMaterialTexture);
+      createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
 
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;
     const terrainMesh = getMesh(MeshEnum.Terrain);
@@ -76,17 +74,10 @@ export const recreateSimulationWithSavedState = (
 
       const paintingSystem = tm.getPaintingSystem();
       if (paintingSystem) {
-        paintingSystem.setSurfaceMaterialTexture(_surfaceMaterialTexture);
+        paintingSystem.setSurfaceMaterialTexture(surfaceMaterialTexture);
       }
     }
   }
-};
-
-/**
- * Get the current surface material texture
- */
-export const getSurfaceMaterialTexture = (): SurfaceMaterialTexture | null => {
-  return _surfaceMaterialTexture;
 };
 
 export const simulationInitSystem: RendererInitSystem = (
@@ -99,10 +90,9 @@ export const simulationInitSystem: RendererInitSystem = (
   waterSimulation = simulationResource.waterSimulation;
   cloudSphereSystem = simulationResource.cloudSphereSystem;
 
-  // Reuse the surface material texture created in createSimulationResource
-  // so painting affects the SAME texture used by the water simulation and
-  // the water-flow visualization material.
-  _surfaceMaterialTexture = simulationResource.surfaceMaterialTexture;
+  // createSimulationResource publishes the surface material manager on the scene
+  // holder, so painting affects the SAME texture used by the water simulation
+  // and the water-flow visualization material.
 
   // Initialize terrain painting manager and state manager
   const tm = createTerrainPaintingManager();
@@ -116,10 +106,11 @@ export const simulationInitSystem: RendererInitSystem = (
   }
 
   // Get required dependencies
-  if (waterSimulation && _surfaceMaterialTexture) {
+  const surfaceMaterialTexture = getSurfaceMaterialTexture();
+  if (waterSimulation && surfaceMaterialTexture) {
     // Create terrain painter that paints on the shared surface material texture
     const terrainPainter: TerrainPainter =
-      createTerrainPainterFromSurfaceMaterial(_surfaceMaterialTexture);
+      createTerrainPainterFromSurfaceMaterial(surfaceMaterialTexture);
 
     // Use the actual camera from the scene, not a new instance
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;
@@ -135,7 +126,7 @@ export const simulationInitSystem: RendererInitSystem = (
       // Pass surface material texture to painting system for cursor sampling
       const paintingSystem = tm.getPaintingSystem();
       if (paintingSystem) {
-        paintingSystem.setSurfaceMaterialTexture(_surfaceMaterialTexture);
+        paintingSystem.setSurfaceMaterialTexture(surfaceMaterialTexture);
       }
     }
   }
