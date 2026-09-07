@@ -3,36 +3,60 @@ import { query } from "bitecs";
 import type { SceneSystem } from "@/scene/types";
 
 import { Animal, Position, Velocity } from "@/components/components";
-import { getSurfaceMaterialTexture } from "@/renderer/systems/init/simulation";
 import { ANIMAL_RADIUS } from "@/scene/resources/meshes/animal";
 import { getTerrainHeightAt } from "@/scene/resources/meshes/terrainHeightSampler";
+import { getSurfaceMaterialTexture } from "@/scene/resources/surfaceMaterialTexture";
 
-// Animal movement state - simplified navigation approach
-const animalMovementState = new Map<
-  number,
-  {
-    wanderAngle: number;
-    directionChangeTime: number;
+// Navigation state per animal. Wander cadence accumulates seconds of game time -
+// never wall-clock time - so pausing does not quietly advance behaviour.
+type AnimalMovementState = {
+  wanderAngle: number;
+  secondsSinceDirectionChange: number;
+};
+
+const animalMovementState = new Map<number, AnimalMovementState>();
+
+// State is created lazily the first time an animal is stepped.
+const getMovementState = (entity$: number): AnimalMovementState => {
+  const existingState = animalMovementState.get(entity$);
+  if (existingState) {
+    return existingState;
   }
->();
+  const newState: AnimalMovementState = {
+    wanderAngle: Math.random() * Math.PI * 2,
+    secondsSinceDirectionChange: 0,
+  };
+  animalMovementState.set(entity$, newState);
+  return newState;
+};
 
 /**
  * Animal system - makes animals move toward grass and eat it.
+ *
  * Uses a biased random walk navigation: animals wander with periodic direction changes,
  * but are pulled toward areas with grass. This prevents getting stuck while still
  * allowing them to find and graze on grass patches.
+ *
+ * Navigation advances on game time (`dt`) only, and the whole system is skipped
+ * while the game is paused, so animals hold their position and stop eating until
+ * play resumes.
  */
 export const animalSystem: SceneSystem = (world, _scene, dt): void => {
+  // Skip updates when game is paused
+  if (world.isPaused) {
+    return;
+  }
+
+  // Grazing reads and paints the terrain texture owned by the water simulation
+  const surfaceMaterialTexture = getSurfaceMaterialTexture();
+  if (!surfaceMaterialTexture) {
+    return;
+  }
+
   // Get all animal entities with Position and Velocity
   const animals$ = query(world, [Animal, Position, Velocity]);
 
   if (animals$.length === 0) {
-    return;
-  }
-
-  // Get the surface material texture to modify grass
-  const surfaceMaterialTexture = getSurfaceMaterialTexture();
-  if (!surfaceMaterialTexture) {
     return;
   }
 
@@ -54,13 +78,7 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
     const z = Position.z[entity$];
 
     // Initialize movement state for this animal if needed
-    if (!animalMovementState.has(entity$)) {
-      animalMovementState.set(entity$, {
-        wanderAngle: Math.random() * Math.PI * 2,
-        directionChangeTime: Date.now(),
-      });
-    }
-    const state = animalMovementState.get(entity$)!;
+    const state = getMovementState(entity$);
 
     // Step 1: Check if there's grass nearby (within grazing radius)
     let hasGrassNearby = false;
@@ -134,12 +152,12 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
       }
     }
 
-    // Step 3: Update wander direction periodically
-    const now = Date.now();
-    if (now - state.directionChangeTime > directionChangeInterval * 1000) {
+    // Step 3: Update wander direction periodically, on accumulated game time
+    state.secondsSinceDirectionChange += dt;
+    if (state.secondsSinceDirectionChange >= directionChangeInterval) {
       // Change to a new random direction
       state.wanderAngle = Math.random() * Math.PI * 2;
-      state.directionChangeTime = now;
+      state.secondsSinceDirectionChange -= directionChangeInterval;
     }
 
     // Step 4: Calculate final velocity - blend wander direction with grass gradient
