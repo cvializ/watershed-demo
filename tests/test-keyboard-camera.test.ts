@@ -39,13 +39,15 @@ test("keyboard camera control runs without errors", async ({ page }) => {
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible({ timeout: 15000 });
 
-  // Each group owns one orbit quantity, so exercise all three plus sprint and
+  // Each group owns one orbit quantity, so exercise every group plus sprint and
   // a combined hold. Any throw inside the per-frame keyboard update surfaces as
   // a page error, which this harness turns into a test failure.
   await holdKey(page, "KeyW");
   await holdKey(page, "KeyA");
   await holdKey(page, "KeyS");
   await holdKey(page, "KeyD");
+  await holdKey(page, "KeyZ");
+  await holdKey(page, "KeyX");
   await holdKey(page, "KeyQ");
   await holdKey(page, "KeyE");
   await holdKey(page, "KeyR");
@@ -55,13 +57,14 @@ test("keyboard camera control runs without errors", async ({ page }) => {
   await page.keyboard.press("KeyW", { delay: 120 });
   await page.keyboard.up("ShiftLeft");
 
-  // A combined hold: strafe + forward + tilt + zoom in the same frames.
+  // A combined hold: strafe + forward + orbit + tilt + zoom in the same frames.
   await page.keyboard.down("KeyW");
   await page.keyboard.down("KeyD");
+  await page.keyboard.down("KeyZ");
   await page.keyboard.down("KeyE");
   await page.keyboard.down("KeyR");
   await page.waitForTimeout(300);
-  for (const code of ["KeyR", "KeyE", "KeyD", "KeyW"]) {
+  for (const code of ["KeyR", "KeyE", "KeyZ", "KeyD", "KeyW"]) {
     await page.keyboard.up(code);
   }
 
@@ -74,6 +77,8 @@ test("keyboard camera control runs without errors", async ({ page }) => {
 
   // Wiring assertions: bound keys are claimed, unbound ones are left alone.
   expect(await wasCameraKeyClaimed(page, "KeyW")).toBe(true);
+  expect(await wasCameraKeyClaimed(page, "KeyZ")).toBe(true);
+  expect(await wasCameraKeyClaimed(page, "KeyX")).toBe(true);
   expect(await wasCameraKeyClaimed(page, "KeyE")).toBe(true);
   expect(await wasCameraKeyClaimed(page, "KeyG")).toBe(false);
 

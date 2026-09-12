@@ -7,6 +7,7 @@ import {
   clampFrameDelta,
   clampToRange,
   combinePanInput,
+  computeOrbitAngle,
   computeTiltAngle,
   computeZoomFactor,
   createPanBasis,
@@ -187,7 +188,13 @@ test.describe("ramp and glide", () => {
   });
 });
 
-test.describe("tilt and zoom", () => {
+test.describe("orbit, tilt and zoom", () => {
+  test("orbit angle scales with direction, speed and elapsed time", () => {
+    expect(computeOrbitAngle(1, 2, 0.5)).toBeCloseTo(1);
+    expect(computeOrbitAngle(-1, 2, 0.5)).toBeCloseTo(-1);
+    expect(computeOrbitAngle(1, 2, 0)).toBe(0);
+  });
+
   test("tilt angle scales with direction, speed and elapsed time", () => {
     expect(computeTiltAngle(1, 2, 0.5)).toBeCloseTo(1);
     expect(computeTiltAngle(-1, 2, 0.5)).toBeCloseTo(-1);
@@ -237,6 +244,8 @@ test.describe("held-key intent", () => {
       "KeyR",
       "KeyS",
       "KeyW",
+      "KeyX",
+      "KeyZ",
     ]);
   });
 
@@ -245,10 +254,23 @@ test.describe("held-key intent", () => {
     expect(sumIntents(["KeyA", "KeyD"]).strafe).toBe(0);
   });
 
+  test("Z orbits left and X orbits right as equal and opposite intent", () => {
+    expect(CAMERA_KEY_BINDINGS.KeyZ.orbit).toBe(1);
+    expect(CAMERA_KEY_BINDINGS.KeyX.orbit).toBe(-1);
+    // Orbit keys must not disturb the other axes.
+    expect(CAMERA_KEY_BINDINGS.KeyZ).toMatchObject({
+      strafe: 0,
+      forward: 0,
+      tilt: 0,
+      zoom: 0,
+    });
+  });
+
   test("unbound keys contribute nothing", () => {
     expect(sumIntents(["Escape", "Space"])).toEqual({
       strafe: 0,
       forward: 0,
+      orbit: 0,
       tilt: 0,
       zoom: 0,
     });
@@ -257,7 +279,24 @@ test.describe("held-key intent", () => {
   test("opposing axes compose independently", () => {
     const intent = sumIntents(["KeyW", "KeyD", "KeyE", "KeyF"]);
 
-    expect(intent).toEqual({ strafe: 1, forward: 1, tilt: 1, zoom: -1 });
+    expect(intent).toEqual({
+      strafe: 1,
+      forward: 1,
+      orbit: 0,
+      tilt: 1,
+      zoom: -1,
+    });
+  });
+
+  test("opposing orbit keys cancel, and the axis stays unit-capped", () => {
+    const intent = sumIntents(["KeyW", "KeyZ", "KeyX"]);
+
+    expect(intent.forward).toBe(1);
+    expect(intent.orbit).toBe(0);
+    // heldCodes is a Set, so repeats cannot reach sumIntents in production; these
+    // pin the clamp itself for the axis.
+    expect(sumIntents(["KeyZ", "KeyZ"]).orbit).toBe(1);
+    expect(sumIntents(["KeyX", "KeyX"]).orbit).toBe(-1);
   });
 
   test("intent never exceeds unit magnitude per axis on absurd key rollovers", () => {
@@ -283,12 +322,25 @@ test.describe("key hygiene", () => {
     expect(shouldHandleCameraKey(keyPressed({ isTextEntryTarget: true }))).toBe(
       false,
     );
+    // Z is a bound orbit key, so typing "z" into a field must still be exempt.
+    expect(
+      shouldHandleCameraKey(
+        keyPressed({ code: "KeyZ", isTextEntryTarget: true }),
+      ),
+    ).toBe(false);
   });
 
   test("lets modifier combinations through to their real owner", () => {
     expect(shouldHandleCameraKey(keyPressed({ metaKey: true }))).toBe(false);
     expect(shouldHandleCameraKey(keyPressed({ ctrlKey: true }))).toBe(false);
     expect(shouldHandleCameraKey(keyPressed({ altKey: true }))).toBe(false);
+    // Ctrl+Z stays an undo shortcut rather than a camera command.
+    expect(
+      shouldHandleCameraKey(keyPressed({ code: "KeyZ", ctrlKey: true })),
+    ).toBe(false);
+    expect(
+      shouldHandleCameraKey(keyPressed({ code: "KeyX", metaKey: true })),
+    ).toBe(false);
   });
 
   test("shift is allowed through because it is this controller's sprint key", () => {
