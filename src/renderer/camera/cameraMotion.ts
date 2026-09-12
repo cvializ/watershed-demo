@@ -25,6 +25,8 @@ export type StrafeForward = { strafe: number; forward: number };
 export type AxisIntent = {
   strafe: number;
   forward: number;
+  /** Orbit the eye around the pivot horizontally (azimuth). */
+  orbit: number;
   tilt: number;
   zoom: number;
 };
@@ -48,6 +50,7 @@ const MIN_ZOOM_FOR_PAN = 0.01;
 const NEUTRAL_INTENT: AxisIntent = {
   strafe: 0,
   forward: 0,
+  orbit: 0,
   tilt: 0,
   zoom: 0,
 };
@@ -58,18 +61,21 @@ const NEUTRAL_INTENT: AxisIntent = {
  *
  * - W/S: pan forward/back along the camera's view direction flattened to XZ.
  * - A/D: strafe left/right across that plane.
+ * - Z/X: orbit the eye left/right around the pivot at constant radius.
  * - E/Q: tilt the eye up toward top-down / down toward the horizon around the pivot.
  * - R/F: zoom in/out (orthographic frustum magnification).
  */
 export const CAMERA_KEY_BINDINGS: Readonly<Record<string, AxisIntent>> = {
-  KeyW: { strafe: 0, forward: 1, tilt: 0, zoom: 0 },
-  KeyS: { strafe: 0, forward: -1, tilt: 0, zoom: 0 },
-  KeyA: { strafe: -1, forward: 0, tilt: 0, zoom: 0 },
-  KeyD: { strafe: 1, forward: 0, tilt: 0, zoom: 0 },
-  KeyE: { strafe: 0, forward: 0, tilt: 1, zoom: 0 },
-  KeyQ: { strafe: 0, forward: 0, tilt: -1, zoom: 0 },
-  KeyR: { strafe: 0, forward: 0, tilt: 0, zoom: 1 },
-  KeyF: { strafe: 0, forward: 0, tilt: 0, zoom: -1 },
+  KeyW: { strafe: 0, forward: 1, orbit: 0, tilt: 0, zoom: 0 },
+  KeyS: { strafe: 0, forward: -1, orbit: 0, tilt: 0, zoom: 0 },
+  KeyA: { strafe: -1, forward: 0, orbit: 0, tilt: 0, zoom: 0 },
+  KeyD: { strafe: 1, forward: 0, orbit: 0, tilt: 0, zoom: 0 },
+  KeyZ: { strafe: 0, forward: 0, orbit: 1, tilt: 0, zoom: 0 },
+  KeyX: { strafe: 0, forward: 0, orbit: -1, tilt: 0, zoom: 0 },
+  KeyE: { strafe: 0, forward: 0, orbit: 0, tilt: 1, zoom: 0 },
+  KeyQ: { strafe: 0, forward: 0, orbit: 0, tilt: -1, zoom: 0 },
+  KeyR: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: 1 },
+  KeyF: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: -1 },
 };
 
 /** Clamp a value into an inclusive range. */
@@ -196,12 +202,18 @@ export const applyZoomFactor = (
   maximum: number,
 ): number => clampToRange(currentZoom * factor, minimum, maximum);
 
-/** Signed change in polar angle for a frame, in radians. */
-export const computeTiltAngle = (
+/** Signed change in an orbit angle for a frame, in radians. */
+const computeAngularDelta = (
   direction: number,
   speedRadiansPerSecond: number,
   deltaSeconds: number,
 ): number => direction * speedRadiansPerSecond * deltaSeconds;
+
+/** Signed change in azimuthal (orbit) angle for a frame, in radians. */
+export const computeOrbitAngle = computeAngularDelta;
+
+/** Signed change in polar (tilt) angle for a frame, in radians. */
+export const computeTiltAngle = computeAngularDelta;
 
 /** Sum the intent of every currently held camera key into one axis intent. */
 export const sumIntents = (heldCodes: Iterable<string>): AxisIntent => {
@@ -216,6 +228,7 @@ export const sumIntents = (heldCodes: Iterable<string>): AxisIntent => {
 
     total.strafe += binding.strafe;
     total.forward += binding.forward;
+    total.orbit += binding.orbit;
     total.tilt += binding.tilt;
     total.zoom += binding.zoom;
   }
@@ -223,6 +236,7 @@ export const sumIntents = (heldCodes: Iterable<string>): AxisIntent => {
   return {
     strafe: clampToRange(total.strafe, -1, 1),
     forward: clampToRange(total.forward, -1, 1),
+    orbit: clampToRange(total.orbit, -1, 1),
     tilt: clampToRange(total.tilt, -1, 1),
     zoom: clampToRange(total.zoom, -1, 1),
   };

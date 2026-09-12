@@ -10,6 +10,7 @@ import {
   approachValue,
   clampFrameDelta,
   combinePanInput,
+  computeOrbitAngle,
   computeTiltAngle,
   computeZoomFactor,
   createPanBasis,
@@ -24,6 +25,8 @@ import { logger } from "@/utils/logger";
 const TUNING = {
   /** World units per second at zoom 1, divided by zoom for constant screen speed. */
   panSpeed: 14,
+  /** Radians per second that Z/X orbit the eye around the pivot. */
+  orbitSpeedRadiansPerSecond: 0.9,
   /** Radians per second that Q/E tilt the eye around the pivot. */
   tiltSpeedRadiansPerSecond: 1.1,
   /** Exponential zoom rate per second for R/F. */
@@ -52,6 +55,7 @@ type KeyboardCameraController = {
   /** Smoothed intent components, driven toward the pressed-key target each frame. */
   smoothedStrafe: number;
   smoothedForward: number;
+  smoothedOrbit: number;
   smoothedTilt: number;
   smoothedZoom: number;
   isSprinting: boolean;
@@ -204,6 +208,23 @@ const applyIntent = (
     controls.target.add(panOffset);
   }
 
+  if (controller.smoothedOrbit !== 0) {
+    const orbitAngle = applySprintMultiplier(
+      computeOrbitAngle(
+        controller.smoothedOrbit,
+        TUNING.orbitSpeedRadiansPerSecond,
+        deltaSeconds,
+      ),
+      controller.isSprinting,
+      TUNING.sprintMultiplier,
+    );
+
+    // Positive angle feeds OrbitControls.rotateLeft, so the eye travels to the
+    // viewer's left around the pivot at constant radius. Radius is untouched,
+    // unlike panning, which carries the pivot along with the camera.
+    controls.rotateLeft(orbitAngle);
+  }
+
   if (controller.smoothedTilt !== 0) {
     const tiltAngle = applySprintMultiplier(
       computeTiltAngle(
@@ -258,6 +279,7 @@ export const createKeyboardCameraResource = (
     heldCodes: new Set<string>(),
     smoothedStrafe: 0,
     smoothedForward: 0,
+    smoothedOrbit: 0,
     smoothedTilt: 0,
     smoothedZoom: 0,
     isSprinting: false,
@@ -310,6 +332,12 @@ export const updateKeyboardCamera = (dt: number): void => {
     ramp,
     deltaSeconds,
   );
+  controller.smoothedOrbit = approachValue(
+    controller.smoothedOrbit,
+    intent.orbit,
+    ramp,
+    deltaSeconds,
+  );
   controller.smoothedTilt = approachValue(
     controller.smoothedTilt,
     intent.tilt,
@@ -335,6 +363,12 @@ export const updateKeyboardCamera = (dt: number): void => {
     Math.abs(controller.smoothedForward) < INTENT_EPSILON
   ) {
     controller.smoothedForward = 0;
+  }
+  if (
+    intent.orbit === 0 &&
+    Math.abs(controller.smoothedOrbit) < INTENT_EPSILON
+  ) {
+    controller.smoothedOrbit = 0;
   }
   if (intent.tilt === 0 && Math.abs(controller.smoothedTilt) < INTENT_EPSILON) {
     controller.smoothedTilt = 0;

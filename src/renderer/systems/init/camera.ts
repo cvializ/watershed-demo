@@ -29,9 +29,9 @@ export const cameraInitSystem: RendererInitSystem = (
     const camera = getObject(GeneralObjectEnum.Camera) as THREE.Camera;
     const controls = createCameraControlsResource(camera, domElement);
 
-    // Keyboard flight: WASD pan, Q/E tilt about the pivot, R/F zoom. The scene
-    // camera is an OrthographicCamera (see createCameraResource), which is why the
-    // cached Object3D can be handed over as a zoom-capable camera here.
+    // Keyboard flight: WASD pan, Z/X orbit, Q/E tilt about the pivot, R/F zoom.
+    // The scene camera is an OrthographicCamera (see createCameraResource), which
+    // is why the cached Object3D can be handed over as a zoom-capable camera here.
     createKeyboardCameraResource(
       camera as THREE.OrthographicCamera | THREE.PerspectiveCamera,
       controls,
