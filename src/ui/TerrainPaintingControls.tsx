@@ -99,7 +99,7 @@ export const TerrainPaintingControls = ({
 
       <div style={styles.section}>
         <label htmlFor="brush-radius" style={styles.label}>
-          Brush Size: {world.terrainBrushRadius.toFixed(1)}
+          Brush Size: <span style={styles.value}>{world.terrainBrushRadius.toFixed(1)}</span>
         </label>
         <input
           type="range"
@@ -195,6 +195,10 @@ const styles = {
   label: {
     fontSize: "12px",
     fontWeight: "bold",
+  } satisfies React.CSSProperties,
+  value: {
+    fontFamily: "monospace",
+    fontSize: "12px",
   } satisfies React.CSSProperties,
   dropdown: {
     padding: "6px 8px",
