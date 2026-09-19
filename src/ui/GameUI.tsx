@@ -133,6 +133,32 @@ export const GameUI = ({ world }: GameUiProps) => {
               title="Erosion rate"
             />
           </div>
+          <div style={styles.reposeAngleSection}>
+            <span style={styles.label}>Repose Angle:</span>
+            <input
+              type="range"
+              min="0"
+              max="70"
+              step="1"
+              value={world.reposeAngle}
+              onChange={(e) => (world.reposeAngle = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Angle of repose for terrain relaxation (degrees)"
+            />
+          </div>
+          <div style={styles.relaxRateSection}>
+            <span style={styles.label}>Relax Rate:</span>
+            <input
+              type="range"
+              min="0.05"
+              max="1.0"
+              step="0.05"
+              value={world.relaxRate}
+              onChange={(e) => (world.relaxRate = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Relaxation rate for terrain repose (fraction per pass)"
+            />
+          </div>
           <div style={styles.sunAngleSection}>
             <span style={styles.label}>Sun Angle:</span>
             <input
@@ -256,6 +282,16 @@ const styles = {
     outline: "none",
   } satisfies React.CSSProperties,
   erosionSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  } satisfies React.CSSProperties,
+  reposeAngleSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  } satisfies React.CSSProperties,
+  relaxRateSection: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
