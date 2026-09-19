@@ -230,6 +230,7 @@ export const createGpuWaterFlowSimulation = (
     createGpuSedimentFlow(
       gpuCompute,
       width,
+      terrainSize / width, // world units per texel: what makes the shader's repose angle a slope, not a constant
       heightMapTexture, // static base displacement -> erodible-depth proxy (A2)
       waterVelocityVariable,
       waterHeightVariable,

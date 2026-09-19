@@ -48,6 +48,11 @@ export const WET_THRESHOLD = 0.01; // depth below which settling stops being boo
 export const CAPACITY_CEILING = 0.25; // capacity has to saturate, or erosion pins at availability (A6)
 export const STILL_WATER_BOOST = 8.0; // settling multiplier in still water (A7, section 4.5)
 
+// Granular relaxation (dry talus avalanche). TALUS_MOVE_CEILING bounds a cell's total outflow against its
+// shallowest over-steepened edge, which is what keeps every edge above the repose line instead of ringing.
+const TALUS_MOVE_CEILING = 0.5;
+const RELAX_COEFFICIENT_CEILING = 1.0; // relaxRate * dtScale saturates against the excess itself
+
 // Surface material ids, as src/scene/resources/textures/surfaceMaterial.ts encodes them in
 // surfaceMaterialMap.r, and the A9 factors keyed off them with the shader's < 0.5 / < 1.5 thresholds.
 export const MATERIAL_BARE_DIRT = 0.0;
@@ -72,6 +77,9 @@ export type SedimentParams = {
   transferCap: number; // <= 1: advective CFL analogue + mass safety knob
   erodibleDepth: number; // bedrock = baseHeight - erodibleDepth (A2)
   dtScale: number; // S6 frame-rate coupling, clamped to [0.25, 2] by the sim
+  reposeTangent: number; // tan(angle of repose): drop across one edge at which the material comes to rest
+  relaxRate: number; // fraction of an over-steepened drop relocated per pass, dtScale-scaled
+  texelSpan: number; // world units per texel: turns reposeTangent into a height threshold
 };
 
 export const DEFAULT_SEDIMENT_PARAMS: SedimentParams = {
@@ -83,6 +91,9 @@ export const DEFAULT_SEDIMENT_PARAMS: SedimentParams = {
   transferCap: 0.5,
   erodibleDepth: 0.35,
   dtScale: 1.0,
+  reposeTangent: 1.7320508, // tan(60 degrees), the steep default above
+  relaxRate: 0.25,
+  texelSpan: 12 / 512, // terrainSize / SIM_SIZE, i.e. production geometry
 };
 
 // The direction table water-velocity.frag emits from and sediment-flow.frag snaps back to (A4). Texel steps,
@@ -127,8 +138,10 @@ export type SedimentPassTerms = {
   influx: Float32Array;
   erosion: Float32Array;
   deposition: Float32Array;
-  bedDelta: Float32Array; // D - E, the value written to sedimentFlow.a
+  bedDelta: Float32Array; // D - E + granularInflux - granularLoss, the value written to sedimentFlow.a
   route: Int32Array; // where this cell's load went, or -1 for "nothing could leave" (A4)
+  granularLoss: Float32Array; // bed material this cell relocated downhill, dry (talus avalanche)
+  granularInflux: Float32Array; // bed material this cell received from over-steepened neighbours
 };
 
 /** Fresh zeroed grid with a caller-chosen base/bed/material. Every field is owned by the grid. */
@@ -306,6 +319,86 @@ const availableSoilAt = (
   return Math.max(bedAfterScheduledDelta - bedrock, 0.0);
 };
 
+/** sediment-flow.frag talusDropFor: repose line for one edge, scaled by that edge's horizontal span. */
+const talusDropFor = (index: number, params: SedimentParams): number => {
+  const [stepX, stepY] = DIRECTION_STEPS[index];
+  return params.reposeTangent * params.texelSpan * Math.hypot(stepX, stepY);
+};
+
+/**
+ * sediment-flow.frag talusExcessAt: how far the bed at (column,row) stands above the repose line toward
+ * `direction`. Zero for an edge that is merely steep-but-standing, which is what makes this a spike detector
+ * rather than a smoother. Off-grid targets export nothing (border retention), matching insideGrid's uv test.
+ */
+const talusExcessAt = (
+  grid: SedimentGrid,
+  column: number,
+  row: number,
+  direction: number,
+  params: SedimentParams,
+): number => {
+  const [stepX, stepY] = DIRECTION_STEPS[direction];
+  const targetColumn = column + stepX;
+  const targetRow = row + stepY;
+  if (
+    targetColumn < 0 ||
+    targetColumn >= grid.size ||
+    targetRow < 0 ||
+    targetRow >= grid.size
+  ) {
+    return 0.0;
+  }
+
+  const ownBed = grid.bed[row * grid.size + column];
+  const downBed = grid.bed[targetRow * grid.size + targetColumn];
+  return Math.max(ownBed - downBed - talusDropFor(direction, params), 0.0);
+};
+
+/**
+ * sediment-flow.frag granularOutfluxAt: granular material the bed at (column,row) relocates across its edge
+ * toward `direction`. Reads no depth, velocity or load - debris is terrain moving on its own, water-free.
+ *
+ * Pure function of the exporter's cell, exactly like outfluxAt, so an importer that re-evaluates it gets identical
+ * bits and the grid sum of (influx - loss) telescopes to zero: M* stays conserved with this term folded in.
+ */
+const granularOutfluxAt = (
+  grid: SedimentGrid,
+  column: number,
+  row: number,
+  direction: number,
+  params: SedimentParams,
+): number => {
+  const excess = talusExcessAt(grid, column, row, direction, params);
+  if (excess <= 0.0) {
+    return 0.0;
+  }
+
+  const coefficient = Math.min(
+    RELAX_COEFFICIENT_CEILING,
+    params.relaxRate * params.dtScale,
+  );
+
+  let rawTotal = 0.0;
+  let shallowestExcess = excess; // known live, which is what makes the divide below safe
+  for (let candidate = 0; candidate < DIRECTION_STEPS.length; candidate++) {
+    const edgeExcess = talusExcessAt(grid, column, row, candidate, params);
+    if (edgeExcess <= 0.0) {
+      continue;
+    }
+
+    rawTotal += coefficient * edgeExcess;
+    shallowestExcess = Math.min(shallowestExcess, edgeExcess);
+  }
+
+  const capTotal = Math.min(
+    TALUS_MOVE_CEILING * shallowestExcess,
+    availableSoilAt(grid, column, row, params),
+  );
+  return (
+    coefficient * excess * Math.min(1.0, capTotal / Math.max(rawTotal, EPS))
+  );
+};
+
 /**
  * sediment-flow.frag outfluxAt (A4): how much of the load at `index` leaves this step, and where to. Export
  * and import both call THIS function on the same texel read, so what one cell loses is arithmetically identical
@@ -385,6 +478,8 @@ export const advanceSedimentStep = (
     deposition: new Float32Array(cellCount),
     bedDelta: new Float32Array(cellCount),
     route: new Int32Array(cellCount).fill(-1),
+    granularLoss: new Float32Array(cellCount),
+    granularInflux: new Float32Array(cellCount),
   };
 
   for (let row = 0; row < size; row++) {
@@ -434,6 +529,37 @@ export const advanceSedimentStep = (
       }
       terms.influx[index] = influx;
 
+      // Dry relaxation across over-steepened edges, ahead of the bed exchange exactly as in the shader: erosion
+      // then draws on whatever soil is left, so avalanche and hydraulic cut cannot each remove the same gram.
+      let granularLoss = 0.0;
+      for (let direction = 0; direction < DIRECTION_STEPS.length; direction++) {
+        granularLoss += granularOutfluxAt(grid, column, row, direction, params);
+      }
+      terms.granularLoss[index] = granularLoss;
+
+      let granularInflux = 0.0;
+      for (let direction = 0; direction < DIRECTION_STEPS.length; direction++) {
+        const neighborColumn = column + DIRECTION_STEPS[direction][0];
+        const neighborRow = row + DIRECTION_STEPS[direction][1];
+        if (
+          neighborColumn < 0 ||
+          neighborColumn >= size ||
+          neighborRow < 0 ||
+          neighborRow >= size
+        ) {
+          continue;
+        }
+
+        granularInflux += granularOutfluxAt(
+          grid,
+          neighborColumn,
+          neighborRow,
+          oppositeIndex(direction),
+          params,
+        );
+      }
+      terms.granularInflux[index] = granularInflux;
+
       // Material for this cell: both exchange tables key off one id (A9). No material map means all-dirt, and
       // dirt is the identity pair 1.0 / 1.0 - so a missing map behaves exactly like bare dirt everywhere (A8).
       const materialId = grid.material[index];
@@ -462,7 +588,11 @@ export const advanceSedimentStep = (
         params.detachRate *
         Math.max(bedShear - criticalShear, 0.0);
       const carryLimit = Math.max(capacity - remaining, 0.0); // how much more this cell's flow can hold (A6)
-      const availableSoil = availableSoilAt(grid, column, row, params);
+      // What the avalanche left of the soil budget, so the floor stays unreachable with both terms live.
+      const availableSoil = Math.max(
+        availableSoilAt(grid, column, row, params) - granularLoss,
+        0.0,
+      );
 
       // Erosion is bounded by the capacity gap, so carried <= capacity: material eroded in this pass can never
       // settle in the same pass, because settling only draws down load above local capacity.
@@ -495,7 +625,8 @@ export const advanceSedimentStep = (
       // negative value could only come from a broken clamp upstream.
       nextLoad[index] = carried - deposition + influx;
 
-      const bedDelta = deposition - erosion; // signed: terrain-height.frag applies it one pass later (A1)
+      // The granular pair nets to zero across the grid, so this is still a pure bookkeeping sum.
+      const bedDelta = deposition - erosion + granularInflux - granularLoss; // signed: terrain-height.frag applies it one pass later (A1)
       terms.bedDelta[index] = bedDelta;
       nextPendingDelta[index] = bedDelta;
 

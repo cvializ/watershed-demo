@@ -27,6 +27,9 @@ export type SedimentFlowUniforms = {
   transferCap: THREE.IUniform<number>;
   erodibleDepth: THREE.IUniform<number>;
   dtScale: THREE.IUniform<number>;
+  reposeTangent: THREE.IUniform<number>;
+  relaxRate: THREE.IUniform<number>;
+  texelSpan: THREE.IUniform<number>;
 };
 
 // Defaults from plan addendum A8.
@@ -37,6 +40,18 @@ const DEFAULT_DETACH_RATE = 0.004;
 const DEFAULT_SETTLE_RATE = 0.06;
 const DEFAULT_TRANSFER_CAP = 0.5;
 const DEFAULT_ERODIBLE_DEPTH = 0.35;
+
+/**
+ * Granular relaxation defaults: tan(60 degrees), i.e. a deliberately steep angle of repose.
+ *
+ * Measured over the initial field on the production grid (512 texels across the 12 unit plane, so one texel spans
+ * 0.0234 world units): the analytic crests already put 1.96% of all cell edges steeper than 60 degrees and 7.2%
+ * steeper than 50 degrees, while a 35 degree repose would slump 24% of the map. Steep is what makes this spike
+ * relief rather than landscape erosion - those few percent are the texel-scale crests, and they slump once at
+ * startup instead of being shaved off over the whole terrain.
+ */
+const DEFAULT_REPOSE_TANGENT = 1.7320508;
+const DEFAULT_RELAX_RATE = 0.25;
 
 // Frame-rate coupling (plan S6): coefficients are per-frame, dtScale keeps a stalled frame from
 // exporting more than the cap allows. Clamped on both ends.
@@ -96,6 +111,10 @@ const createInitialSedimentFlowTexture = (
 /**
  * Creates the sediment flow computation.
  *
+ * `texelSpan` is the world width of one simulation texel (`terrainSize / width`). The shader's angle of repose is a
+ * geometric slope, so it needs that span to turn into a height threshold; hard-coding the threshold instead would
+ * make the resting angle change whenever the grid resolution does.
+ *
  * Dependencies are declared exactly once, here (plan S2): routing velocity and flow depth set
  * transport capacity, the dynamic bed supplies elevation plus erodible-soil availability, and the
  * self-dependency carries the previous suspended load. Every cross-variable read is therefore the
@@ -105,6 +124,7 @@ const createInitialSedimentFlowTexture = (
 export const createGpuSedimentFlow = (
   gpuCompute: GPUComputationRenderer,
   width: number,
+  texelSpan: number,
   baseHeightMapTexture: THREE.Texture,
   waterVelocityVariable: Variable,
   waterHeightVariable: Variable,
@@ -145,6 +165,9 @@ export const createGpuSedimentFlow = (
   uniforms.transferCap = { value: DEFAULT_TRANSFER_CAP };
   uniforms.erodibleDepth = { value: DEFAULT_ERODIBLE_DEPTH };
   uniforms.dtScale = { value: 1.0 }; // neutral until the first update
+  uniforms.reposeTangent = { value: DEFAULT_REPOSE_TANGENT };
+  uniforms.relaxRate = { value: DEFAULT_RELAX_RATE };
+  uniforms.texelSpan = { value: texelSpan };
 
   return {
     sedimentFlowVariable,

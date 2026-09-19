@@ -33,6 +33,7 @@ const WIDTH = 16;
 // "erosion was limited by availability rather than the floor" readable off the numbers.
 const BASE_HEIGHT = 1.0;
 const ERODIBLE_DEPTH = 0.35; // A8 default for erodibleDepth
+const TEXEL_SPAN = 12 / 512; // production terrainSize / SIM_SIZE: turns the shader's reposeTangent into a slope
 const BEDROCK = BASE_HEIGHT - ERODIBLE_DEPTH;
 
 const CHANNEL_SPEED = 0.3;
@@ -269,6 +270,9 @@ const createSedimentGraph = (restored?: RestoredSeed) => {
     createGpuSedimentFlow(
       gpuCompute,
       WIDTH,
+      // terrainSize / SIM_SIZE: production geometry, same world-per-texel span as the transport suite, so
+      // both graphs (saved and restored) relax against an identical angle of repose.
+      TEXEL_SPAN,
       baseHeightMapTexture,
       waterVelocityVariable,
       waterHeightVariable,

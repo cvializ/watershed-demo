@@ -243,6 +243,9 @@ const createSedimentGraph = (
     createGpuSedimentFlow(
       gpuCompute,
       WIDTH,
+      // Production geometry (terrainSize / SIM_SIZE): the reference model's repose threshold is a geometric
+      // slope, so parity compares against the same world-per-texel span the shader gets.
+      DEFAULT_SEDIMENT_PARAMS.texelSpan,
       baseHeightMapTexture,
       waterVelocityVariable,
       waterHeightVariable,
@@ -892,6 +895,9 @@ const applyParams = (graph: SedimentGraph, params: SedimentParams): void => {
   uniforms.settleRate.value = params.settleRate;
   uniforms.transferCap.value = params.transferCap;
   uniforms.erodibleDepth.value = params.erodibleDepth;
+  uniforms.reposeTangent.value = params.reposeTangent;
+  uniforms.relaxRate.value = params.relaxRate;
+  uniforms.texelSpan.value = params.texelSpan;
 };
 
 /** The same fixture in the reference model's representation: one source of inputs for both sides. */
