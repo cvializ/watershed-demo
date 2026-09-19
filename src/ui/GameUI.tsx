@@ -121,7 +121,8 @@ export const GameUI = ({ world }: GameUiProps) => {
             </select>
           </div>
           <div style={styles.erosionSection}>
-            <span style={styles.label}>Erosion:</span>
+            <span style={styles.label}>Erosion: </span>
+            <span style={styles.value}>{world.erosionRate.toFixed(2)}</span>
             <input
               type="range"
               min="0"
@@ -134,7 +135,8 @@ export const GameUI = ({ world }: GameUiProps) => {
             />
           </div>
           <div style={styles.reposeAngleSection}>
-            <span style={styles.label}>Repose Angle:</span>
+            <span style={styles.label}>Repose Angle: </span>
+            <span style={styles.value}>{world.reposeAngle.toFixed(0)}°</span>
             <input
               type="range"
               min="0"
@@ -147,7 +149,8 @@ export const GameUI = ({ world }: GameUiProps) => {
             />
           </div>
           <div style={styles.relaxRateSection}>
-            <span style={styles.label}>Relax Rate:</span>
+            <span style={styles.label}>Relax Rate: </span>
+            <span style={styles.value}>{world.relaxRate.toFixed(2)}</span>
             <input
               type="range"
               min="0.05"
@@ -160,7 +163,8 @@ export const GameUI = ({ world }: GameUiProps) => {
             />
           </div>
           <div style={styles.sunAngleSection}>
-            <span style={styles.label}>Sun Angle:</span>
+            <span style={styles.label}>Sun Angle: </span>
+            <span style={styles.value}>{(world.sunAngle * 180 / Math.PI).toFixed(0)}°</span>
             <input
               type="range"
               min={0}
@@ -299,6 +303,11 @@ const styles = {
   label: {
     fontSize: "12px",
     whiteSpace: "nowrap",
+  } satisfies React.CSSProperties,
+  value: {
+    fontFamily: "monospace",
+    fontSize: "12px",
+    fontWeight: "bold",
   } satisfies React.CSSProperties,
   slider: {
     width: "100px",
