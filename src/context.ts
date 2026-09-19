@@ -5,6 +5,8 @@ export const createGameWorldContext = () => ({
   fps: 0,
   showVelocity: true,
   erosionRate: 0.01,
+  reposeAngle: 60, // Degrees - angle of repose for granular relaxation
+  relaxRate: 0.25, // Fraction of over-steepened drop relocated per pass
   lastVizMode: 4, // Default to Water Flow mode
   visualizationMode: 4, // Default to Water Flow mode
   sunAngle: 0,

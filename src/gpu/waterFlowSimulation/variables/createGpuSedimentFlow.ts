@@ -187,6 +187,21 @@ export const createGpuSedimentFlow = (
     setErosionRate: (erosionRate: number): void => {
       uniforms.erosionCoefficient.value = erosionRate;
     },
+    /**
+     * Sets the angle of repose for granular relaxation (in degrees).
+     * @param angleDegrees - Angle in degrees (0-90)
+     */
+    setReposeAngle: (angleDegrees: number): void => {
+      const radians = (angleDegrees * Math.PI) / 180;
+      uniforms.reposeTangent.value = Math.tan(radians);
+    },
+    /**
+     * Sets the relaxation rate for granular repose.
+     * @param rate - Fraction of over-steepened drop relocated per pass (0-1)
+     */
+    setRelaxRate: (rate: number): void => {
+      uniforms.relaxRate.value = rate;
+    },
     getSedimentFlowUniforms: () => {
       return getUniforms<SedimentFlowUniforms>(sedimentFlowVariable.material);
     },

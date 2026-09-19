@@ -30,6 +30,18 @@ export type WaterFlowVisualization = {
   setSedimentErosionRate: (erosionRate: number) => void;
 
   /**
+   * Set the angle of repose for terrain relaxation (in degrees).
+   * @param angleDegrees - Angle in degrees (0-90)
+   */
+  setTerrainReposeAngle: (angleDegrees: number) => void;
+
+  /**
+   * Set the relaxation rate for terrain repose behavior.
+   * @param rate - Fraction of over-steepened drop relocated per pass (0-1)
+   */
+  setTerrainRelaxRate: (rate: number) => void;
+
+  /**
    * Adds water at a specific location on the terrain.
    * @param x - X coordinate in world space (0 to terrainSize)
    * @param y - Y coordinate in world space (0 to terrainSize)
@@ -226,7 +238,7 @@ export const createGpuWaterFlowSimulation = (
     surfaceMaterialMap ?? null,
     savedTextures && savedTextures.velocityTexture, // Pass saved velocity texture
   );
-  const { sedimentFlowVariable, updateSedimentFlow, setErosionRate } =
+  const { sedimentFlowVariable, updateSedimentFlow, setErosionRate, setReposeAngle, setRelaxRate } =
     createGpuSedimentFlow(
       gpuCompute,
       width,
@@ -310,6 +322,12 @@ export const createGpuWaterFlowSimulation = (
     setSedimentErosionRate: (erosionRate: number) => {
       // Forwarded to the transport-capacity coefficient; nothing writes world.erosionRate back
       setErosionRate(erosionRate);
+    },
+    setTerrainReposeAngle: (angleDegrees: number) => {
+      setReposeAngle(angleDegrees);
+    },
+    setTerrainRelaxRate: (rate: number) => {
+      setRelaxRate(rate);
     },
     getWaterHeightVariable: () => waterHeightVariable,
     getCloudVariable: () => cloudVariable,

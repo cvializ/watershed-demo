@@ -78,6 +78,10 @@ export const simulationSystem: RendererSystem = (
   // directly, so the shader's parameter names stay private to the simulation (plan A16)
   waterSimulation.setSedimentErosionRate(world.erosionRate);
 
+  // Forward repose angle and relax rate for terrain relaxation behavior
+  waterSimulation.setTerrainReposeAngle(world.reposeAngle);
+  waterSimulation.setTerrainRelaxRate(world.relaxRate);
+
   waterSimulation.compute(dt, gameTime);
 
   // Get dynamic height map (always needed for other materials)
