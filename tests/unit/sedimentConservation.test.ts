@@ -365,11 +365,16 @@ test.describe("conservation invariants", () => {
         terms.deposition[index];
       expect(Math.abs(next.load[index] - expectedLoad)).toBeLessThan(1e-9);
 
-      // Bed delta is exactly the other side of the same two numbers, so height cannot come from nowhere.
+      // Bed delta is exactly the other side of the same two numbers, plus the dry talus pair: granular
+      // relaxation moves bed material between cells without ever touching the load, so height still cannot
+      // come from nowhere - a cell's gain is its over-steepened neighbours' loss.
       expect(
         Math.abs(
           next.pendingDelta[index] -
-            (terms.deposition[index] - terms.erosion[index]),
+            (terms.deposition[index] -
+              terms.erosion[index] +
+              terms.granularInflux[index] -
+              terms.granularLoss[index]),
         ),
       ).toBeLessThan(1e-12);
 

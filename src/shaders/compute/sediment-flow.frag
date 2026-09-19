@@ -18,6 +18,14 @@ uniform float transferCap; // <= 1: advective CFL analogue + mass safety knob
 uniform float erodibleDepth; // bedrock = uBaseHeightMap.r - erodibleDepth (A2)
 uniform float dtScale;
 
+// Granular relaxation (dry talus avalanche). Debris moves because a slope cannot stand, not because water
+// arrives: the terms below read no velocity, no depth and no suspended load, so a dry mountain settles its own
+// spikes. They are separate knobs from erosion for the same reason A9 keeps erodibility off capacity - resting
+// angle is a property of the material's geometry, not of the flow over it.
+uniform float reposeTangent; // tan(angle of repose): the drop across one edge at which this material comes to rest
+uniform float relaxRate; // fraction of an over-steepened drop relocated per pass, dtScale-scaled (S6)
+uniform float texelSpan; // world units per texel: makes reposeTangent a geometric slope, not a resolution constant
+
 // Same table water-velocity.frag emits from, so snapping a velocity back to a neighbour index is
 // exact rather than an approximation through atan2 (plan A4). Diagonals stay unnormalised because
 // they are used as texel steps.
@@ -52,6 +60,13 @@ const float DEPOSITION_FACTOR_ROCKS = 0.8; // smooth rock lets it keep moving
 
 const float CAPACITY_CEILING = 0.25; // depth * speed is unbounded: capacity has to saturate (A6)
 const float STILL_WATER_BOOST = 8.0; // settling multiplier in still water (A7, section 4.5)
+
+// Granular relaxation ceilings. TALUS_MOVE_CEILING bounds a cell's TOTAL outflow against its shallowest
+// over-steepened edge: the cell loses height against every neighbour at once, so keeping that total under half
+// the shallowest excess leaves every one of its edges above the repose line instead of flipping an edge into the
+// opposite over-steepness - which is what would make a spike ring at texel scale rather than subside.
+const float TALUS_MOVE_CEILING = 0.5;
+const float RELAX_COEFFICIENT_CEILING = 1.0; // relaxRate * dtScale saturates against the excess itself, never unbounded
 
 /**
  * How readily the bed at `materialId` gives up grains to flowing water (A9). Applied to the detachment
@@ -144,6 +159,69 @@ float availableSoilAt(vec2 p) {
 }
 
 /**
+ * Drop across one edge at which this material comes to rest: tan(repose) times the edge's horizontal span.
+ * DIRECTION_STEPS are texel steps, so a diagonal's length() is sqrt(2) and its repose line is correspondingly
+ * looser - without that, diagonals would be held to a steeper angle than cardinals for pure geometric reasons.
+ */
+float talusDropFor(int index) {
+    return reposeTangent * texelSpan * length(DIRECTION_STEPS[index]);
+}
+
+/**
+ * How far the bed at `p` stands above the repose line toward canonical direction `index`: zero for an edge that
+ * is simply steep-but-standing. This is the spike detector - a broad dome or a steady hillside has no excess at
+ * all, while a texel-scale crest towers over every neighbour it touches.
+ */
+float talusExcessAt(vec2 p, vec2 cellSize, int index) {
+    vec2 target = p + DIRECTION_STEPS[index] * cellSize;
+    if (!insideGrid(target)) {
+        return 0.0; // border retention: nothing is exported off-grid, so no neighbour imports from beyond either
+    }
+
+    float ownBed = texture2D(heightMap, p).r;
+    float downBed = texture2D(heightMap, clamp(target, vec2(0.0), vec2(1.0))).r;
+    return max(ownBed - downBed - talusDropFor(index), 0.0);
+}
+
+/**
+ * Granular material the bed at `p` relocates across its edge toward canonical direction `index` this pass.
+ *
+ * Like outfluxAt, this is a pure function of the EXPORTER's texel: an importer re-evaluates it on the exporter's
+ * reads rather than guessing at a matching formula. So what one cell subtracts is bit-for-bit what its neighbour
+ * adds, and summing (influx - loss) over the grid telescopes to zero - which is why folding this into the signed
+ * bed delta leaves M* = sum(load + bed + pendingDelta) exactly as conserved as it was.
+ */
+void granularOutfluxAt(vec2 p, vec2 cellSize, int index, out float flux) {
+    float excess = talusExcessAt(p, cellSize, index);
+    if (excess <= 0.0) {
+        flux = 0.0; // the overwhelmingly common case: an edge at rest costs two taps and stops right here
+        return;
+    }
+
+    float coefficient = min(RELAX_COEFFICIENT_CEILING, relaxRate * dtScale);
+
+    // Both ceilings below are functions of this cell's own texel alone, so re-evaluating them from the importing
+    // side produces identical bits. The live-edge guarantee comes from the early return above; only a switched-off
+    // rate (relaxRate or dtScale at zero) can leave rawTotal at zero, which is what max(rawTotal, EPS) covers.
+    float rawTotal = 0.0;
+    float shallowestExcess = excess; // known live, which is what makes the divide below safe
+    for (int i = 0; i < 8; i++) {
+        float neighborEdge = talusExcessAt(p, cellSize, i);
+        if (neighborEdge <= 0.0) {
+            continue;
+        }
+
+        rawTotal += coefficient * neighborEdge;
+        shallowestExcess = min(shallowestExcess, neighborEdge);
+    }
+
+    // A2 again from the other side: relaxation may not cut through the immovable floor either, and it draws on
+    // the same soil budget hydraulic erosion will draw on below - so main() subtracts this cell's loss first.
+    float capTotal = min(TALUS_MOVE_CEILING * shallowestExcess, availableSoilAt(p));
+    flux = coefficient * excess * min(1.0, capTotal / max(rawTotal, EPS));
+}
+
+/**
  * Suspended load leaving the texel at `p` this step, plus the neighbour index it is routed to (-1
  * when nothing can leave). Both export and import call THIS function with the same `p`, so the value
  * subtracted from one cell is bit-for-bit the value added to its neighbour: mass conservation comes
@@ -219,6 +297,30 @@ void main() {
         }
     }
 
+    // Dry relaxation across over-steepened edges, deliberately ahead of the bed exchange below: erosion then gets
+    // whatever is left of this cell's soil budget, so avalanche and hydraulic cut can never each remove the same
+    // gram in one step. No water term is read anywhere in these two loops - debris is terrain moving on its own.
+    float granularLoss = 0.0;
+    for (int i = 0; i < 8; i++) {
+        float edgeFlux;
+        granularOutfluxAt(uv, cellSize, i, edgeFlux);
+        granularLoss += edgeFlux;
+    }
+
+    // A neighbour contributes across an edge exactly when it exports to here, re-evaluated on ITS texel read:
+    // the grid sum of (granularInflux - granularLoss) is zero by construction.
+    float granularInflux = 0.0;
+    for (int i = 0; i < 8; i++) {
+        vec2 neighborUV = uv + DIRECTION_STEPS[i] * cellSize;
+        if (!insideGrid(neighborUV)) {
+            continue;
+        }
+
+        float neighborEdgeFlux;
+        granularOutfluxAt(neighborUV, cellSize, OPPOSITE_INDEX(i), neighborEdgeFlux);
+        granularInflux += neighborEdgeFlux;
+    }
+
     // Material for this cell: one tap serves both exchange terms. The sampler can never be null - with no
     // painted map, createGpuSedimentFlow binds a 1x1 all-dirt texture (A8), which is exactly the neutral
     // pair of factors below, so no presence flag is needed.
@@ -245,7 +347,7 @@ void main() {
         detachRate *
         max(bedShear - criticalShear, 0.0);
     float carryLimit = max(capacity - remaining, 0.0); // how much more this cell's flow can hold (A6)
-    float availableSoil = availableSoilAt(uv);
+    float availableSoil = max(availableSoilAt(uv) - granularLoss, 0.0);
 
     // Erosion is bounded by the capacity gap, so carried <= capacity. That is what stops this pairing
     // from short-circuiting: material eroded in this pass can never settle in the same pass, because
@@ -272,7 +374,10 @@ void main() {
     float deposition = min(carried, settleLimit);
 
     float suspendedLoad = carried - deposition + influx;
-    float bedDelta = deposition - erosion; // signed: terrain-height.frag applies it next pass (A1)
+    // The granular pair nets to zero across the grid, so this stays a pure bookkeeping sum: no term here mints or
+    // destroys material, it only decides how much of it sits where.
+    float bedDelta =
+        deposition - erosion + granularInflux - granularLoss; // signed: terrain-height.frag applies it next pass (A1)
 
     // No trailing max() on the load: deposition <= carried makes carried - deposition >= 0 structurally,
     // so a negative value could only come from a broken clamp - and a clamp here would hide that leak
