@@ -84,9 +84,11 @@ export const addWaterInitSystem: RendererInitSystem = (
     const centerY = Math.floor((1.0 - uvY) * width); // Y is flipped for texture coordinates
     logger.debug({ uvX, uvY, texelX, centerY }, "Texture texel coords");
 
-    // Shift-click lays down a substance instead of water: an emitter that keeps releasing into whatever the
-    // terrain does next, so a plume draws the flow paths out over the landscape rather than being one slug.
-    if (event.shiftKey) {
+    // In the Water Quality view, shift-click lays down a substance instead of water: an emitter that keeps
+    // releasing into whatever the terrain does next, so a plume draws the flow paths out over the landscape
+    // rather than being one slug. Gated on that view because it is the only place the tool is advertised - and
+    // because shift-drag is a camera shortcut elsewhere, where an invisible injection would be plain confusing.
+    if (event.shiftKey && world.visualizationMode === 7) {
       waterSimulation.addPollutantSource(
         x,
         y,
