@@ -75,6 +75,11 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
         // Water flow visualization (both modes use same material)
         MaterialRef.ref[terrain$] = MaterialEnum.WaterFlow;
         break;
+      case 7:
+        // Water quality: the water flow material again, with its substance overlay switched on by the
+        // simulation system rather than a separate material
+        MaterialRef.ref[terrain$] = MaterialEnum.WaterFlow;
+        break;
       case 6:
         // Testing simulation
         MaterialRef.ref[terrain$] = MaterialEnum.TestingSimulation;
@@ -98,6 +103,7 @@ function getCurrentMaterial(mode: number): MaterialEnum {
       return MaterialEnum.Default;
     case 4:
     case 5:
+    case 7:
       return MaterialEnum.WaterFlow;
     case 6:
       return MaterialEnum.TestingSimulation;

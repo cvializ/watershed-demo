@@ -622,7 +622,8 @@ const updateVisualizationUniformsAfterLoad = (
     // Update water visualization uniforms
     const usesWaterVisualization =
       world.visualizationMode === 4 || // Water Flow
-      world.visualizationMode === 5; // Water Flow (show velocity)
+      world.visualizationMode === 5 || // Water Flow (show velocity)
+      world.visualizationMode === 7; // Water Quality: same material, so the same post-load refresh
 
     if (usesWaterVisualization) {
       const uniforms =

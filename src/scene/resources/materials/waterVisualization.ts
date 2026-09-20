@@ -9,6 +9,13 @@ export type WaterVisualizationUniforms = {
   uWaterHeightmap: THREE.IUniform<THREE.Texture>;
   uCloudShadowMap: THREE.IUniform<THREE.Texture>;
   uVelocityMap: THREE.IUniform<THREE.Texture>;
+  /**
+   * Substance field from the water quality variable. Null until the simulation system binds it, which is why
+   * the fragment shader only samples it behind uShowPollutants.
+   */
+  uPollutantMap: THREE.IUniform<THREE.Texture | null>;
+  uShowPollutants: THREE.IUniform<number>;
+  uPollutantSpecies: THREE.IUniform<number>;
   uMinHeight: THREE.IUniform<number>;
   uMaxHeight: THREE.IUniform<number>;
   uShowVelocity: THREE.IUniform<number>;
@@ -55,6 +62,11 @@ export const createWaterVisualizationMaterialResource = ({
     uMaxHeight: { value: maxHeight },
     uShowVelocity: { value: 1 },
     uSurfaceMaterialMap: { value: surfaceMaterialMap ?? null },
+    // Substance overlay: off until a visualization mode asks for it, and the simulation system binds the
+    // texture every pass it is asked for.
+    uPollutantMap: { value: null },
+    uShowPollutants: { value: 0 },
+    uPollutantSpecies: { value: 0 },
     uLightPosition: { value: sunLightPosition.clone() },
     uLightSpaceMatrix: { value: new THREE.Matrix4() },
     // Wireframe overlay - enabled by default (yellow lines, width 2.0)

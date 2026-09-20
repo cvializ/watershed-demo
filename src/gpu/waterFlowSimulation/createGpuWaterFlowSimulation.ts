@@ -4,12 +4,14 @@ import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import type { WaterHeightUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
+import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 
 import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
 import { createGpuTerrainHeight } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainHeight";
 import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
+import { createGpuWaterQuality } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
 import { logger } from "@/utils/logger";
@@ -40,6 +42,33 @@ export type WaterFlowVisualization = {
    * @param rate - Fraction of over-steepened drop relocated per pass (0-1)
    */
   setTerrainRelaxRate: (rate: number) => void;
+
+  /**
+   * Registers a persistent emitter of one substance, which then releases mass every pass until
+   * clearPollutantSources() runs. Unlike addWater these are not consumed by the step that used them.
+   * @param x - X coordinate in world space (0 to terrainSize)
+   * @param y - Y coordinate in world space (0 to terrainSize)
+   * @param radius - Radius of the emitting disc in world units
+   * @param amount - Mass released per pass at 60 fps
+   * @param species - Substance channel, see POLLUTANT_SPECIES
+   */
+  addPollutantSource: (
+    x: number,
+    y: number,
+    radius: number,
+    amount: number,
+    species: PollutantSpeciesId,
+  ) => boolean;
+
+  /**
+   * Forgets every registered substance emitter.
+   */
+  clearPollutantSources: () => void;
+
+  /**
+   * Get the water quality texture (four substance channels of column-integrated mass).
+   */
+  getPollutantTexture: () => THREE.Texture;
 
   /**
    * Adds water at a specific location on the terrain.
@@ -181,6 +210,11 @@ export type WaterFlowVisualization = {
  * @param savedTextures - Optional saved state textures for recreation (for save/load support)
  */
 export type SavedSimulationTextures = {
+  /**
+   * Substance field. Accepted so a restored world can carry it, but saveGPUSimulationState does not write this
+   * key yet - see the note in createGpuWaterQuality.
+   */
+  waterQualityTexture?: THREE.DataTexture;
   heightMapTexture?: THREE.DataTexture;
   waterHeightTexture?: THREE.DataTexture;
   velocityTexture?: THREE.DataTexture;
@@ -238,21 +272,43 @@ export const createGpuWaterFlowSimulation = (
     surfaceMaterialMap ?? null,
     savedTextures && savedTextures.velocityTexture, // Pass saved velocity texture
   );
-  const { sedimentFlowVariable, updateSedimentFlow, setErosionRate, setReposeAngle, setRelaxRate } =
-    createGpuSedimentFlow(
-      gpuCompute,
-      width,
-      terrainSize / width, // world units per texel: what makes the shader's repose angle a slope, not a constant
-      heightMapTexture, // static base displacement -> erodible-depth proxy (A2)
-      waterVelocityVariable,
-      waterHeightVariable,
-      heightMapVariable,
-      surfaceMaterialMap ?? null,
-      savedTextures && savedTextures.sedimentTexture, // Pass saved sediment texture
-    );
+  const {
+    sedimentFlowVariable,
+    updateSedimentFlow,
+    setErosionRate,
+    setReposeAngle,
+    setRelaxRate,
+  } = createGpuSedimentFlow(
+    gpuCompute,
+    width,
+    terrainSize / width, // world units per texel: what makes the shader's repose angle a slope, not a constant
+    heightMapTexture, // static base displacement -> erodible-depth proxy (A2)
+    waterVelocityVariable,
+    waterHeightVariable,
+    heightMapVariable,
+    surfaceMaterialMap ?? null,
+    savedTextures && savedTextures.sedimentTexture, // Pass saved sediment texture
+  );
 
   // Both variables exist now, so the bed's authoritative dependency list is declared exactly once.
   linkBedToSediment(sedimentFlowVariable);
+
+  // Substance dissolved or carried by the flow. Created after the velocity field it routes along; its own
+  // dependencies are declared inside its factory (README section 1).
+  const {
+    waterQualityVariable,
+    initWaterQuality,
+    updateWaterQuality,
+    addPollutantSource,
+    clearPollutantSources,
+  } = createGpuWaterQuality(
+    gpuCompute,
+    width,
+    terrainSize,
+    waterVelocityVariable,
+    waterHeightVariable,
+    savedTextures && savedTextures.waterQualityTexture,
+  );
 
   const { testingVariable, initTesting, updateTesting } = createTestingTexture(
     gpuCompute,
@@ -267,6 +323,7 @@ export const createGpuWaterFlowSimulation = (
   initWaterSources();
   initWaterHeight();
   initWaterVelocity();
+  initWaterQuality();
   initTesting();
 
   // Initialize surface material map uniform
@@ -288,6 +345,10 @@ export const createGpuWaterFlowSimulation = (
       // Scale the sediment coefficients to this frame's elapsed time (plan S6)
       updateSedimentFlow(deltaTime);
 
+      // ...and the same for substance transport and decay. Emitters are deliberately not cleared here: they are
+      // landscape features, unlike water sources, which each step consumes.
+      updateWaterQuality(deltaTime);
+
       // Update testing texture with global time reference
       updateTesting(gameTime);
 
@@ -298,6 +359,10 @@ export const createGpuWaterFlowSimulation = (
     },
     getGpuCompute: () => gpuCompute,
     addWater,
+    addPollutantSource,
+    clearPollutantSources,
+    getPollutantTexture: () =>
+      gpuCompute.getCurrentRenderTarget(waterQualityVariable).texture,
     setSunPosition: (position: THREE.Vector3) => {
       waterHeightVariable.material.uniforms.uLightPosition = {
         value: position.clone(),

@@ -1,4 +1,6 @@
 import { togglePause, type GameWorldContext } from "@/context";
+import { POLLUTANT_SPECIES } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
+import { waterSimulation } from "@/renderer/systems/init/simulation";
 import {
   clearWorldStorage,
   loadFromWorldStorage,
@@ -51,7 +53,11 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 4, label: "Water Flow" },
     { id: 5, label: "Water height" },
     { id: 6, label: "Testing Simulation" },
+    { id: 7, label: "Water Quality" },
   ];
+
+  // Which substance the Water Quality view tints with. Same ids as the shader channels.
+  const pollutantSpeciesOptions = POLLUTANT_SPECIES;
 
   const handleMaterialChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -62,6 +68,25 @@ export const GameUI = ({ world }: GameUiProps) => {
 
     // Special handling for option 5: Hide Velocity Arrows
     world.showVelocity = value !== 5;
+  };
+
+  const handlePollutantChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const speciesId = parseInt(event.target.value, 10);
+    const species = pollutantSpeciesOptions.find(
+      (option) => option.id === speciesId,
+    );
+    if (species) {
+      world.pollutantSpecies = species.id;
+    }
+  };
+
+  // Stops every registered emitter; substance already released keeps travelling with the water.
+  const handleClearPollutantsClick = () => {
+    if (waterSimulation) {
+      waterSimulation.clearPollutantSources();
+    }
   };
 
   const handleSaveClick = async () => {
@@ -120,6 +145,31 @@ export const GameUI = ({ world }: GameUiProps) => {
               ))}
             </select>
           </div>
+          <div style={styles.pollutantSection}>
+            <label htmlFor="pollutant-select" style={styles.materialLabel}>
+              Substance:
+            </label>
+            <select
+              id="pollutant-select"
+              value={world.pollutantSpecies}
+              onChange={handlePollutantChange}
+              style={styles.materialDropdown}
+              title="Which substance the Water Quality view shows"
+            >
+              {pollutantSpeciesOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleClearPollutantsClick}
+              style={styles.button}
+              title="Remove every substance source (shift+click adds one)"
+            >
+              Clear sources
+            </button>
+          </div>
           <div style={styles.erosionSection}>
             <span style={styles.label}>Erosion: </span>
             <span style={styles.value}>{world.erosionRate.toFixed(2)}</span>
@@ -164,7 +214,9 @@ export const GameUI = ({ world }: GameUiProps) => {
           </div>
           <div style={styles.sunAngleSection}>
             <span style={styles.label}>Sun Angle: </span>
-            <span style={styles.value}>{(world.sunAngle * 180 / Math.PI).toFixed(0)}°</span>
+            <span style={styles.value}>
+              {((world.sunAngle * 180) / Math.PI).toFixed(0)}°
+            </span>
             <input
               type="range"
               min={0}
@@ -252,6 +304,10 @@ const styles = {
     display: "flex",
     flexDirection: "row",
     alignItems: "center",
+    // Every control sits in this one row, so it has to wrap rather than run past the window edge - a narrow
+    // viewport would otherwise push the trailing buttons out of reach (and out of playwright's click range).
+    flexWrap: "wrap" as const,
+    maxWidth: "calc(100vw - 40px)",
     gap: "16px",
   } satisfies React.CSSProperties,
   title: {
@@ -284,6 +340,11 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
     outline: "none",
+  } satisfies React.CSSProperties,
+  pollutantSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
   } satisfies React.CSSProperties,
   erosionSection: {
     display: "flex",
