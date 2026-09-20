@@ -1,3 +1,4 @@
+import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 
 export const createGameWorldContext = () => ({
@@ -33,6 +34,8 @@ export const createGameWorldContext = () => ({
   terrainPaintingEnabled: false,
   terrainBrushMaterial: "bareDirt" as SurfaceMaterialType,
   terrainBrushRadius: 2.0,
+  // Water quality state: which substance the Water Quality view (visualizationMode 7) shows
+  pollutantSpecies: 0 as PollutantSpeciesId,
 });
 
 export const togglePause = (world: GameWorldContext): void => {

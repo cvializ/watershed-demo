@@ -48,9 +48,12 @@ export const simulationSystem: RendererSystem = (
   const { showVelocity } = world;
 
   // Only update water/simulation uniforms for modes that use them
+  const showsPollutants = world.visualizationMode === 7; // Water Quality: same material, substance overlay on top
+
   const usesWaterVisualization =
     world.visualizationMode === 4 || // Water Flow
-    world.visualizationMode === 5; // Water Flow (show velocity)
+    world.visualizationMode === 5 || // Water Flow (show velocity)
+    showsPollutants; // Water Quality
 
   const material = getMaterial(MaterialEnum.WaterFlow) as ShaderMaterial;
 
@@ -69,6 +72,10 @@ export const simulationSystem: RendererSystem = (
     // Update water visualization uniforms
     const uniforms = getUniforms<WaterVisualizationUniforms>(material);
     uniforms.uShowVelocity.value = showVelocity ? 1 : 0;
+    // Written every pass this branch runs, so leaving Water Quality mode clears the overlay rather than leaving
+    // a stale tint on the water flow view.
+    uniforms.uShowPollutants.value = showsPollutants ? 1 : 0;
+    uniforms.uPollutantSpecies.value = world.pollutantSpecies;
     uniforms.uLightPosition.value.x = world.sunPosition.x;
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;
@@ -109,6 +116,7 @@ export const simulationSystem: RendererSystem = (
     waterUniforms.uCloudShadowMap.value =
       waterSimulation.getCloudShadowTexture();
     waterUniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
+    waterUniforms.uPollutantMap.value = waterSimulation.getPollutantTexture();
 
     // Update surface material map (shared texture used for both visualization and simulation)
     const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);

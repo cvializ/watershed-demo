@@ -14,6 +14,12 @@ import { waterSimulation } from "./simulation";
 const SIM_SIZE = 512;
 const terrainSize = 12;
 
+// Shift-click lays down a substance source. Radius is in world units against a 12 unit terrain, and the amount
+// is mass per pass at 60 fps (the shader scales it by dtScale), so these are tuned for "a plume shows up within
+// a second" rather than for any measured spill.
+const POLLUTANT_SOURCE_RADIUS = 0.8;
+const POLLUTANT_SOURCE_AMOUNT = 0.15;
+
 export const addWaterInitSystem: RendererInitSystem = (
   world,
   _scene,
@@ -77,6 +83,19 @@ export const addWaterInitSystem: RendererInitSystem = (
     const texelX = Math.floor(uvX * width);
     const centerY = Math.floor((1.0 - uvY) * width); // Y is flipped for texture coordinates
     logger.debug({ uvX, uvY, texelX, centerY }, "Texture texel coords");
+
+    // Shift-click lays down a substance instead of water: an emitter that keeps releasing into whatever the
+    // terrain does next, so a plume draws the flow paths out over the landscape rather than being one slug.
+    if (event.shiftKey) {
+      waterSimulation.addPollutantSource(
+        x,
+        y,
+        POLLUTANT_SOURCE_RADIUS,
+        POLLUTANT_SOURCE_AMOUNT,
+        world.pollutantSpecies,
+      );
+      return;
+    }
 
     waterSimulation.addWater(x, y, 0.1, 3);
   });

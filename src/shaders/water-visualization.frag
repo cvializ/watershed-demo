@@ -4,6 +4,9 @@ uniform sampler2D uHeightMap;
 uniform sampler2D uWaterHeightmap;
 uniform sampler2D uCloudShadowMap;
 uniform sampler2D uVelocityMap;
+uniform sampler2D uPollutantMap; // Four substance channels of column-integrated mass (R N, G organic, B oxygen, A bacteria)
+uniform float uShowPollutants;   // 1 = tint the terrain by the selected substance, 0 = leave it alone
+uniform float uPollutantSpecies; // Which channel to show: 0 nitrogen, 1 organic matter, 2 oxygen, 3 bacteria
 uniform float uMinHeight;
 uniform float uMaxHeight;
 uniform int uShowVelocity; // 0 = show height, 1 = show velocity
@@ -18,6 +21,9 @@ uniform vec3 uLightPosition;
 uniform mat4 uLightSpaceMatrix;
 uniform sampler2D uShadowMap; // Shadow map for receiving shadows from other objects
 uniform bool uHasShadowMap; // Flag indicating if shadow map is active
+
+// Mass per unit area at which a substance reads as half-strength on screen.
+const float HALF_SATURATING_MASS = 0.35;
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -111,6 +117,36 @@ float getBlurredShadow(vec2 uv, sampler2D shadowMap) {
     return shadow / totalWeight;
 }
 
+// Substance tint for the selected species: colour in rgb, mix weight in w.
+//
+// Channels are mass per unit area rather than concentration. A deep puddle and a damp film of equal strength
+// therefore read differently here, which is fine for "where did it go" and cheaper than dividing by a depth that
+// approaches zero wherever the simulation has just drained water away.
+vec4 pollutantTint(vec2 uv) {
+    vec4 mass = texture2D(uPollutantMap, uv);
+
+    // GLSL ES 1.00 cannot index a vec4 with a runtime value, so the selector is a 0/1 mask over the channel
+    // indices rather than mass[int(uPollutantSpecies)].
+    vec4 channelMask = step(abs(vec4(0.0, 1.0, 2.0, 3.0) - vec4(uPollutantSpecies)), vec4(0.5));
+    float selected = max(dot(mass, channelMask), 0.0);
+
+    // One component per species, read out with the same mask: nitrogen yellow-green, organic brown, oxygen cyan,
+    // bacteria magenta. Mirrors POLLUTANT_SPECIES in src/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts.
+    const vec4 TINT_R = vec4(0.92, 0.55, 0.15, 0.95);
+    const vec4 TINT_G = vec4(0.95, 0.32, 0.85, 0.25);
+    const vec4 TINT_B = vec4(0.25, 0.12, 0.95, 0.85);
+
+    // Saturating curve: half this much mass is halfway to full colour, and no amount floods the screen.
+    float strength = selected / (selected + HALF_SATURATING_MASS);
+
+    return vec4(
+        dot(TINT_R, channelMask),
+        dot(TINT_G, channelMask),
+        dot(TINT_B, channelMask),
+        strength * 0.92
+    );
+}
+
 // Visualize water based on height or velocity
 vec3 getTerrainMaterialColor(vec2 uv) {
     vec4 materialData = texture2D(uSurfaceMaterialMap, uv);
@@ -189,8 +225,6 @@ void main() {
             // Blend with terrain - make velocity more visible
             float blendAmount = clamp(velMag * 0.5 + 0.3, 0.3, 1.0);
             finalColor = mix(terrainMaterialColor, velocityColor, blendAmount);
-            
-            gl_FragColor = vec4(finalColor, 1.0);
         } else {
             // Visualize water height (original behavior)
             float waterIntensity = clamp(waterHeight * 3.0, 0.2, 1.0);
@@ -198,12 +232,17 @@ void main() {
             
             // Blend terrain and water (water overlays terrain)
             finalColor = mix(terrainMaterialColor, waterColor, waterIntensity * 0.6);
-            
-            gl_FragColor = vec4(finalColor, 1.0);
         }
     } else {
         // No water - just show terrain material color
         finalColor = terrainMaterialColor;
+    }
+
+    // Substance overlay: wet cells and dry deposits both read, since mass left behind by drained water is the
+    // part of the story a water-only view would hide.
+    if (uShowPollutants > 0.5) {
+        vec4 tint = pollutantTint(vUv);
+        finalColor = mix(finalColor, tint.rgb, clamp(tint.w, 0.0, 1.0));
     }
 
     // Apply animal shadows (injected by onBeforeCompile)
