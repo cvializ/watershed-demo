@@ -145,31 +145,6 @@ export const GameUI = ({ world }: GameUiProps) => {
               ))}
             </select>
           </div>
-          <div style={styles.pollutantSection}>
-            <label htmlFor="pollutant-select" style={styles.materialLabel}>
-              Substance:
-            </label>
-            <select
-              id="pollutant-select"
-              value={world.pollutantSpecies}
-              onChange={handlePollutantChange}
-              style={styles.materialDropdown}
-              title="Which substance the Water Quality view shows"
-            >
-              {pollutantSpeciesOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleClearPollutantsClick}
-              style={styles.button}
-              title="Remove every substance source (shift+click adds one)"
-            >
-              Clear sources
-            </button>
-          </div>
           <div style={styles.erosionSection}>
             <span style={styles.label}>Erosion: </span>
             <span style={styles.value}>{world.erosionRate.toFixed(2)}</span>
@@ -241,6 +216,44 @@ export const GameUI = ({ world }: GameUiProps) => {
             </button>
           </div>
         </div>
+        {/* Water Quality keeps its own box under the main row. Squeezing it into that single-row panel
+            either pushed the trailing buttons off-screen or made the panel wrap into a sheet over the terrain,
+            and only this mode reads world.pollutantSpecies, so it stays out of the way otherwise. */}
+        {world.visualizationMode === 7 && (
+          <div style={styles.pollutantPanel}>
+            <div style={styles.pollutantControls}>
+              <label htmlFor="pollutant-select" style={styles.materialLabel}>
+                Substance:
+              </label>
+              <select
+                id="pollutant-select"
+                value={world.pollutantSpecies}
+                onChange={handlePollutantChange}
+                style={styles.materialDropdown}
+                title="Which substance to show, and which one shift-click releases"
+              >
+                {pollutantSpeciesOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleClearPollutantsClick}
+              style={{ ...styles.button, marginTop: "8px" }}
+              title="Stop every source. Substance already released keeps flowing."
+            >
+              Clear sources
+            </button>
+            <div style={styles.pollutantHint}>
+              <strong>To add a source:</strong> pick the substance above, then
+              Shift-click the terrain. Each click is a spring that keeps
+              releasing until it is cleared; give the plume a moment to arrive
+              downstream.
+            </div>
+          </div>
+        )}
       </div>
       <div style={styles.storageContainer}>
         <div style={styles.storageSection}>
@@ -341,10 +354,28 @@ const styles = {
     cursor: "pointer",
     outline: "none",
   } satisfies React.CSSProperties,
-  pollutantSection: {
+  // Rendered only in Water Quality mode and outside the main row, so it can neither widen that row nor
+  // cover terrain the user wants to click on.
+  pollutantPanel: {
+    position: "absolute",
+    top: "96px",
+    left: "20px",
+    width: "236px",
+    padding: "12px",
+    borderRadius: "8px",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    color: "#fff",
+    pointerEvents: "auto" as const,
+  } satisfies React.CSSProperties,
+  pollutantControls: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
+  } satisfies React.CSSProperties,
+  pollutantHint: {
+    fontSize: "11px",
+    color: "#aaa",
+    marginTop: "8px",
   } satisfies React.CSSProperties,
   erosionSection: {
     display: "flex",
