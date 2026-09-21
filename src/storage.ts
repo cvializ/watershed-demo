@@ -8,8 +8,9 @@ import * as THREE from "three";
 import * as Components from "@/components/components";
 import { type GameWorldContext } from "@/context";
 import {
-  type GPUSimulationState,
   saveGPUSimulationState,
+  serializeGPUSimulationState,
+  deserializeGPUSimulationState,
   createTexturesFromState,
   destroyGpuSimulation,
 } from "@/gpu/waterFlowSimulation/saveLoadSimulationState";
@@ -222,30 +223,10 @@ export const saveToWorldStorage = async (
         surfaceMaterialTexture, // Pass surface material texture to save
       );
       if (gpuState) {
-        // Store GPU state as JSON for persistence
-        gpuSimulationState = JSON.stringify({
-          heightMapData: gpuState.heightMapData
-            ? Array.from(gpuState.heightMapData)
-            : [],
-          waterHeightData: gpuState.waterHeightData
-            ? Array.from(gpuState.waterHeightData)
-            : [],
-          velocityData: gpuState.velocityData
-            ? Array.from(gpuState.velocityData)
-            : [],
-          sedimentData: gpuState.sedimentData
-            ? Array.from(gpuState.sedimentData)
-            : [],
-          cloudsData: gpuState.cloudsData
-            ? Array.from(gpuState.cloudsData)
-            : [],
-          surfaceMaterialData: gpuState.surfaceMaterialData
-            ? Array.from(gpuState.surfaceMaterialData)
-            : [],
-          width: gpuState.width,
-          height: gpuState.height,
-          gameTime: gpuState.gameTime,
-        });
+        // Store GPU state as JSON for persistence. Which fields that comprises - the substance pair included, since
+        // half a bacterial census is not a state a player would recognize - is decided by the module that owns the
+        // shape, so no field can be written under one spelling and read back under another.
+        gpuSimulationState = serializeGPUSimulationState(gpuState);
         logger.info(
           {
             heightMapSize: gpuState.heightMapData
@@ -261,6 +242,12 @@ export const saveToWorldStorage = async (
               ? gpuState.sedimentData.length
               : 0,
             cloudsSize: gpuState.cloudsData ? gpuState.cloudsData.length : 0,
+            waterQualitySize: gpuState.waterQualityData
+              ? gpuState.waterQualityData.length
+              : 0,
+            terrainQualitySize: gpuState.terrainQualityData
+              ? gpuState.terrainQualityData.length
+              : 0,
             surfaceMaterialSize: gpuState.surfaceMaterialData
               ? gpuState.surfaceMaterialData.length
               : 0,
@@ -439,31 +426,11 @@ export const loadFromWorldStorage = async (
   );
   if (waterSimulation && gpuSimulationState) {
     try {
-      const gpuData = JSON.parse(gpuSimulationState);
-      const savedGameTime = gpuData.gameTime;
-      const gpuState: GPUSimulationState = {
-        heightMapData: gpuData.heightMapData
-          ? new Float32Array(gpuData.heightMapData)
-          : null,
-        waterHeightData: gpuData.waterHeightData
-          ? new Float32Array(gpuData.waterHeightData)
-          : null,
-        velocityData: gpuData.velocityData
-          ? new Float32Array(gpuData.velocityData)
-          : null,
-        sedimentData: gpuData.sedimentData
-          ? new Float32Array(gpuData.sedimentData)
-          : null,
-        cloudsData: gpuData.cloudsData
-          ? new Float32Array(gpuData.cloudsData)
-          : null,
-        surfaceMaterialData: gpuData.surfaceMaterialData
-          ? new Float32Array(gpuData.surfaceMaterialData)
-          : null,
-        width: gpuData.width,
-        height: gpuData.height,
-        gameTime: savedGameTime,
-      };
+      // One reader for both directions of the format, so a snapshot written before substances existed simply arrives
+      // with those compartments as null - which createTexturesFromState then zero fills, exactly what a fresh world
+      // would have started with.
+      const gpuState = deserializeGPUSimulationState(gpuSimulationState);
+      const savedGameTime = gpuState.gameTime;
 
       // Log first few values being restored
       if (gpuState.heightMapData) {
@@ -511,6 +478,8 @@ export const loadFromWorldStorage = async (
             velocityTexture: textures.velocityTexture,
             sedimentTexture: textures.sedimentTexture,
             cloudsTexture: textures.cloudsTexture,
+            waterQualityTexture: textures.waterQualityTexture,
+            terrainQualityTexture: textures.terrainQualityTexture,
             surfaceMaterialTexture: textures.surfaceMaterialTexture, // Include surface material texture
           },
         );
@@ -657,6 +626,13 @@ const updateVisualizationUniformsAfterLoad = (
       uniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
       uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
       uniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
+
+      // The substance maps belong to Variables that load destroyed and rebuilt, so the material still holds the old,
+      // disposed textures until these lines run. Without them the Water Quality view shows nothing while paused -
+      // which is precisely when a player looks at it after loading.
+      uniforms.uPollutantMap.value = waterSimulation.getPollutantTexture();
+      uniforms.uTerrainSubstanceMap.value =
+        waterSimulation.getTerrainQualityTexture();
 
       // Update surface material map (shared texture used for both visualization and simulation)
       const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);

@@ -14,6 +14,11 @@ export type WaterVisualizationUniforms = {
    * the fragment shader only samples it behind uShowPollutants.
    */
   uPollutantMap: THREE.IUniform<THREE.Texture | null>;
+  /**
+   * Ground compartments from the terrain quality variable, sampled for the species that live in the soil as well
+   * as the water. Bound by the simulation system alongside uPollutantMap and read under the same flag.
+   */
+  uTerrainSubstanceMap: THREE.IUniform<THREE.Texture | null>;
   uShowPollutants: THREE.IUniform<number>;
   uPollutantSpecies: THREE.IUniform<number>;
   uMinHeight: THREE.IUniform<number>;
@@ -65,6 +70,7 @@ export const createWaterVisualizationMaterialResource = ({
     // Substance overlay: off until a visualization mode asks for it, and the simulation system binds the
     // texture every pass it is asked for.
     uPollutantMap: { value: null },
+    uTerrainSubstanceMap: { value: null },
     uShowPollutants: { value: 0 },
     uPollutantSpecies: { value: 0 },
     uLightPosition: { value: sunLightPosition.clone() },

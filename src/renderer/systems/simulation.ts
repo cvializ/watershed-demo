@@ -117,6 +117,10 @@ export const simulationSystem: RendererSystem = (
       waterSimulation.getCloudShadowTexture();
     waterUniforms.uVelocityMap.value = waterSimulation.getVelocityTexture();
     waterUniforms.uPollutantMap.value = waterSimulation.getPollutantTexture();
+    // The ground's share of the same substances, bound in the same pass so the shader can sample both behind one
+    // flag rather than guarding two lifetimes separately.
+    waterUniforms.uTerrainSubstanceMap.value =
+      waterSimulation.getTerrainQualityTexture();
 
     // Update surface material map (shared texture used for both visualization and simulation)
     const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);

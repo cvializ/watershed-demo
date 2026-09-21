@@ -1,13 +1,17 @@
 #include <common>
 
-// Dependency samplers waterVelocity / waterHeight / waterQuality are injected by GPUComputationRenderer from
-// this variable's declared dependencies, so re-declaring them here would be a compile error. Only the custom
-// uniforms below belong to this shader (src/gpu/README.md, section 1).
+// Dependency samplers waterVelocity / waterHeight / waterQuality / terrainQuality are injected by
+// GPUComputationRenderer from this variable's declared dependencies, so re-declaring them here would be a compile
+// error. The last of those is the ground's share of bacterial content, and its edge is added by
+// linkWaterQualityToTerrain once both Variables exist. Only the custom uniforms below belong to this shader
+// (src/gpu/README.md, section 1).
 
 uniform float uTerrainSize; // World size of the terrain: how source points map to texels, as in water-sources.frag
 uniform float fluxFraction; // Fraction of a cell's content one pass exports; mirrors water-height.frag's flux law
 uniform float dtScale; // Frame-rate coupling, same convention and clamps as sediment-flow.frag (plan S6)
 uniform float decayRate; // First-order fade, so an emitter cannot slowly fill the whole catchment
+uniform float soilAttachRate; // Bacterial exchange: shares its value with terrain-quality.frag via SUBSTANCE_EXCHANGE_RATES
+uniform float washOffRate;    // ...and so does this one, which is what balances the ledger between compartments
 uniform int uInjectCount;
 uniform vec4 uInjectPoints[8]; // (x, y, radius, amount) in world units; amount is mass per pass at 60 fps
 uniform float uInjectSpecies[8]; // Channel fed: 0 nitrogen, 1 organic matter, 2 oxygen, 3 bacteria
@@ -30,6 +34,17 @@ const vec2 DIRECTION_STEPS[8] = vec2[](
 const float EPS = 1e-7;
 const float FLUX_CEILING = 0.75; // advective CFL analogue: at most this fraction of a cell leaves in one pass
 const float DECAY_CEILING = 0.25; // keeps decay * dtScale inside its own budget, never unbounded
+
+// A film at least this deep counts as standing water: the same threshold water-visualization.frag uses to decide
+// whether a cell reads as wet, so dissolved oxygen's "there is no water here for it to be in" and the visualiser's
+// "there is water here" are one rule rather than two that can drift apart.
+const float WET_DEPTH = 0.01;
+
+// Most bacteria either direction of an exchange may hand over in a single pass, and most the ground compartment
+// can take: this cell may simultaneously be exporting FLUX_CEILING (0.75) of its committed bacteria downslope and
+// be faded by DECAY_CEILING (0.25), which leaves 0.1875 available - so anything above that would let the water
+// column go negative. terrain-quality.frag carries the same ceiling; see below for why it has to.
+const float EXCHANGE_CEILING = 0.15;
 
 bool insideGrid(vec2 uv) {
     return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
@@ -77,6 +92,30 @@ float exportFractionAt(vec2 p, vec2 cellSize, out vec2 routeStep) {
 }
 
 /**
+ * The bacterial hand-over between this cell's water film and its ground, as the two sides of one ledger.
+ *
+ * Textually identical to `exchangeAt` in src/shaders/compute/terrain-quality.frag: both shaders evaluate it on
+ * the same committed texel (GPUComputationRenderer binds every dependency to the last committed frame of a pass),
+ * so what leaves the water column arrives in the ground and vice versa, exactly as sediment-flow.frag's outfluxAt
+ * makes erosion and deposition agree without either side minting mass (plan A4). Keep the two copies in step by
+ * hand; GLSL cannot import.
+ */
+void exchangeAt(vec2 uv, out float toTerrain, out float toWater) {
+    float depth = texture2D(waterHeight, uv).r;
+
+    // Nothing trades across a dry bed: no film to carry bacteria down, and none to pick them up again. The ground
+    // population simply waits there - which is the whole point of treating bacterial content as a property of the
+    // terrain as well as of the water.
+    float wetness = clamp(depth / WET_DEPTH, 0.0, 1.0);
+
+    float attach = min(soilAttachRate * dtScale, EXCHANGE_CEILING) * wetness;
+    float washOff = min(washOffRate * dtScale, EXCHANGE_CEILING) * wetness;
+
+    toTerrain = max(texture2D(waterQuality, uv).a, 0.0) * attach;
+    toWater = max(texture2D(terrainQuality, uv).r, 0.0) * washOff;
+}
+
+/**
  * Mass a source drops on this texel this pass, already split across the four channels.
  *
  * The channel arrives as a float from a uniform array, and GLSL ES 1.00 cannot index a vec4 at runtime, so the
@@ -115,9 +154,17 @@ void main() {
 
     // Channels are load-bearing, not colours: R nitrogen, G organic matter, B dissolved oxygen, A bacteria.
     // Each one is column-integrated mass (concentration times depth) rather than concentration, which is what
-    // makes water-height.frag's drainage harmless here: the water leaves and the substance stays behind, so a
-    // drying puddle concentrates instead of quietly deleting what was dissolved in it.
+    // makes water-height.frag's drainage harmless for the ones that can dry out: the water leaves and the
+    // substance stays behind, so a puddle concentrates instead of quietly deleting what was dissolved in it.
+    //
+    // Two channels are treated differently below, because they are not properties of the ground:
+    // - B dissolved oxygen belongs to the water alone. It cannot be banked in dry soil, so it thins out with the
+    //   film it was dissolved in and an emitter aimed at dry ground releases nothing.
+    // - A bacteria belongs to both compartments: what is here flows with the water, and what settles out of it is
+    //   handed to terrain-quality.frag, which holds the ground's share until the next flood washes some back.
     vec4 ownMass = texture2D(waterQuality, uv);
+    float depth = texture2D(waterHeight, uv).r;
+    float wetness = clamp(depth / WET_DEPTH, 0.0, 1.0);
 
     // Own export first. fluxFraction <= FLUX_CEILING < 1 keeps this non-negative structurally, so no trailing
     // max() is needed - and none wanted: a clamp here would hide a broken fraction instead of reporting it.
@@ -147,12 +194,37 @@ void main() {
         }
     }
 
-    float decay = clamp(decayRate * dtScale, 0.0, DECAY_CEILING);
+    vec4 faded = (kept + influx) * (1.0 - clamp(decayRate * dtScale, 0.0, DECAY_CEILING));
+
+    // Dissolved oxygen is a property of the water, not of the ground under it: as the film thins towards WET_DEPTH
+    // the oxygen leaves with the water that left (outgassing and respiration both take their dose out of a
+    // shrinking film), and where there is no film at all there is none to keep. Nitrogen, organic matter and
+    // bacteria deliberately keep their dry deposits - a drained puddle's residue is part of the story.
+    //
+    // wetness is this pass's survival fraction, so dtScale belongs in the exponent rather than as a multiplier:
+    // surviving two frames at 0.7 each is 0.49, which is what pow gives (plan S6 - a per-pass coefficient that is
+    // not frame-rate coupled just means the substance drains faster on a fast machine). The dry case is spelled out
+    // because GLSL's pow is undefined at base zero with a fractional exponent, and a dry cell reaches exactly zero.
+    faded.b *= wetness <= 0.0 ? 0.0 : pow(wetness, dtScale);
+
+    // The bacterial exchange is applied on the committed population (ownMass.a inside exchangeAt), which is what
+    // lets terrain-quality.frag add precisely this amount without seeing transport or decay: its side of the ledger
+    // reads the same committed texel, so total bacteria move between compartments and nowhere else.
+    float toTerrain;
+    float toWater;
+    exchangeAt(uv, toTerrain, toWater);
+    faded.a += toWater - toTerrain;
 
     // Emission lands after transport, so substance a source adds this pass cannot be exported by the same pass:
     // the one-step lag sediment-flow.frag uses for eroded material (plan A3). Sources are persistent emitters -
     // createGpuWaterQuality keeps them until clearPollutantSources(), unlike water sources, which are consumed.
     vec2 worldPos = vec2(uv.x * uTerrainSize, (1.0 - uv.y) * uTerrainSize);
 
-    gl_FragColor = vec4((kept + influx) * (1.0 - decay) + emissionAt(worldPos));
+    vec4 emitted = emissionAt(worldPos);
+
+    // An oxygen source on dry ground adds nothing: the channel belongs to the water column, and enforcing that
+    // here means the visualiser never has to decide where dissolved oxygen is allowed to read.
+    emitted.b *= wetness;
+
+    gl_FragColor = vec4(faded + emitted);
 }

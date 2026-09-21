@@ -10,6 +10,7 @@ import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTextu
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
 import { createGpuTerrainHeight } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainHeight";
+import { createGpuTerrainQuality } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainQuality";
 import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import { createGpuWaterQuality } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
@@ -69,6 +70,14 @@ export type WaterFlowVisualization = {
    * Get the water quality texture (four substance channels of column-integrated mass).
    */
   getPollutantTexture: () => THREE.Texture;
+
+  /**
+   * Get the terrain quality texture: the substances the ground holds, currently just bacterial content in R.
+   *
+   * The second half of one species: bacteria live in the water column and in the bed at the same time, so reading
+   * only the water texture would hide what a catchment remembers after its puddles are gone.
+   */
+  getTerrainQualityTexture: () => THREE.Texture;
 
   /**
    * Adds water at a specific location on the terrain.
@@ -152,7 +161,9 @@ export type WaterFlowVisualization = {
   setSunPosition: (position: THREE.Vector3) => void;
 
   /**
-   * Get all GPU variables for save/load operations.
+   * Get all GPU variables for save/load operations. Everything a running world can lose its memory of belongs here:
+   * save reads these render targets and destroy disposes them, so a Variable left out is state that silently does not
+   * survive a load - or GPU memory that survives everything else.
    */
   getAllVariables: () => {
     heightMapVariable: Variable;
@@ -161,6 +172,9 @@ export type WaterFlowVisualization = {
     sedimentVariable: Variable;
     cloudVariable: Variable;
     testingVariable: Variable;
+    // Both substance compartments, listed together because half a bacterial census is not a saved state.
+    waterQualityVariable: Variable;
+    terrainQualityVariable: Variable;
   };
 
   /**
@@ -211,9 +225,11 @@ export type WaterFlowVisualization = {
  */
 export type SavedSimulationTextures = {
   /**
-   * Substance field. Accepted so a restored world can carry it, but saveGPUSimulationState does not write this
-   * key yet - see the note in createGpuWaterQuality.
+   * Substance fields, water column and ground. saveGPUSimulationState writes both and storage.ts hands both back
+   * here, and they are saved as a pair or not at all: bacteria occupy both compartments, so one without the other
+   * restores half a census.
    */
+  terrainQualityTexture?: THREE.DataTexture;
   waterQualityTexture?: THREE.DataTexture;
   heightMapTexture?: THREE.DataTexture;
   waterHeightTexture?: THREE.DataTexture;
@@ -299,6 +315,7 @@ export const createGpuWaterFlowSimulation = (
     waterQualityVariable,
     initWaterQuality,
     updateWaterQuality,
+    linkWaterQualityToTerrain,
     addPollutantSource,
     clearPollutantSources,
   } = createGpuWaterQuality(
@@ -309,6 +326,21 @@ export const createGpuWaterFlowSimulation = (
     waterHeightVariable,
     savedTextures && savedTextures.waterQualityTexture,
   );
+
+  // The ground's share of the substances that can be in the ground. Created after the water column because its
+  // dependency list names it; the reverse edge is linked below once both Variables exist.
+  const { terrainQualityVariable, initTerrainQuality, updateTerrainQuality } =
+    createGpuTerrainQuality(
+      gpuCompute,
+      width,
+      waterHeightVariable,
+      waterQualityVariable,
+      savedTextures && savedTextures.terrainQualityTexture,
+    );
+
+  // Both halves of the bacterial exchange are on the table now, so water quality can declare its side of the
+  // trade. Must happen before gpuCompute.init(), which is where dependency samplers get declared (README s1).
+  linkWaterQualityToTerrain(terrainQualityVariable);
 
   const { testingVariable, initTesting, updateTesting } = createTestingTexture(
     gpuCompute,
@@ -324,6 +356,7 @@ export const createGpuWaterFlowSimulation = (
   initWaterHeight();
   initWaterVelocity();
   initWaterQuality();
+  initTerrainQuality();
   initTesting();
 
   // Initialize surface material map uniform
@@ -349,6 +382,10 @@ export const createGpuWaterFlowSimulation = (
       // landscape features, unlike water sources, which each step consumes.
       updateWaterQuality(deltaTime);
 
+      // The ground compartment scales its half of the bacterial exchange by the same frame time; both shaders see
+      // an identical dtScale because compute() receives one deltaTime for the whole pass.
+      updateTerrainQuality(deltaTime);
+
       // Update testing texture with global time reference
       updateTesting(gameTime);
 
@@ -363,6 +400,8 @@ export const createGpuWaterFlowSimulation = (
     clearPollutantSources,
     getPollutantTexture: () =>
       gpuCompute.getCurrentRenderTarget(waterQualityVariable).texture,
+    getTerrainQualityTexture: () =>
+      gpuCompute.getCurrentRenderTarget(terrainQualityVariable).texture,
     setSunPosition: (position: THREE.Vector3) => {
       waterHeightVariable.material.uniforms.uLightPosition = {
         value: position.clone(),
@@ -414,6 +453,8 @@ export const createGpuWaterFlowSimulation = (
       sedimentVariable: sedimentFlowVariable,
       cloudVariable,
       testingVariable,
+      waterQualityVariable,
+      terrainQualityVariable,
     }),
     getRenderer: () => renderer,
   };

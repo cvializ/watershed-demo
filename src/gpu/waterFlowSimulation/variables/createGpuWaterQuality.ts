@@ -9,25 +9,60 @@ import waterQualityFragmentShader from "@/shaders/compute/water-quality.frag?raw
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
+import {
+  SUBSTANCE_EXCHANGE_RATES,
+  type SubstanceExchangeUniforms,
+} from "./substanceExchange";
+
+/**
+ * Which compartment a substance can be stored in. `water` means the column this variable owns; `terrain` means
+ * the ground, owned by `createGpuTerrainQuality`. A species with both is exchanged between them every pass.
+ */
+type SubstanceCompartment = "water" | "terrain";
+
+/**
+ * Channel index of a tracked substance, and therefore its position in `POLLUTANT_SPECIES`. Appending a species
+ * means appending to the union as well: the indices are stored in textures and in saved worlds one day, so
+ * renumbering would silently relabel every plume.
+ */
+export type PollutantSpeciesId = 0 | 1 | 2 | 3;
+
+/** One tracked substance: what to call it, and where it is allowed to be stored. */
+export type PollutantSpecies = {
+  id: PollutantSpeciesId;
+  label: string;
+  compartments: readonly SubstanceCompartment[];
+};
+
 /**
  * The four tracked substances, in the order `water-quality.frag` packs them into a texel and the order
  * `water-visualization.frag` tints them with. Channel A is a substance, not an alpha: this texture is only ever
  * sampled by hand, never composited as a colour map.
  *
- * The indices are stored in source textures and in saved worlds one day, so renumbering would silently relabel
- * every plume; append instead. `src/shaders/compute/water-quality.frag` and the two visualization files repeat
- * this order as literals because GLSL cannot import TypeScript - keep them in step by hand for now.
+ * `compartments` is the model's own answer to "whose property is this?". Dissolved oxygen belongs to the water
+ * alone: it thins out with the film around it and cannot be banked in dry ground (see water-quality.frag).
+ * Bacteria is the one species with two homes - the channel here is its share of the water column, while
+ * `terrain-quality.frag`'s red channel holds the share attached to the ground, and the two trade every pass.
+ *
+ * `src/shaders/compute/water-quality.frag` and the visualization files repeat this order as literals because GLSL
+ * cannot import TypeScript - keep them in step by hand for now.
  */
-export const POLLUTANT_SPECIES = [
-  { id: 0, label: "Nitrogen" },
-  { id: 1, label: "Organic matter" },
-  { id: 2, label: "Oxygen" },
-  { id: 3, label: "Bacteria" },
-] as const;
+export const POLLUTANT_SPECIES: readonly PollutantSpecies[] = [
+  { id: 0, label: "Nitrogen", compartments: ["water"] },
+  { id: 1, label: "Organic matter", compartments: ["water"] },
+  { id: 2, label: "Dissolved oxygen", compartments: ["water"] },
+  {
+    id: 3,
+    label: "Bacteria (water & soil)",
+    compartments: ["water", "terrain"],
+  },
+];
 
-export type PollutantSpeciesId = (typeof POLLUTANT_SPECIES)[number]["id"];
-
-/** Uniforms for the water quality computation; dependency samplers are deliberately absent (see README s1). */
+/**
+ * Uniforms for the water quality computation; dependency samplers are deliberately absent (see README s1).
+ * The two exchange coefficients come from SUBSTANCE_EXCHANGE_RATES so this variable and the terrain one cannot
+ * be given different halves of the same trade.
+ */
 export type WaterQualityUniforms = {
   uTerrainSize: THREE.IUniform<number>;
   fluxFraction: THREE.IUniform<number>;
@@ -36,7 +71,7 @@ export type WaterQualityUniforms = {
   uInjectCount: THREE.IUniform<number>;
   uInjectPoints: THREE.IUniform<THREE.Vector4[]>;
   uInjectSpecies: THREE.IUniform<number[]>;
-};
+} & SubstanceExchangeUniforms;
 
 /** Must match `uInjectPoints[8]` / `uInjectSpecies[8]` in water-quality.frag. */
 const MAX_POLLUTANT_SOURCES = 8;
@@ -85,14 +120,22 @@ const createInitialWaterQualityTexture = (size: number): THREE.DataTexture => {
  *
  * Channels hold column-integrated mass (concentration times depth), not concentration. water-height.frag removes
  * water by infiltration and drainage; substance that tracked concentration would vanish with it, whereas mass
- * stays behind and concentrates, which is both cheaper to account for and closer to what a puddle does.
+ * stays behind and concentrates, which is both cheaper to account for and closer to what a puddle does - for the
+ * substances that belong to the ground at all. Dissolved oxygen is the deliberate exception: it is a property of
+ * the water alone, so it thins out with the film around it rather than being left behind as a deposit.
+ *
+ * Bacteria has two compartments rather than one. This variable holds the share dissolved or suspended in the
+ * flow; `createGpuTerrainQuality` holds the share attached to the ground. Both shaders evaluate the same exchange
+ * helper on the same committed texel, so mass crosses between them exactly - which is why this variable's
+ * dependency list is completed by linkWaterQualityToTerrain() once the terrain variable exists (README s1).
  *
  * Sources are persistent emitters rather than one-shot doses: `addPollutantSource` registers a soft disc that
  * releases `amount` per pass at 60 fps until `clearPollutantSources()` runs. A farm patch, a septic outflow or a
  * river mouth then keeps feeding a plume, which is what makes the transport visible in the first place.
  *
- * Not persisted by save/load yet: add this variable to `getAllVariables()`, `SavedSimulationTextures` and
- * `saveLoadSimulationState.ts` together if the field needs to survive a reload.
+ * Persistence: this Variable and its terrain partner are listed together in `getAllVariables()` and read as a pair by
+ * `saveLoadSimulationState.ts`, because restoring the water column without the ground would resurrect a bacterial
+ * population missing every cell that settled into soil. The savedTexture argument below is how a load seeds them.
  */
 export const createGpuWaterQuality = (
   gpuCompute: GPUComputationRenderer,
@@ -132,6 +175,10 @@ export const createGpuWaterQuality = (
       uniforms.fluxFraction = { value: DEFAULT_FLUX_FRACTION };
       uniforms.dtScale = { value: 1.0 }; // neutral until the first update
       uniforms.decayRate = { value: DEFAULT_DECAY_RATE };
+      uniforms.soilAttachRate = {
+        value: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
+      };
+      uniforms.washOffRate = { value: SUBSTANCE_EXCHANGE_RATES.washOffRate };
       uniforms.uInjectCount = { value: 0 };
       uniforms.uInjectPoints = {
         value: Array.from(
@@ -161,7 +208,8 @@ export const createGpuWaterQuality = (
      * @param y - Y coordinate in world space (0 to terrainSize)
      * @param radius - Radius of the emitting disc in world units
      * @param amount - Mass released per pass at 60 fps, scaled by dtScale
-     * @param species - Channel to feed, see POLLUTANT_SPECIES
+     * @param species - Channel to feed, see POLLUTANT_SPECIES. Dissolved oxygen only lands where there is water:
+     *   it is a property of the column rather than of the ground, so an emitter on dry cells releases nothing.
      * @returns false when all emitter slots are busy; nothing is added in that case
      */
     addPollutantSource: (
@@ -197,6 +245,23 @@ export const createGpuWaterQuality = (
         uniforms.uInjectSpecies.value[index] = 0.0;
       }
       uniforms.uInjectCount.value = 0;
+    },
+
+    /**
+     * Declares the terrain half of this variable's bacterial exchange. Called by the orchestrator once both
+     * variables exist, because GPUComputationRenderer needs a Variable object before any dependency list can
+     * name it - the same reason createGpuTerrainHeight returns linkBedToSediment (plan A12).
+     *
+     * The resulting waterQuality <-> terrainQuality cycle is not a hazard: compute() binds every dependency to
+     * the frame being committed, so both sides of the trade read identical numbers in the same pass.
+     */
+    linkWaterQualityToTerrain: (terrainQualityVariable: Variable): void => {
+      gpuCompute.setVariableDependencies(waterQualityVariable, [
+        waterVelocityVariable,
+        waterHeightVariable,
+        terrainQualityVariable,
+        waterQualityVariable,
+      ]);
     },
 
     getWaterQualityUniforms: () =>
