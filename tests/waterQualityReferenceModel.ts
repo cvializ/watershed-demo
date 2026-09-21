@@ -1,14 +1,17 @@
 /**
- * CPU reference for `src/shaders/compute/water-quality.frag`.
+ * CPU reference for `src/shaders/compute/water-quality.frag` and its terrain partner
+ * `src/shaders/compute/terrain-quality.frag`.
  *
- * This mirrors the shader's arithmetic channel by channel so the GPU test can compare whole textures against a
+ * This mirrors both shaders' arithmetic channel by channel so the GPU test can compare whole textures against a
  * model instead of hand-derived expectations, which is what catches a future edit to one side drifting from the
- * other. It follows the shader deliberately - including its quirks: transport authority is the velocity field,
- * water depth plays no part; export fractions are recomputed per texel; and border cells keep their load rather
- * than leaking it off-grid. Where the two must stay in step the shader is cited by section.
+ * other. It follows them deliberately - including their quirks: transport authority is the velocity field; water
+ * depth plays no part in routing but decides oxygen and exchange (so it is a parameter here); export fractions are
+ * recomputed per texel; and border cells keep their load rather than leaking it off-grid. Where the two must stay
+ * in step the shader is cited by section.
  *
- * Channels hold column-integrated mass, exactly as in the texture: index 0 nitrogen, 1 organic matter,
- * 2 dissolved oxygen, 3 bacteria.
+ * Two compartments, one species each where it matters:
+ * - waterMass:  index 0 nitrogen, 1 organic matter, 2 dissolved oxygen, 3 bacteria (column-integrated mass)
+ * - groundMass: index 0 bacterial content bound to the ground; 1..3 unused, matching terrain-quality.frag
  */
 
 // Channel ids come from the production module so this model cannot drift out of its layout (plan: channels are
@@ -28,22 +31,38 @@ const DIRECTION_STEPS: ReadonlyArray<readonly [number, number]> = [
 
 const EPS = 1e-7;
 
-// The shader clamps both coefficients; the reference has to clamp identically or a stress case would disagree.
+// The shaders clamp their coefficients; the reference has to clamp identically or a stress case would disagree.
 const FLUX_CEILING = 0.75;
 const DECAY_CEILING = 0.25;
+const EXCHANGE_CEILING = 0.15;
 
-/** Per-pass coefficients, matching the uniforms createGpuWaterQuality writes. */
+// Depth at and above which a cell counts as holding standing water: below it, dissolved oxygen is gone and the two
+// compartments cannot trade. Same constant in both shaders, tied to water-visualization.frag's wet threshold.
+export const WET_DEPTH = 0.01;
+
+/** Water channel indices, spelled out because their meaning differs per channel (oxygen dries, bacteria trades). */
+const CHANNEL_OXYGEN = 2;
+const CHANNEL_BACTERIA = 3;
+
+/** Per-pass coefficients, matching the uniforms createGpuWaterQuality and createGpuTerrainQuality write. */
 export type WaterQualityOptions = {
   fluxFraction: number;
   dtScale: number;
   decayRate: number;
+  soilAttachRate: number;
+  washOffRate: number;
+  soilDecayRate: number;
 };
 
-// The conservation harness wants a pure transport step, so decay defaults to off and dtScale to one pass.
+// The conservation harness wants a pure transport step, so fade, die-off and the bacterial exchange all default to
+// off and dtScale to one pass.
 export const WATER_QUALITY_TEST_DEFAULTS: WaterQualityOptions = {
   fluxFraction: 0.5,
   dtScale: 1.0,
   decayRate: 0.0,
+  soilAttachRate: 0.0,
+  washOffRate: 0.0,
+  soilDecayRate: 0.0,
 };
 
 /** Velocity of one cell: the (direction * speed) pair water-velocity.frag writes into rg. */
@@ -58,8 +77,18 @@ export type QualityInjectSource = {
   species: PollutantSpeciesId;
 };
 
+/** The two compartments of one simulation step, both flat RGBA with index = (row * size + column) * 4. */
+export type SubstanceFields = {
+  waterMass: Float32Array;
+  groundMass: Float32Array;
+};
+
 const clampUnit = (value: number, low: number, high: number): number =>
   value < low ? low : value > high ? high : value;
+
+/** wetness from the shaders: how much of a cell's water-borne behaviour is switched on at this depth. */
+export const wetnessForDepth = (depth: number): number =>
+  clampUnit(depth / WET_DEPTH, 0, 1);
 
 /**
  * Canonical D8 step a velocity was emitted from, found the same way the shader finds it: best alignment wins,
@@ -122,6 +151,30 @@ const exportFraction = (
   };
 };
 
+/**
+ * Both sides of the bacterial hand-over for one cell: exchangeAt from both shaders. The committed values are the
+ * ones each shader reads through its samplers, which is why total bacteria only move between compartments.
+ */
+const exchangeFor = (
+  depth: number,
+  waterBacteria: number,
+  groundBacteria: number,
+  options: WaterQualityOptions,
+): { toGround: number; toWater: number } => {
+  const wetness = wetnessForDepth(depth);
+
+  return {
+    toGround:
+      Math.max(waterBacteria, 0) *
+      Math.min(options.soilAttachRate * options.dtScale, EXCHANGE_CEILING) *
+      wetness,
+    toWater:
+      Math.max(groundBacteria, 0) *
+      Math.min(options.washOffRate * options.dtScale, EXCHANGE_CEILING) *
+      wetness,
+  };
+};
+
 /** Mass one source drops on a texel this pass: emissionAt from the shader, same disc and same channel mask. */
 const emissionFor = (
   column: number,
@@ -155,10 +208,11 @@ const emissionFor = (
 };
 
 /**
- * Advance the substance field by `passes` steps.
+ * Advance both compartments by `passes` steps.
  *
- * @param mass - Flat RGBA mass, one row per `size` texels, index = (row * size + column) * 4
- * @param velocityByIndex - Velocity per texel using the same indexing as `mass`
+ * @param fields - Starting water and ground mass; see SubstanceFields for the channel layout
+ * @param depthByIndex - Committed water depth per texel, which drives oxygen carry and bacterial exchange
+ * @param velocityByIndex - Velocity per texel using the same indexing as the fields
  * @param size - Grid edge in texels
  * @param terrainSize - World edge, needed to place sources
  * @param passes - Number of compute steps to run
@@ -166,23 +220,32 @@ const emissionFor = (
  * @param sources - Persistent emitters applied after transport each pass
  */
 export const simulateWaterQualityReference = (
-  mass: Float32Array,
+  fields: SubstanceFields,
+  depthByIndex: ReadonlyArray<number>,
   velocityByIndex: ReadonlyArray<VelocityTexel>,
   size: number,
   terrainSize: number,
   passes: number,
   options: WaterQualityOptions = WATER_QUALITY_TEST_DEFAULTS,
   sources: readonly QualityInjectSource[] = [],
-): Float32Array => {
+): SubstanceFields => {
   const decay = clampUnit(
     options.decayRate * options.dtScale,
     0,
     DECAY_CEILING,
   );
+  const soilDecay = clampUnit(
+    options.soilDecayRate * options.dtScale,
+    0,
+    DECAY_CEILING,
+  );
 
-  let current = new Float32Array(mass);
+  let water = new Float32Array(fields.waterMass);
+  let ground = new Float32Array(fields.groundMass);
+
   for (let pass = 0; pass < passes; pass++) {
-    const next = new Float32Array(current.length);
+    const nextWater = new Float32Array(water.length);
+    const nextGround = new Float32Array(ground.length);
 
     // Export first: every texel knows its own fraction and route before anything is gathered, so no texel can
     // be read after it was already updated this pass.
@@ -193,7 +256,8 @@ export const simulateWaterQualityReference = (
         const own = exportFraction(column, row, size, ownVelocity, options);
 
         for (let channel = 0; channel < 4; channel++) {
-          next[index + channel] = current[index + channel] * (1 - own.fraction);
+          nextWater[index + channel] =
+            water[index + channel] * (1 - own.fraction);
         }
       }
     }
@@ -235,18 +299,40 @@ export const simulateWaterQualityReference = (
           ) {
             const sourceIndex = (sourceRow * size + sourceColumn) * 4;
             for (let channel = 0; channel < 4; channel++) {
-              next[index + channel] +=
-                current[sourceIndex + channel] * neighbour.fraction;
+              nextWater[index + channel] +=
+                water[sourceIndex + channel] * neighbour.fraction;
             }
           }
         }
       }
     }
 
-    // Decay, then emission: substance a source adds this pass cannot be exported by the same pass.
+    // Fade, oxygen carry, exchange, then emission: substance a source adds this pass cannot be exported by the
+    // same pass, and - for dissolved oxygen - cannot be added to ground that has no water on it either.
     for (let row = 0; row < size; row++) {
       for (let column = 0; column < size; column++) {
         const index = (row * size + column) * 4;
+        const depth = depthByIndex[row * size + column];
+        const wetness = wetnessForDepth(depth);
+        const exchange = exchangeFor(
+          depth,
+          water[index + CHANNEL_BACTERIA],
+          ground[index],
+          options,
+        );
+
+        for (let channel = 0; channel < 4; channel++) {
+          nextWater[index + channel] *= 1 - decay;
+        }
+
+        // Dissolved oxygen is a property of the water alone: it thins out with the film rather than being left
+        // behind in dry ground the way nitrogen and organic matter are. wetness is the survival fraction for one
+        // nominal pass, so dtScale belongs in the exponent - the shader's pow(wetness, dtScale) (plan S6).
+        nextWater[index + CHANNEL_OXYGEN] *= Math.pow(wetness, options.dtScale);
+
+        nextWater[index + CHANNEL_BACTERIA] +=
+          exchange.toWater - exchange.toGround;
+
         const emitted = emissionFor(
           column,
           row,
@@ -255,17 +341,24 @@ export const simulateWaterQualityReference = (
           sources,
           options,
         );
+        emitted[CHANNEL_OXYGEN] *= wetness;
         for (let channel = 0; channel < 4; channel++) {
-          next[index + channel] =
-            next[index + channel] * (1 - decay) + emitted[channel];
+          nextWater[index + channel] += emitted[channel];
         }
+
+        // The ground compartment: die-off plus the same two numbers the water column just moved.
+        nextGround[index] =
+          ground[index] * (1 - soilDecay) +
+          exchange.toGround -
+          exchange.toWater;
       }
     }
 
-    current = next;
+    water = nextWater;
+    ground = nextGround;
   }
 
-  return current;
+  return { waterMass: water, groundMass: ground };
 };
 
 /**
@@ -289,4 +382,21 @@ export const channelTotals = (mass: Float32Array): number[] => {
   }
 
   return totals;
+};
+
+/** Total bacteria across both compartments, which is the quantity a pass may only move and not destroy. */
+export const totalBacteria = (fields: SubstanceFields): number => {
+  let total = 0;
+  let compensation = 0;
+
+  for (let index = 0; index < fields.groundMass.length; index += 4) {
+    const value =
+      fields.waterMass[index + CHANNEL_BACTERIA] + fields.groundMass[index];
+    const residual = value - compensation;
+    const sum = total + residual;
+    compensation = sum - total - residual;
+    total = sum;
+  }
+
+  return total;
 };

@@ -59,6 +59,18 @@ export const GameUI = ({ world }: GameUiProps) => {
   // Which substance the Water Quality view tints with. Same ids as the shader channels.
   const pollutantSpeciesOptions = POLLUTANT_SPECIES;
 
+  // Whether the selected species also lives in the ground, said out loud because it changes what the view means:
+  // dissolved oxygen is a property of the water and goes blank where water has left, while bacteria keep reading
+  // on dry ground because the terrain holds its share of them.
+  const selectedSpecies = pollutantSpeciesOptions.find(
+    (option) => option.id === world.pollutantSpecies,
+  );
+  const compartmentHint =
+    selectedSpecies !== undefined &&
+    selectedSpecies.compartments.includes("terrain")
+      ? "This substance lives in the water and in the ground: what settles out keeps showing after the water is gone."
+      : "This substance lives only in the water, so it disappears wherever the terrain has dried.";
+
   const handleMaterialChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
@@ -251,6 +263,8 @@ export const GameUI = ({ world }: GameUiProps) => {
               Shift-click the terrain. Each click is a spring that keeps
               releasing until it is cleared; give the plume a moment to arrive
               downstream.
+              <br />
+              {compartmentHint}
             </div>
           </div>
         )}
