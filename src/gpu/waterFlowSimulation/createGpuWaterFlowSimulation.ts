@@ -3,6 +3,7 @@ import type { Variable } from "three/addons/misc/GPUComputationRenderer.js";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
+import type { OrganicDeposit } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainQuality";
 import type { WaterHeightUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 
@@ -67,15 +68,30 @@ export type WaterFlowVisualization = {
   clearPollutantSources: () => void;
 
   /**
+   * Drops one load of organic matter on the ground - what an animal leaves where it stands. The deposit is a
+   * declaration for the coming pass only: compute() clears it afterwards, so anything that wants to keep dropping has
+   * to keep declaring (which also means a moving animal leaves pats rather than a trail behind an old emitter).
+   * @param deposit - Centre and disc radius in world units (0 to terrainSize), plus mass per pass at 60 fps
+   * @returns false when every deposit slot was already used for this pass
+   */
+  addOrganicDeposit: (deposit: OrganicDeposit) => boolean;
+
+  /**
+   * Forgets the organic deposits declared since the last pass. compute() does this itself once they have been read.
+   */
+  clearOrganicDeposits: () => void;
+
+  /**
    * Get the water quality texture (four substance channels of column-integrated mass).
    */
   getPollutantTexture: () => THREE.Texture;
 
   /**
-   * Get the terrain quality texture: the substances the ground holds, currently just bacterial content in R.
+   * Get the terrain quality texture: the substances the ground holds - bacterial content in R and organic matter on top
+   * of it in G.
    *
-   * The second half of one species: bacteria live in the water column and in the bed at the same time, so reading
-   * only the water texture would hide what a catchment remembers after its puddles are gone.
+   * The second half of two species: both live on the land and in the water at once, so reading only the water texture
+   * would hide what a catchment remembers after its puddles are gone - and everything the animals left there.
    */
   getTerrainQualityTexture: () => THREE.Texture;
 
@@ -329,14 +345,20 @@ export const createGpuWaterFlowSimulation = (
 
   // The ground's share of the substances that can be in the ground. Created after the water column because its
   // dependency list names it; the reverse edge is linked below once both Variables exist.
-  const { terrainQualityVariable, initTerrainQuality, updateTerrainQuality } =
-    createGpuTerrainQuality(
-      gpuCompute,
-      width,
-      waterHeightVariable,
-      waterQualityVariable,
-      savedTextures && savedTextures.terrainQualityTexture,
-    );
+  const {
+    terrainQualityVariable,
+    initTerrainQuality,
+    updateTerrainQuality,
+    addOrganicDeposit,
+    clearOrganicDeposits,
+  } = createGpuTerrainQuality(
+    gpuCompute,
+    width,
+    terrainSize, // world units per texel edge: what lets a depositor speak in animal coordinates
+    waterHeightVariable,
+    waterQualityVariable,
+    savedTextures && savedTextures.terrainQualityTexture,
+  );
 
   // Both halves of the bacterial exchange are on the table now, so water quality can declare its side of the
   // trade. Must happen before gpuCompute.init(), which is where dependency samplers get declared (README s1).
@@ -392,12 +414,17 @@ export const createGpuWaterFlowSimulation = (
       // Compute all variables (velocity computation, testing)
       gpuCompute.compute();
 
+      // Both kinds of per-pass declaration are consumed by the pass that read them. Water sources and organic
+      // deposits are cleared for exactly this reason; pollutant emitters are not, because those are landscape features.
       clearWater();
+      clearOrganicDeposits();
     },
     getGpuCompute: () => gpuCompute,
     addWater,
     addPollutantSource,
     clearPollutantSources,
+    addOrganicDeposit,
+    clearOrganicDeposits,
     getPollutantTexture: () =>
       gpuCompute.getCurrentRenderTarget(waterQualityVariable).texture,
     getTerrainQualityTexture: () =>

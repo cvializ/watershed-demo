@@ -17,7 +17,9 @@ import {
   channelTotals,
   simulateWaterQualityReference,
   totalBacteria,
+  totalOrganicMatter,
   WET_DEPTH,
+  type OrganicDepositSource,
   type QualityInjectSource,
   type SubstanceFields,
   type VelocityTexel,
@@ -56,6 +58,9 @@ const DRY_GROUND = 0.0;
 // Uniform-array capacity in water-quality.frag, and thus the ceiling createGpuWaterQuality enforces.
 const SOURCE_SLOTS = 8;
 
+// The terrain shader's deposit array holds the same eight, which is the ceiling createGpuTerrainQuality enforces.
+const DEPOSIT_SLOTS = 8;
+
 type ScalarField = (column: number, row: number) => number;
 
 const assert = (condition: boolean, message: string): void => {
@@ -67,7 +72,7 @@ const assert = (condition: boolean, message: string): void => {
 // Scenarios that actually finished. A throw inside a scenario skips its increment, so the final check is
 // evidence of work rather than just a statement having executed.
 let completedScenarios = 0;
-const SCENARIO_COUNT = 16;
+const SCENARIO_COUNT = 20;
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(256, 256);
@@ -124,7 +129,9 @@ type Coefficients = {
   decayRate: number;
   soilAttachRate: number;
   washOffRate: number;
+  organicWashOffRate: number;
   soilDecayRate: number;
+  organicDecayRate: number;
 };
 
 // Pure transport: no fade, no exchange and one pass per step, so totals are exact and any movement came from
@@ -135,7 +142,9 @@ const TRANSPORT_ONLY: Coefficients = {
   decayRate: 0.0,
   soilAttachRate: 0.0,
   washOffRate: 0.0,
+  organicWashOffRate: 0.0,
   soilDecayRate: 0.0,
+  organicDecayRate: 0.0,
 };
 
 const coefficientsFor = (overrides: Partial<Coefficients>): Coefficients => ({
@@ -148,6 +157,7 @@ const coefficientsFor = (overrides: Partial<Coefficients>): Coefficients => ({
 const EXCHANGE = {
   soilAttachRate: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
   washOffRate: SUBSTANCE_EXCHANGE_RATES.washOffRate,
+  organicWashOffRate: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
 };
 
 /**
@@ -213,11 +223,14 @@ const createGraph = (
   uniforms.decayRate.value = coefficients.decayRate;
   uniforms.soilAttachRate.value = coefficients.soilAttachRate;
   uniforms.washOffRate.value = coefficients.washOffRate;
+  uniforms.organicWashOffRate.value = coefficients.organicWashOffRate;
 
   const terrainUniforms = terrain.getTerrainQualityUniforms();
   terrainUniforms.soilDecayRate.value = coefficients.soilDecayRate;
+  terrainUniforms.organicDecayRate.value = coefficients.organicDecayRate;
   terrainUniforms.soilAttachRate.value = coefficients.soilAttachRate;
   terrainUniforms.washOffRate.value = coefficients.washOffRate;
+  terrainUniforms.organicWashOffRate.value = coefficients.organicWashOffRate;
 
   const initError = gpuCompute.init();
   assert(initError === null, `gpuCompute.init() failed: ${String(initError)}`);
@@ -239,6 +252,7 @@ const createTerrainGraph = (
   const terrain = createGpuTerrainQuality(
     gpuCompute,
     WIDTH,
+    TERRAIN_SIZE, // world edge: what an organic deposit is placed against, so both sides need the same one
     waterHeightVariable,
     quality.waterQualityVariable,
     createTexture(channelData(seedGround)),
@@ -336,6 +350,21 @@ const sourceAtTexelCentre = (
   species,
 });
 
+/**
+ * A load of organic matter dropped on one texel's centre - the deposit equivalent of `sourceAtTexelCentre`, and
+ * deliberately the same geometry so a pat and a spring land on the cell they were aimed at.
+ */
+const depositAtTexelCentre = (
+  column: number,
+  row: number,
+  amount: number,
+): OrganicDepositSource => ({
+  x: column + 0.5,
+  y: TERRAIN_SIZE - (row + 0.5),
+  radius: 0.4, // under half a cell at this scale, so exactly one texel falls inside
+  amount,
+});
+
 const zero = (): number => 0;
 const nothing = [zero, zero, zero, zero];
 
@@ -361,21 +390,27 @@ await test("four substance channels declare their compartments", () => {
     `POLLUTANT_SPECIES holds ${String(POLLUTANT_SPECIES.length)} species; water-quality.frag packs four`,
   );
 
-  for (const speciesId of [0, 1, 2] as const) {
+  // Nitrogen and dissolved oxygen belong to the water alone; organic matter and bacteria are the two species with a
+  // home on the land as well. The order of this list is the channel layout, so it doubles as the guard on that.
+  const expectedCompartments = [
+    "water",
+    "terrain,water",
+    "water",
+    "terrain,water",
+  ] as const;
+  for (const speciesId of [0, 1, 2, 3] as const) {
     assert(
-      compartmentsOf(speciesId).join() === "water",
-      `species ${String(speciesId)} claims ${compartmentsOf(speciesId).join()}; only dissolved oxygen and bacteria differ`,
+      compartmentsOf(speciesId).sort().join() ===
+        expectedCompartments[speciesId],
+      `species ${String(speciesId)} claims ${compartmentsOf(speciesId).join()}; expected ${expectedCompartments[speciesId]}`,
     );
   }
 
-  // The two rules the rest of this file tests: oxygen cannot live in the ground, bacteria has to live in both.
+  // The two rules the rest of this file tests: oxygen cannot live in the ground, and the species that do live in both
+  // have a terrain channel each - R for bacteria, G for organic matter.
   assert(
     compartmentsOf(2).join() === "water",
     "dissolved oxygen claims a ground compartment; water-quality.frag lets it dry out with the film",
-  );
-  assert(
-    compartmentsOf(3).sort().join() === "terrain,water",
-    `bacteria claims ${compartmentsOf(3).join()}; terrain-quality.frag keeps its share in channel R`,
   );
 
   completedScenarios += 1;
@@ -896,6 +931,194 @@ await test("settling and wash-off agree between the two shaders", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Organic matter lies on the ground, and only ever leaves it with water
+// ---------------------------------------------------------------------------
+
+await test("a deposit stays on dry ground where it was dropped", async () => {
+  // The path an animal's pat takes across a field that has no water on it: mass arrives in a cell that nothing
+  // drains through, and can only leave when a film covers it. Decay is off here, so "unchanged" means unchanged,
+  // and clearing the deposit proves the declaration was for one pass rather than a permanent spring.
+  const graph = createGraph(zero, zero, nothing, coefficientsFor(EXCHANGE), {
+    depth: () => DRY_GROUND,
+  });
+
+  assert(
+    graph.addOrganicDeposit(depositAtTexelCentre(6, 6, 0.1)),
+    "addOrganicDeposit refused a free slot",
+  );
+  computePasses(graph, 4);
+  // Production clears deposits after every pass (createGpuWaterFlowSimulation.compute); this raw graph has to do it
+  // by hand, and doing it here is what makes the second half of this scenario about persistence.
+  graph.clearOrganicDeposits();
+
+  const patTexel = texelIndex(6, 6) * 4;
+  const fields = readFields(graph);
+  assert(
+    fields.groundMass[patTexel + 1] > 0.3,
+    `four passes of a 0.1 deposit left only ${String(fields.groundMass[patTexel + 1])} on the ground`,
+  );
+
+  // The pat fills one texel at this scale, so its centre holds about four times the per-pass amount before anything
+  // else happens to it - which is also why a deposit needs the disc's soft edge and not a hard one.
+  assert(
+    fields.groundMass[patTexel + 1] <= 0.5,
+    `a dry pat accumulated ${String(fields.groundMass[patTexel + 1])} from four passes of 0.1`,
+  );
+  assert(
+    channelTotals(fields.waterMass)[1] <= PARITY_TOLERANCE,
+    `dry ground washed ${String(channelTotals(fields.waterMass)[1])} of organic matter into water that isn't there`,
+  );
+
+  computePasses(graph, 20);
+  const later = readFields(graph);
+  assert(
+    Math.abs(
+      later.groundMass[patTexel + 1] - fields.groundMass[patTexel + 1],
+    ) <= PARITY_TOLERANCE,
+    `the ground's organic matter moved on a dry bed, or the cleared deposit kept releasing: ${String(fields.groundMass[patTexel + 1])} -> ${String(later.groundMass[patTexel + 1])}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("standing water scours organic matter off the ground", async () => {
+  // The leg that makes a pat matter downstream: a film over the manure picks it up, and what the ground loses the
+  // water gains - one number either side of the boundary, exactly like the bacterial wash-off.
+  const graph = createGraph(zero, zero, nothing, coefficientsFor(EXCHANGE));
+
+  assert(
+    graph.addOrganicDeposit(depositAtTexelCentre(6, 6, 0.1)),
+    "addOrganicDeposit refused a free slot",
+  );
+  computePasses(graph, 3);
+  graph.clearOrganicDeposits(); // stop the loading so runoff is all that happens from here on
+
+  const fields = readFields(graph);
+  const totalBefore = totalOrganicMatter(fields);
+  assert(
+    totalBefore > 0.2,
+    `the pat never loaded the ground: ${String(totalBefore)}`,
+  );
+
+  computePasses(graph, 30);
+  const after = readFields(graph);
+  const patTexel = texelIndex(6, 6) * 4;
+
+  assert(
+    after.waterMass[patTexel + 1] > 0.02,
+    `the film never picked any organic matter up off the ground: ${String(after.waterMass[patTexel + 1])}`,
+  );
+  assert(
+    Math.abs(totalOrganicMatter(after) - totalBefore) <= CONSERVATION_TOLERANCE,
+    `runoff minted or destroyed organic matter: ${String(totalBefore)} -> ${String(totalOrganicMatter(after))}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("organic matter never settles out of the flow into the ground", async () => {
+  // The counter-leg to the two above. Bacteria do settle, so a scenario claiming organics don't has to prove the
+  // settling mechanism is running in the same pass - and then show that litter did not follow it into the bed.
+  const coefficients = coefficientsFor(EXCHANGE);
+  const graph = createGraph(
+    zero,
+    zero,
+    [zero, atCell(4, 4, 0.8), zero, atCell(4, 4, 0.5)],
+    coefficients,
+  );
+
+  computePasses(graph, 30);
+  const fields = readFields(graph);
+  const seededTexel = texelIndex(4, 4) * 4;
+
+  assert(
+    fields.groundMass[seededTexel] > 0.02,
+    `bacteria never settled, so this scenario cannot show organics don't: ${String(fields.groundMass[seededTexel])}`,
+  );
+  const groundOrganic = channelTotals(fields.groundMass)[1];
+  assert(
+    groundOrganic <= PARITY_TOLERANCE,
+    `the flow banked ${String(groundOrganic)} of organic matter in the ground; nothing here scrapes the column`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("deposits match the CPU reference", async () => {
+  // The deposit disc is a third copy of one falloff law (water-sources.frag, water-quality.frag's emissionAt and
+  // terrain-quality.frag's depositAt), crossing into the film on the wet half of this grid and sitting in place on the
+  // dry half. Whole-texture parity over both compartments is what pins that law - and its dtScale coupling - down.
+  const depth: ScalarField = (column) =>
+    column < 8 ? STANDING_WATER : DRY_GROUND;
+  const coefficients = coefficientsFor({ ...EXCHANGE, organicDecayRate: 0.01 });
+  const graph = createGraph(zero, zero, nothing, coefficients, { depth });
+
+  const deposits: OrganicDepositSource[] = [
+    depositAtTexelCentre(3, 5, 0.12), // over standing water, where it will run off as it lands
+    depositAtTexelCentre(11, 9, 0.08), // on the dry half, where it can only weather in place
+  ];
+  for (const deposit of deposits) {
+    assert(
+      graph.addOrganicDeposit(deposit),
+      `addOrganicDeposit refused a free slot at ${String(deposit.x)}, ${String(deposit.y)}`,
+    );
+  }
+
+  // No clear between passes: the reference applies its list every pass too, which is what a depositor that keeps
+  // declaring each frame looks like - and it means parity here also proves deposits are per-pass on both sides.
+  const passes = 12;
+  computePasses(graph, passes);
+
+  const fields = readFields(graph);
+  const cpuFields = simulateWaterQualityReference(
+    {
+      waterMass: channelData(nothing),
+      groundMass: channelData(nothing),
+    },
+    depthField(depth),
+    velocityField(zero, zero),
+    WIDTH,
+    TERRAIN_SIZE,
+    passes,
+    coefficients,
+    [],
+    deposits,
+  );
+
+  assert(
+    worstDifference(fields.waterMass, cpuFields.waterMass) <= PARITY_TOLERANCE,
+    `deposits disagree with the reference in water by ${String(worstDifference(fields.waterMass, cpuFields.waterMass))}`,
+  );
+  assert(
+    worstDifference(fields.groundMass, cpuFields.groundMass) <=
+      PARITY_TOLERANCE,
+    `deposits disagree with the reference on the ground by ${String(worstDifference(fields.groundMass, cpuFields.groundMass))} - the two copies of the disc law have drifted apart`,
+  );
+
+  // Both halves must be holding something, or parity was won by nothing happening: the wet half scoured part of its
+  // pat into the film, and the dry half kept the whole of the other one.
+  assert(
+    channelTotals(fields.groundMass)[1] > 0,
+    "no organic matter anywhere on the ground",
+  );
+  const runoff = channelTotals(fields.waterMass)[1];
+  assert(
+    runoff > 0,
+    `the wet half scoured nothing off its deposit: water holds ${String(runoff)}`,
+  );
+
+  // Mineralisation is on in this scenario, so the pair's total has to have fallen from what the two deposits put in.
+  const deposited = deposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+  const remainingOrganic = totalOrganicMatter(fields);
+  assert(
+    remainingOrganic < deposited * passes,
+    `twelve passes of ${String(deposited)} per pass left ${String(remainingOrganic)} organic matter with mineralisation switched on`,
+  );
+
+  completedScenarios += 1;
+});
+
+// ---------------------------------------------------------------------------
 // Sources
 // ---------------------------------------------------------------------------
 
@@ -935,6 +1158,27 @@ await test("a full source list is refused rather than silently dropped", async (
   assert(
     acceptedCount === SOURCE_SLOTS,
     `accepted ${String(acceptedCount)} sources; the shader's uniform arrays hold ${String(SOURCE_SLOTS)}`,
+  );
+
+  // The deposit array is a second fixed-size list with the same failure mode, and animals do not stop defecating
+  // because eight loads were already declared this pass - so it has to refuse out loud too.
+  let acceptedDeposits = 0;
+  for (let slot = 0; slot < DEPOSIT_SLOTS * 2; slot++) {
+    if (
+      graph.addOrganicDeposit({
+        x: 1.5,
+        y: TERRAIN_SIZE - 1.5,
+        radius: 0.4,
+        amount: 0.05,
+      })
+    ) {
+      acceptedDeposits += 1;
+    }
+  }
+
+  assert(
+    acceptedDeposits === DEPOSIT_SLOTS,
+    `accepted ${String(acceptedDeposits)} deposits; terrain-quality.frag's array holds ${String(DEPOSIT_SLOTS)}`,
   );
 
   completedScenarios += 1;

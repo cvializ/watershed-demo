@@ -5,7 +5,7 @@ uniform sampler2D uWaterHeightmap;
 uniform sampler2D uCloudShadowMap;
 uniform sampler2D uVelocityMap;
 uniform sampler2D uPollutantMap; // Water column: four channels of column-integrated mass (R N, G organic, B dissolved oxygen, A bacteria)
-uniform sampler2D uTerrainSubstanceMap; // Ground: the compartments the soil owns (R bacteria), see terrain-quality.frag
+uniform sampler2D uTerrainSubstanceMap; // Ground: the compartments the soil owns (R bacteria, G organic matter), see terrain-quality.frag
 uniform float uShowPollutants;   // 1 = tint the terrain by the selected substance, 0 = leave it alone
 uniform float uPollutantSpecies; // Which substance to show: 0 nitrogen, 1 organic matter, 2 dissolved oxygen, 3 bacteria
 uniform float uMinHeight;
@@ -118,8 +118,11 @@ float getBlurredShadow(vec2 uv, sampler2D shadowMap) {
     return shadow / totalWeight;
 }
 
-// Species id of the one substance with a ground compartment as well as a water one. Mirrors POLLUTANT_SPECIES in
-// src/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts and channel R of uTerrainSubstanceMap.
+// Species ids of the substances with a ground compartment as well as a water one, and thus the only ones whose view
+// reads the terrain texture. Mirrors POLLUTANT_SPECIES in
+// src/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts and channels R (bacteria) and G (organic matter) of
+// uTerrainSubstanceMap.
+const float SPECIES_ORGANIC_MATTER = 1.0;
 const float SPECIES_BACTERIA = 3.0;
 
 // Substance tint for the selected species: colour in rgb, mix weight in w.
@@ -135,12 +138,17 @@ vec4 pollutantTint(vec2 uv) {
     vec4 channelMask = step(abs(vec4(0.0, 1.0, 2.0, 3.0) - vec4(uPollutantSpecies)), vec4(0.5));
     float fromWater = max(dot(mass, channelMask), 0.0);
 
-    // Bacteria is the only species with a second home, so it alone adds the ground's share: this is what keeps a
-    // contaminated flood plain readable once its puddles are gone. Nitrogen and organic matter have no dry
-    // counterpart in the terrain texture, and dissolved oxygen cannot even keep one - water-quality.frag lets it
-    // evaporate with the film it was dissolved in, so an oxygen view simply goes blank where water has left.
-    float soilSelector = 1.0 - min(abs(uPollutantSpecies - SPECIES_BACTERIA), 1.0);
-    float fromGround = max(texture2D(uTerrainSubstanceMap, uv).r, 0.0) * soilSelector;
+    // Bacteria and organic matter have a second home, so they alone add the ground's share - each of its own channel,
+    // because the two are different substances rather than two names for dirt. This is what keeps a contaminated flood
+    // plain readable once its puddles are gone, and what makes the pats animals left visible while the land is dry.
+    // Nitrogen has no dry counterpart in the terrain texture, and dissolved oxygen cannot even keep one -
+    // water-quality.frag lets it evaporate with the film it was dissolved in, so an oxygen view simply goes blank where
+    // water has left.
+    vec4 soilMass = max(texture2D(uTerrainSubstanceMap, uv), 0.0);
+    float organicSelector =
+        1.0 - min(abs(uPollutantSpecies - SPECIES_ORGANIC_MATTER), 1.0);
+    float bacteriaSelector = 1.0 - min(abs(uPollutantSpecies - SPECIES_BACTERIA), 1.0);
+    float fromGround = dot(soilMass, vec4(0.0, organicSelector, 0.0, bacteriaSelector));
 
     float selected = fromWater + fromGround;
 

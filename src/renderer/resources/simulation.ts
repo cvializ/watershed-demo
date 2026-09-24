@@ -6,6 +6,7 @@ import {
   type SavedSimulationTextures,
 } from "@/gpu/waterFlowSimulation/createGpuWaterFlowSimulation";
 import { MeshEnum, setMesh } from "@/scene/resources/mesh";
+import { setOrganicMatterDepositor } from "@/scene/resources/organicMatterDeposition";
 import { setSurfaceMaterialTexture } from "@/scene/resources/surfaceMaterialTexture";
 import { setTexture, TextureEnum } from "@/scene/resources/texture";
 import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
@@ -106,6 +107,11 @@ export const createSimulationResource = (
   if (cloudMesh) {
     setMesh(MeshEnum.CloudMesh, cloudMesh);
   }
+
+  // Publish the ground's depositor alongside the terrain texture it shares the graph with: grazers declare organic
+  // matter through this holder rather than reaching into the compute graph, and a load that recreates the simulation
+  // republishes it bound to the new graph.
+  setOrganicMatterDepositor(waterSimulation.addOrganicDeposit);
 
   return { waterSimulation, cloudSphereSystem, surfaceMaterialTexture };
 };
