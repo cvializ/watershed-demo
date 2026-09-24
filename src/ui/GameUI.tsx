@@ -1,4 +1,4 @@
-import { togglePause, type GameWorldContext } from "@/context";
+import { togglePause, setVisualizationMode, type GameWorldContext } from "@/context";
 import { POLLUTANT_SPECIES } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 import { waterSimulation } from "@/renderer/systems/init/simulation";
 import {
@@ -77,10 +77,7 @@ export const GameUI = ({ world }: GameUiProps) => {
   ) => {
     logger.info(`[game-ui:handleMaterialChange] ${event.target.value}`);
     const value = parseInt(event.target.value, 10);
-    world.visualizationMode = value;
-
-    // Special handling for option 5: Hide Velocity Arrows
-    world.showVelocity = value !== 5;
+    setVisualizationMode(world, value);
   };
 
   const handlePollutantChange = (

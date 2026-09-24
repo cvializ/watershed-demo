@@ -4,7 +4,7 @@ import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMate
 export const createGameWorldContext = () => ({
   gameTime: 0,
   fps: 0,
-  showVelocity: true,
+  showVelocity: true, // Mode 4 (Water Flow) shows velocity by default; modes 5 and 7 hide it
   erosionRate: 0.01,
   reposeAngle: 60, // Degrees - angle of repose for granular relaxation
   relaxRate: 0.25, // Fraction of over-steepened drop relocated per pass
@@ -40,6 +40,23 @@ export const createGameWorldContext = () => ({
 
 export const togglePause = (world: GameWorldContext): void => {
   world.isPaused = !world.isPaused;
+};
+
+/**
+ * Set the visualization mode and update showVelocity accordingly.
+ * This ensures that when a material is selected, its variable values are properly initialized.
+ * 
+ * Mode 4 (Water Flow) - Shows velocity by default
+ * Mode 5 (Water height) - Hides velocity, shows blue water
+ * Mode 7 (Water Quality) - Hides velocity, shows blue water with substance overlay
+ */
+export const setVisualizationMode = (
+  world: GameWorldContext,
+  mode: number,
+): void => {
+  world.visualizationMode = mode;
+  // Modes 5 and 7 hide velocity; all other modes show it
+  world.showVelocity = mode !== 5 && mode !== 7;
 };
 
 export type GameWorldContext = ReturnType<typeof createGameWorldContext>;
