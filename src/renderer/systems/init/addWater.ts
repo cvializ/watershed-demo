@@ -7,6 +7,7 @@ import { Terrain, MeshRef } from "@/components/components";
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
+import { getOrganicMatterDepositor } from "@/scene/resources/organicMatterDeposition";
 import { logger } from "@/utils/logger";
 
 import { waterSimulation } from "./simulation";
@@ -14,11 +15,10 @@ import { waterSimulation } from "./simulation";
 const SIM_SIZE = 512;
 const terrainSize = 12;
 
-// Shift-click lays down a substance source. Radius is in world units against a 12 unit terrain, and the amount
-// is mass per pass at 60 fps (the shader scales it by dtScale), so these are tuned for "a plume shows up within
-// a second" rather than for any measured spill.
-const POLLUTANT_SOURCE_RADIUS = 0.8;
-const POLLUTANT_SOURCE_AMOUNT = 0.15;
+// Shift-click drops organic matter like an animal pat. Same size and mass as the grazing system,
+// so it reads as a single deposit that washes away rather than a persistent spring.
+const ORGANIC_DEPOSIT_RADIUS = 0.8;
+const ORGANIC_DEPOSIT_AMOUNT = 0.15;
 
 export const addWaterInitSystem: RendererInitSystem = (
   world,
@@ -84,18 +84,19 @@ export const addWaterInitSystem: RendererInitSystem = (
     const centerY = Math.floor((1.0 - uvY) * width); // Y is flipped for texture coordinates
     logger.debug({ uvX, uvY, texelX, centerY }, "Texture texel coords");
 
-    // In the Water Quality view, shift-click lays down a substance instead of water: an emitter that keeps
-    // releasing into whatever the terrain does next, so a plume draws the flow paths out over the landscape
-    // rather than being one slug. Gated on that view because it is the only place the tool is advertised - and
-    // because shift-drag is a camera shortcut elsewhere, where an invisible injection would be plain confusing.
+    // In the Water Quality view, shift-click drops organic matter on the ground instead of adding water:
+    // a single deposit with the same size and mass as an animal pat, so it washes away rather than
+    // persisting as a source. Gated on that view because it is the only place the tool is advertised.
     if (event.shiftKey && world.visualizationMode === 7) {
-      waterSimulation.addPollutantSource(
-        x,
-        y,
-        POLLUTANT_SOURCE_RADIUS,
-        POLLUTANT_SOURCE_AMOUNT,
-        world.pollutantSpecies,
-      );
+      const depositor = getOrganicMatterDepositor();
+      if (depositor) {
+        depositor({
+          x,
+          y,
+          radius: ORGANIC_DEPOSIT_RADIUS,
+          amount: ORGANIC_DEPOSIT_AMOUNT,
+        });
+      }
       return;
     }
 
