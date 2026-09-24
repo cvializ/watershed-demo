@@ -18,7 +18,7 @@ const terrainSize = 12;
 // Shift-click drops organic matter like an animal pat. Same size and mass as the grazing system,
 // so it reads as a single deposit that washes away rather than a persistent spring.
 const ORGANIC_DEPOSIT_RADIUS = 0.8;
-const ORGANIC_DEPOSIT_AMOUNT = 0.15;
+const ORGANIC_DEPOSIT_AMOUNT = 0.5;
 
 export const addWaterInitSystem: RendererInitSystem = (
   world,
