@@ -60,8 +60,9 @@ export const GameUI = ({ world }: GameUiProps) => {
   const pollutantSpeciesOptions = POLLUTANT_SPECIES;
 
   // Whether the selected species also lives in the ground, said out loud because it changes what the view means:
-  // dissolved oxygen is a property of the water and goes blank where water has left, while bacteria keep reading
-  // on dry ground because the terrain holds its share of them.
+  // dissolved oxygen is a property of the water and goes blank where water has left, while bacteria and organic
+  // matter keep reading on dry ground because the terrain holds its share of them - the latter being what the
+  // animals dropped there.
   const selectedSpecies = pollutantSpeciesOptions.find(
     (option) => option.id === world.pollutantSpecies,
   );

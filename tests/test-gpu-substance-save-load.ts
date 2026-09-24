@@ -67,8 +67,10 @@ const WATER_CHANNEL_LABELS = [
   "water.a (bacteria in the column)",
 ] as const;
 
-// Only R is a substance in the ground texture; G, B and A are written zero on purpose.
+// The two compartments the ground owns: bacteria bound to the bed, and organic matter lying on it. B and A are
+// written zero on purpose - see terrain-quality.frag - so only these two channels carry saved state.
 const CHANNEL_SOIL_BACTERIA = 0;
+const CHANNEL_SOIL_ORGANIC = 1;
 
 type ScalarField = (column: number, row: number) => number;
 
@@ -167,15 +169,20 @@ const seedWaterMass: readonly ScalarField[] = [
   inBlock(0.9),
 ];
 
-// Ground channels: only R (soil bacteria) is a substance, seeded both under standing water - where the exchange runs
-// in both directions - and on the dry strip, where nothing can move it.
+// Ground channels: R is soil bacteria and G the organic matter animals leave behind, each seeded both under standing
+// water - where it can be scoured off - and on the dry strip, where nothing can move it. The two behave differently
+// enough at the boundary (bacteria trade both ways, organics only ever leave) that both belong in a persistence test.
 const seedGroundMass: readonly ScalarField[] = [
   (column, row) =>
     Math.max(
       column >= DRY_START_COLUMN && row % 2 === 0 ? 0.7 : 0.0,
       atCell(3, 3, 0.5)(column, row),
     ),
-  zero,
+  (column, row) =>
+    Math.max(
+      column >= DRY_START_COLUMN && row % 3 === 0 ? 0.6 : 0.0,
+      atCell(7, 10, 0.45)(column, row),
+    ),
   zero,
   zero,
 ];
@@ -186,7 +193,9 @@ type Coefficients = {
   decayRate: number;
   soilAttachRate: number;
   washOffRate: number;
+  organicWashOffRate: number;
   soilDecayRate: number;
+  organicDecayRate: number;
 };
 
 // The rates production runs on, so the trade exercised here is the real one rather than invented numbers that would
@@ -197,7 +206,9 @@ const COEFFICIENTS: Coefficients = {
   decayRate: 0.0,
   soilAttachRate: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
   washOffRate: SUBSTANCE_EXCHANGE_RATES.washOffRate,
+  organicWashOffRate: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
   soilDecayRate: 0.0,
+  organicDecayRate: 0.0,
 };
 
 /** The textures a second graph takes from save/load instead of freshly authored fixtures. */
@@ -266,6 +277,7 @@ const createGraph = (restored?: RestoredSeed) => {
   const terrain = createGpuTerrainQuality(
     gpuCompute,
     WIDTH,
+    TERRAIN_SIZE, // same world edge the water quality variable was given: deposits and sources share one scale
     waterHeightVariable,
     quality.waterQualityVariable,
     restored === undefined
@@ -283,11 +295,14 @@ const createGraph = (restored?: RestoredSeed) => {
   waterUniforms.decayRate.value = COEFFICIENTS.decayRate;
   waterUniforms.soilAttachRate.value = COEFFICIENTS.soilAttachRate;
   waterUniforms.washOffRate.value = COEFFICIENTS.washOffRate;
+  waterUniforms.organicWashOffRate.value = COEFFICIENTS.organicWashOffRate;
 
   const terrainUniforms = terrain.getTerrainQualityUniforms();
   terrainUniforms.soilDecayRate.value = COEFFICIENTS.soilDecayRate;
+  terrainUniforms.organicDecayRate.value = COEFFICIENTS.organicDecayRate;
   terrainUniforms.soilAttachRate.value = COEFFICIENTS.soilAttachRate;
   terrainUniforms.washOffRate.value = COEFFICIENTS.washOffRate;
+  terrainUniforms.organicWashOffRate.value = COEFFICIENTS.organicWashOffRate;
 
   const initError = gpuCompute.init();
   assert(initError === null, `gpuCompute.init() failed: ${String(initError)}`);
@@ -428,7 +443,12 @@ const assertChannelRestored = (
   );
 };
 
-/** Assert every substance channel of the water column matches, then the ground's bacterial channel. */
+/**
+ * Assert every substance channel of both compartments matches bit for bit.
+ *
+ * Both ground channels are compared because both are live substances now: a snapshot that silently dropped the organic
+ * one would still satisfy a bacteria-only check.
+ */
 const assertBothCompartmentsIdentical = (
   saved: { waterQualityData: Float32Array; terrainQualityData: Float32Array },
   restoredGraph: Graph,
@@ -446,11 +466,21 @@ const assertBothCompartmentsIdentical = (
     );
   }
 
+  const restoredGround = readPixels(
+    restoredGraph,
+    restoredGraph.terrainQualityVariable,
+  );
   assertChannelRestored(
     saved.terrainQualityData,
-    readPixels(restoredGraph, restoredGraph.terrainQualityVariable),
+    restoredGround,
     CHANNEL_SOIL_BACTERIA,
     "ground.r (bacteria bound to the bed)",
+  );
+  assertChannelRestored(
+    saved.terrainQualityData,
+    restoredGround,
+    CHANNEL_SOIL_ORGANIC,
+    "ground.g (organic matter on the bed)",
   );
 };
 
@@ -639,13 +669,15 @@ await test("restore -> recreate is byte-stable for both compartments", async () 
   const restoredGraph = recreateFrom(state);
   assertBothCompartmentsIdentical(state, restoredGraph);
 
-  // The ground texture's unused channels must come back as they were written rather than as uninitialized texels: a
-  // one in G would read as mass for any future species assigned that channel.
   const restoredGround = readPixels(
     restoredGraph,
     restoredGraph.terrainQualityVariable,
   );
-  for (const unusedChannel of [1, 2, 3]) {
+
+  // B and A are still unowned, and must come back as they were written rather than as uninitialized texels: a one in
+  // either would read as mass for any future species assigned that channel. G is owned now - organic matter on the
+  // ground - so it is asserted below as content rather than as emptiness.
+  for (const unusedChannel of [2, 3]) {
     assert(
       countNonZero(restoredGround, unusedChannel) === 0 &&
         countNonZero(state.terrainQualityData, unusedChannel) === 0,
@@ -653,8 +685,17 @@ await test("restore -> recreate is byte-stable for both compartments", async () 
     );
   }
 
+  // The organic comparison above only means something if there was organic matter to carry: a fixture that never
+  // seeded its ground G, or an exchange leg that silently drained it before the save, would leave both sides zero,
+  // bit-identical and vacuously passed.
+  assert(
+    countNonZero(restoredGround, CHANNEL_SOIL_ORGANIC) > 0 &&
+      countNonZero(state.terrainQualityData, CHANNEL_SOIL_ORGANIC) > 0,
+    "no ground organic matter survived to be saved; the round trip proves nothing about channel G",
+  );
+
   console.log(
-    "[substance:save] byte-stable across save -> recreate for all four water channels and the ground compartment",
+    "[substance:save] byte-stable across save -> recreate for all four water channels and both ground channels",
   );
   completedScenarios += 1;
 });

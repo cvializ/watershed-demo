@@ -3,6 +3,7 @@ import { createWorld } from "bitecs";
 import { query } from "bitecs";
 import { Animal, Position, Velocity } from "src/components/components";
 import { createGameWorldContext } from "src/context";
+import { setOrganicMatterDepositor } from "src/scene/resources/organicMatterDeposition";
 import { setSurfaceMaterialTexture } from "src/scene/resources/surfaceMaterialTexture";
 import { createSurfaceMaterialTexture } from "src/scene/resources/textures/surfaceMaterial";
 import { animalSystem } from "src/scene/systems/animal";
@@ -173,5 +174,110 @@ test.describe("Animal movement", () => {
     world.isPaused = false;
     animalSystem(world, scene, 0.5);
     expect(distanceTraveled(animal$, startX, startZ)).toBeGreaterThan(0);
+  });
+});
+
+// What animals leave behind. Deposits are per-pass declarations handed to whoever publishes a depositor (the water
+// simulation does - see src/scene/resources/organicMatterDeposition.ts), so these tests publish a recording one and
+// read back what the system declared.
+test.describe("Organic matter deposition", () => {
+  const TERRAIN_SIZE = 12;
+  const TEXTURE_SIZE = 128;
+  const FRAME_SECONDS = 0.5; // deliberately chunky: it stands for game time, so pats come due quickly
+
+  /** Publish a depositor that remembers every declaration, and hand back what it collected. */
+  const recordDeposits = (): {
+    deposits: { x: number; y: number; radius: number; amount: number }[];
+  } => {
+    const recorded: {
+      x: number;
+      y: number;
+      radius: number;
+      amount: number;
+    }[] = [];
+    setOrganicMatterDepositor((deposit) => {
+      recorded.push(deposit);
+      return true;
+    });
+
+    return { deposits: recorded };
+  };
+
+  const runFrames = (
+    world: Parameters<typeof animalSystem>[0],
+    frames: number,
+  ): void => {
+    const scene = new THREE.Scene();
+    for (let frame = 0; frame < frames; frame++) {
+      animalSystem(world, scene, FRAME_SECONDS);
+    }
+  };
+
+  test("drops organic matter where it stands, in terrain coordinates", () => {
+    const world = createWorld(createGameWorldContext());
+    setSurfaceMaterialTexture(
+      createSurfaceMaterialTexture(TEXTURE_SIZE, TERRAIN_SIZE),
+    );
+    const { deposits } = recordDeposits();
+
+    addAnimal(world, { x: 0, y: 1.0, z: 0 });
+
+    // Thirty seconds of game time is longer than the longest interval between pats and shorter than two shortest
+    // ones apart from rounding, so at least one pat has to have been declared.
+    runFrames(world, 60);
+
+    expect(deposits.length).toBeGreaterThan(0);
+
+    for (const deposit of deposits) {
+      // Terrain-local like the grazing above: world space shifted by half the terrain size, which is the mapping the
+      // compute shaders read a deposit against. A regression here would drop manure off the edge of the world.
+      expect(deposit.x).toBeGreaterThanOrEqual(0);
+      expect(deposit.x).toBeLessThanOrEqual(TERRAIN_SIZE);
+      expect(deposit.y).toBeGreaterThanOrEqual(0);
+      expect(deposit.y).toBeLessThanOrEqual(TERRAIN_SIZE);
+
+      // A pat, not a flood: a small disc with mass in it.
+      expect(deposit.radius).toBeGreaterThan(0);
+      expect(deposit.amount).toBeGreaterThan(0);
+    }
+  });
+
+  test("keeps its pats to itself while the simulation is paused", () => {
+    const world = createWorld(createGameWorldContext());
+    setSurfaceMaterialTexture(
+      createSurfaceMaterialTexture(TEXTURE_SIZE, TERRAIN_SIZE),
+    );
+    const { deposits } = recordDeposits();
+
+    addAnimal(world, { x: 0.5, y: 1.0, z: -0.5 });
+    world.isPaused = true;
+
+    // Far longer than the deposit interval, all of it paused: fertiliser is not a wall-clock phenomenon any more than
+    // wandering is.
+    runFrames(world, 60);
+
+    expect(deposits.length).toBe(0);
+
+    world.isPaused = false;
+    runFrames(world, 60);
+    expect(deposits.length).toBeGreaterThan(0);
+  });
+
+  test("drops at roughly the cadence it was written with", () => {
+    const world = createWorld(createGameWorldContext());
+    setSurfaceMaterialTexture(
+      createSurfaceMaterialTexture(TEXTURE_SIZE, TERRAIN_SIZE),
+    );
+    const { deposits } = recordDeposits();
+
+    addAnimal(world, { x: 0, y: 1.0, z: 0 });
+
+    // One frame of game time per pat window at most, so one declaration per pat here: thirty seconds of game time
+    // holds at least two pats (the longest interval is under fifteen seconds) and never more than the shortest
+    // interval allows.
+    runFrames(world, 60);
+
+    expect(deposits.length).toBeGreaterThanOrEqual(2);
+    expect(deposits.length).toBeLessThanOrEqual(5);
   });
 });

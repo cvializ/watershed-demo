@@ -9,9 +9,10 @@
  * recomputed per texel; and border cells keep their load rather than leaking it off-grid. Where the two must stay
  * in step the shader is cited by section.
  *
- * Two compartments, one species each where it matters:
+ * Two compartments:
  * - waterMass:  index 0 nitrogen, 1 organic matter, 2 dissolved oxygen, 3 bacteria (column-integrated mass)
- * - groundMass: index 0 bacterial content bound to the ground; 1..3 unused, matching terrain-quality.frag
+ * - groundMass: index 0 bacterial content bound to the ground, index 1 organic matter on it; 2..3 unused, matching
+ *   terrain-quality.frag
  */
 
 // Channel ids come from the production module so this model cannot drift out of its layout (plan: channels are
@@ -40,9 +41,14 @@ const EXCHANGE_CEILING = 0.15;
 // compartments cannot trade. Same constant in both shaders, tied to water-visualization.frag's wet threshold.
 export const WET_DEPTH = 0.01;
 
-/** Water channel indices, spelled out because their meaning differs per channel (oxygen dries, bacteria trades). */
+/** Water channel indices, spelled out because their meaning differs per channel (oxygen dries, both others trade). */
+const CHANNEL_ORGANIC = 1;
 const CHANNEL_OXYGEN = 2;
 const CHANNEL_BACTERIA = 3;
+
+/** Ground channel indices, in the same order as the water channels they are the other half of. */
+const GROUND_CHANNEL_BACTERIA = 0;
+const GROUND_CHANNEL_ORGANIC = 1;
 
 /** Per-pass coefficients, matching the uniforms createGpuWaterQuality and createGpuTerrainQuality write. */
 export type WaterQualityOptions = {
@@ -51,7 +57,9 @@ export type WaterQualityOptions = {
   decayRate: number;
   soilAttachRate: number;
   washOffRate: number;
+  organicWashOffRate: number;
   soilDecayRate: number;
+  organicDecayRate: number;
 };
 
 // The conservation harness wants a pure transport step, so fade, die-off and the bacterial exchange all default to
@@ -62,7 +70,9 @@ export const WATER_QUALITY_TEST_DEFAULTS: WaterQualityOptions = {
   decayRate: 0.0,
   soilAttachRate: 0.0,
   washOffRate: 0.0,
+  organicWashOffRate: 0.0,
   soilDecayRate: 0.0,
+  organicDecayRate: 0.0,
 };
 
 /** Velocity of one cell: the (direction * speed) pair water-velocity.frag writes into rg. */
@@ -75,6 +85,18 @@ export type QualityInjectSource = {
   radius: number;
   amount: number;
   species: PollutantSpeciesId;
+};
+
+/**
+ * An organic deposit in the same world space; see createGpuTerrainQuality.addOrganicDeposit. Like a pollutant source
+ * it keeps releasing every pass until the caller clears it - production clears them after each pass, this model applies
+ * whatever list it is handed for every pass it runs.
+ */
+export type OrganicDepositSource = {
+  x: number;
+  y: number;
+  radius: number;
+  amount: number;
 };
 
 /** The two compartments of one simulation step, both flat RGBA with index = (row * size + column) * 4. */
@@ -152,27 +174,68 @@ const exportFraction = (
 };
 
 /**
- * Both sides of the bacterial hand-over for one cell: exchangeAt from both shaders. The committed values are the
- * ones each shader reads through its samplers, which is why total bacteria only move between compartments.
+ * Every leg of the hand-over for one cell: exchangeAt from both shaders. The committed values are the ones each
+ * shader reads through its samplers, which is why a species only moves between compartments rather than appearing.
+ * Organic matter has one leg only - the ground gives it to a film and never takes it back.
  */
 const exchangeFor = (
   depth: number,
   waterBacteria: number,
   groundBacteria: number,
+  groundOrganic: number,
   options: WaterQualityOptions,
-): { toGround: number; toWater: number } => {
+): {
+  toGroundBacteria: number;
+  toWaterBacteria: number;
+  toWaterOrganic: number;
+} => {
   const wetness = wetnessForDepth(depth);
 
   return {
-    toGround:
+    toGroundBacteria:
       Math.max(waterBacteria, 0) *
       Math.min(options.soilAttachRate * options.dtScale, EXCHANGE_CEILING) *
       wetness,
-    toWater:
+    toWaterBacteria:
       Math.max(groundBacteria, 0) *
       Math.min(options.washOffRate * options.dtScale, EXCHANGE_CEILING) *
       wetness,
+    toWaterOrganic:
+      Math.max(groundOrganic, 0) *
+      Math.min(options.organicWashOffRate * options.dtScale, EXCHANGE_CEILING) *
+      wetness,
   };
+};
+
+/** Texel centre in the shaders' shared world space; see water-quality.frag and terrain-quality.frag's mapping. */
+const worldPositionOfTexel = (
+  column: number,
+  row: number,
+  size: number,
+  terrainSize: number,
+): { worldX: number; worldY: number } => ({
+  // uv comes from gl_FragCoord at the texel centre, and y is flipped into world space exactly as main() does.
+  worldX: ((column + 0.5) / size) * terrainSize,
+  worldY: (1 - (row + 0.5) / size) * terrainSize,
+});
+
+/** Mass one soft disc drops on a texel this pass: the falloff law both shaders share, centre strength included. */
+const discEmission = (
+  worldX: number,
+  worldY: number,
+  disc: { x: number; y: number; radius: number; amount: number },
+  options: WaterQualityOptions,
+): number => {
+  const deltaX = worldX - disc.x;
+  const deltaY = worldY - disc.y;
+  const distanceSq = deltaX * deltaX + deltaY * deltaY;
+  const radiusSq = disc.radius * disc.radius;
+  if (distanceSq >= radiusSq) {
+    return 0;
+  }
+
+  const falloff = 1 - distanceSq / radiusSq;
+  return disc.amount * falloff * falloff * (3 - 2 * falloff) * options.dtScale;
 };
 
 /** Mass one source drops on a texel this pass: emissionAt from the shader, same disc and same channel mask. */
@@ -186,38 +249,56 @@ const emissionFor = (
 ): number[] => {
   const emitted = [0, 0, 0, 0];
 
-  // uv comes from gl_FragCoord at the texel centre, and y is flipped into world space exactly as main() does.
-  const worldX = ((column + 0.5) / size) * terrainSize;
-  const worldY = (1 - (row + 0.5) / size) * terrainSize;
+  const { worldX, worldY } = worldPositionOfTexel(
+    column,
+    row,
+    size,
+    terrainSize,
+  );
 
   for (const source of sources) {
-    const deltaX = worldX - source.x;
-    const deltaY = worldY - source.y;
-    const distanceSq = deltaX * deltaX + deltaY * deltaY;
-    const radiusSq = source.radius * source.radius;
-    if (distanceSq >= radiusSq) {
-      continue;
-    }
-
-    const falloff = 1 - distanceSq / radiusSq;
-    emitted[source.species] +=
-      source.amount * falloff * falloff * (3 - 2 * falloff) * options.dtScale;
+    emitted[source.species] += discEmission(worldX, worldY, source, options);
   }
 
   return emitted;
+};
+
+/** Mass one pass's organic deposits drop on a texel: depositAt from terrain-quality.frag, which fills one channel. */
+const depositFor = (
+  column: number,
+  row: number,
+  size: number,
+  terrainSize: number,
+  deposits: readonly OrganicDepositSource[],
+  options: WaterQualityOptions,
+): number => {
+  const { worldX, worldY } = worldPositionOfTexel(
+    column,
+    row,
+    size,
+    terrainSize,
+  );
+
+  let deposited = 0;
+  for (const deposit of deposits) {
+    deposited += discEmission(worldX, worldY, deposit, options);
+  }
+
+  return deposited;
 };
 
 /**
  * Advance both compartments by `passes` steps.
  *
  * @param fields - Starting water and ground mass; see SubstanceFields for the channel layout
- * @param depthByIndex - Committed water depth per texel, which drives oxygen carry and bacterial exchange
+ * @param depthByIndex - Committed water depth per texel, which drives oxygen carry and the ground exchange
  * @param velocityByIndex - Velocity per texel using the same indexing as the fields
  * @param size - Grid edge in texels
- * @param terrainSize - World edge, needed to place sources
+ * @param terrainSize - World edge, needed to place sources and deposits
  * @param passes - Number of compute steps to run
  * @param options - Per-pass coefficients; see WATER_QUALITY_TEST_DEFAULTS
  * @param sources - Persistent emitters applied after transport each pass
+ * @param deposits - Organic deposits the ground receives after its own decay and exchange each pass
  */
 export const simulateWaterQualityReference = (
   fields: SubstanceFields,
@@ -228,6 +309,7 @@ export const simulateWaterQualityReference = (
   passes: number,
   options: WaterQualityOptions = WATER_QUALITY_TEST_DEFAULTS,
   sources: readonly QualityInjectSource[] = [],
+  deposits: readonly OrganicDepositSource[] = [],
 ): SubstanceFields => {
   const decay = clampUnit(
     options.decayRate * options.dtScale,
@@ -236,6 +318,11 @@ export const simulateWaterQualityReference = (
   );
   const soilDecay = clampUnit(
     options.soilDecayRate * options.dtScale,
+    0,
+    DECAY_CEILING,
+  );
+  const soilOrganicDecay = clampUnit(
+    options.organicDecayRate * options.dtScale,
     0,
     DECAY_CEILING,
   );
@@ -317,7 +404,8 @@ export const simulateWaterQualityReference = (
         const exchange = exchangeFor(
           depth,
           water[index + CHANNEL_BACTERIA],
-          ground[index],
+          ground[index + GROUND_CHANNEL_BACTERIA],
+          ground[index + GROUND_CHANNEL_ORGANIC],
           options,
         );
 
@@ -331,7 +419,11 @@ export const simulateWaterQualityReference = (
         nextWater[index + CHANNEL_OXYGEN] *= Math.pow(wetness, options.dtScale);
 
         nextWater[index + CHANNEL_BACTERIA] +=
-          exchange.toWater - exchange.toGround;
+          exchange.toWaterBacteria - exchange.toGroundBacteria;
+
+        // Organic matter crosses into the film and never back out of it, so this leg is an addition here and the
+        // subtraction of exactly the same number on the ground below.
+        nextWater[index + CHANNEL_ORGANIC] += exchange.toWaterOrganic;
 
         const emitted = emissionFor(
           column,
@@ -346,11 +438,18 @@ export const simulateWaterQualityReference = (
           nextWater[index + channel] += emitted[channel];
         }
 
-        // The ground compartment: die-off plus the same two numbers the water column just moved.
-        nextGround[index] =
-          ground[index] * (1 - soilDecay) +
-          exchange.toGround -
-          exchange.toWater;
+        // The ground's bacterial channel: die-off plus the same two numbers the water column just moved.
+        nextGround[index + GROUND_CHANNEL_BACTERIA] =
+          ground[index + GROUND_CHANNEL_BACTERIA] * (1 - soilDecay) +
+          exchange.toGroundBacteria -
+          exchange.toWaterBacteria;
+
+        // The ground's organic channel: mineralisation, the wash-off the film just received, and whatever animals
+        // dropped this pass. Deposits come last, so a pat cannot be washed away by the pass that laid it (plan A3).
+        nextGround[index + GROUND_CHANNEL_ORGANIC] =
+          ground[index + GROUND_CHANNEL_ORGANIC] * (1 - soilOrganicDecay) -
+          exchange.toWaterOrganic +
+          depositFor(column, row, size, terrainSize, deposits, options);
       }
     }
 
@@ -385,13 +484,29 @@ export const channelTotals = (mass: Float32Array): number[] => {
 };
 
 /** Total bacteria across both compartments, which is the quantity a pass may only move and not destroy. */
-export const totalBacteria = (fields: SubstanceFields): number => {
+export const totalBacteria = (fields: SubstanceFields): number =>
+  totalAcrossCompartments(fields, CHANNEL_BACTERIA, GROUND_CHANNEL_BACTERIA);
+
+/**
+ * Total organic matter across both compartments: what the animals dropped on the land plus what a stream is carrying.
+ * Exchange moves it between those two and nothing else may change the sum but decay.
+ */
+export const totalOrganicMatter = (fields: SubstanceFields): number =>
+  totalAcrossCompartments(fields, CHANNEL_ORGANIC, GROUND_CHANNEL_ORGANIC);
+
+/** Kahan-compensated sum of one water channel and its ground partner over the whole grid. */
+const totalAcrossCompartments = (
+  fields: SubstanceFields,
+  waterChannel: number,
+  groundChannel: number,
+): number => {
   let total = 0;
   let compensation = 0;
 
   for (let index = 0; index < fields.groundMass.length; index += 4) {
     const value =
-      fields.waterMass[index + CHANNEL_BACTERIA] + fields.groundMass[index];
+      fields.waterMass[index + waterChannel] +
+      fields.groundMass[index + groundChannel];
     const residual = value - compensation;
     const sum = total + residual;
     compensation = sum - total - residual;

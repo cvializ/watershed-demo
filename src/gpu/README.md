@@ -260,12 +260,13 @@ substance, not an alpha: the texture is only ever sampled by hand:
 | Channel | Meaning          | Compartments     | Dries with the water?                   |
 | ------- | ---------------- | ---------------- | --------------------------------------- |
 | R       | Nitrogen         | Water            | No - residue stays where the puddle was |
-| G       | Organic matter   | Water            | No                                      |
+| G       | Organic matter   | Water and ground | No                                      |
 | B       | Dissolved oxygen | Water only       | **Yes**                                 |
 | A       | Bacteria         | Water and ground | Settles into the ground                 |
 
 `terrainQuality` is an RGBA32F texture of mass per unit area in the same units, so the two compartments of one
-species can be added. Only R (bacterial content bound to the bed) is used; G, B and A stay zero.
+species can be added. R is bacterial content bound to the bed and G organic matter lying on it; B and A stay zero.
+Append future terrain compartments rather than renumbering these, since texels are saved data.
 
 **Oxygen.** `water-quality.frag` scales channel B by a wetness `clamp(depth / WET_DEPTH, 0, 1)` after transport -
 as the survival fraction of one nominal pass, hence raised to `dtScale` rather than multiplied by it (plan S6) - and
@@ -273,26 +274,39 @@ gates an emitter's oxygen contribution by the same number, so the channel cannot
 be released onto it. The other three channels deliberately keep their dry deposits: a drained puddle's residue is
 part of what the view is for.
 
+**Organic matter.** This is the substance the land receives rather than trades, which is why animals are its only
+gateway into the ground. `createGpuTerrainQuality.addOrganicDeposit({ x, y, radius, amount })` declares one soft disc
+of mass in world units - the same falloff law as `water-sources.frag` and `emissionAt()`, so a pat lands where the
+animal that dropped it stands - and deposits are per-pass declarations: `compute()` clears them exactly like water
+sources, which is what lets a moving animal leave pats instead of a smear behind an emitter that outlived the visit.
+They are applied after decay and exchange, so mass cannot be washed off by the pass that laid it (plan A3). The only
+leg that takes it away is runoff: `organicWashOffRate` scales with wetness and moves ground organics into the film,
+one-way - nothing in this model scrapes material out of a flowing column and buries it, so there is no attach rate for
+organics. Mineralisation (`organicDecayRate`, terrain only) weathers what is left in place.
+
 **Bacteria.** Settling and wash-off are computed by `exchangeAt()`, which is textually duplicated in both shaders
 and evaluated on the same committed texels, exactly like sediment-flow.frag's `outfluxAt()`. What one compartment
 subtracts the other adds, so total bacteria only move - they do not appear. Both directions scale with wetness (no
 film, no trade: a dry bed neither gains nor loses) and are capped:
 
-| Uniform          | Default | Role                                                                       |
-| ---------------- | ------- | -------------------------------------------------------------------------- |
-| `soilAttachRate` | 0.02    | Fraction of water-borne bacteria the ground takes per pass                 |
-| `washOffRate`    | 0.008   | Fraction of soil bacteria a film picks up per pass                         |
-| `soilDecayRate`  | 0.02    | Die-off of the ground population, first order like the water column's fade |
+| Uniform              | Default | Role                                                                         |
+| -------------------- | ------- | ---------------------------------------------------------------------------- |
+| `soilAttachRate`     | 0.02    | Fraction of water-borne bacteria the ground takes per pass                   |
+| `washOffRate`        | 0.008   | Fraction of soil bacteria a film picks up per pass                           |
+| `organicWashOffRate` | 0.06    | Fraction of the ground's organic matter a film scours off per pass           |
+| `soilDecayRate`      | 0.02    | Die-off of the ground population, first order like the water column's fade   |
+| `organicDecayRate`   | 0.004   | Mineralisation of ground organic matter, so pats weather away (terrain-only) |
 
-Both rates come from `SUBSTANCE_EXCHANGE_RATES` in `variables/substanceExchange.ts`, which is what stops one side
-of the ledger being edited without the other. Their shared ceiling `EXCHANGE_CEILING = 0.15` is arithmetic rather
+The three exchange rates come from `SUBSTANCE_EXCHANGE_RATES` in `variables/substanceExchange.ts`, which is what stops
+one side of a ledger being edited without the other; the two decay rates belong to whichever variable owns that
+compartment. Their shared ceiling `EXCHANGE_CEILING = 0.15` binds the organic leg exactly as it binds this one, and is arithmetic rather
 than taste: a wet cell may simultaneously export up to `FLUX_CEILING` (0.75) of its bacteria downslope and be faded
 by up to `DECAY_CEILING` (0.25), so handing over more than `(1 - 0.75) × (1 - 0.25) = 0.1875` of the committed
 population would drive the water column negative. Exchange is applied after decay, on the committed population.
 
-The ground compartment does not advect: transport belongs to whatever water covers the cell, and `sediment-flow.frag`
-moves mineral grains rather than this population. Burial and erosion-linked release are therefore not modelled -
-depositing or eroding the bed leaves soil bacteria where they were.
+Neither ground compartment advects: transport belongs to whatever water covers the cell, and `sediment-flow.frag`
+moves mineral grains rather than either population. Burial and erosion-linked release are therefore not modelled -
+depositing or eroding the bed leaves soil bacteria, and any manure on top of it, exactly where they were.
 
 `POLLUTANT_SPECIES` in `createGpuWaterQuality.ts` is the list of channels and their compartments; the shaders repeat
 those indices as literals because GLSL cannot import TypeScript. `tests/waterQualityReferenceModel.ts` mirrors both
@@ -301,7 +315,8 @@ against it.
 
 Both compartments are saved and restored together (`saveLoadSimulationState.ts`; `tests/test-gpu-substance-save-load.ts`).
 Which is the only coherent choice: half a bacterial census is not a state, so a snapshot that carried the plume but not
-the soil would quietly delete every population that settled during play. The two fields therefore travel as a pair from
+the soil would quietly delete every population that settled during play - and every pat the animals had left, along with
+whatever runoff had already been scoured off them. The two fields therefore travel as a pair from
 `getAllVariables()` - where they live for exactly that reason - through the JSON format and back into the textures that
 seed a recreated graph. Files written before these keys existed read as "no data" and load as clean empty fields.
 

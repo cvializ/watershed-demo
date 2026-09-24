@@ -41,15 +41,21 @@ export type PollutantSpecies = {
  *
  * `compartments` is the model's own answer to "whose property is this?". Dissolved oxygen belongs to the water
  * alone: it thins out with the film around it and cannot be banked in dry ground (see water-quality.frag).
- * Bacteria is the one species with two homes - the channel here is its share of the water column, while
- * `terrain-quality.frag`'s red channel holds the share attached to the ground, and the two trade every pass.
+ * Two species have two homes - nitrogen stays dissolved, organic matter does not but still only leaves the ground
+ * with water. For each of them the channel here is its share of the water column, while `terrain-quality.frag` holds
+ * the share on or in the ground (bacteria in R, organic matter in G). Bacteria trade both ways; organic matter only
+ * ever crosses from the ground into a film, which is why animals are the only way it gets there.
  *
  * `src/shaders/compute/water-quality.frag` and the visualization files repeat this order as literals because GLSL
  * cannot import TypeScript - keep them in step by hand for now.
  */
 export const POLLUTANT_SPECIES: readonly PollutantSpecies[] = [
   { id: 0, label: "Nitrogen", compartments: ["water"] },
-  { id: 1, label: "Organic matter", compartments: ["water"] },
+  {
+    id: 1,
+    label: "Organic matter (water & soil)",
+    compartments: ["terrain", "water"],
+  },
   { id: 2, label: "Dissolved oxygen", compartments: ["water"] },
   {
     id: 3,
@@ -124,10 +130,11 @@ const createInitialWaterQualityTexture = (size: number): THREE.DataTexture => {
  * substances that belong to the ground at all. Dissolved oxygen is the deliberate exception: it is a property of
  * the water alone, so it thins out with the film around it rather than being left behind as a deposit.
  *
- * Bacteria has two compartments rather than one. This variable holds the share dissolved or suspended in the
- * flow; `createGpuTerrainQuality` holds the share attached to the ground. Both shaders evaluate the same exchange
- * helper on the same committed texel, so mass crosses between them exactly - which is why this variable's
- * dependency list is completed by linkWaterQualityToTerrain() once the terrain variable exists (README s1).
+ * Two species have two compartments rather than one. This variable holds the share dissolved or suspended in the
+ * flow; `createGpuTerrainQuality` holds the share on or in the ground. Both shaders evaluate the same exchange helper
+ * on the same committed texel, so mass crosses between them exactly - which is why this variable's dependency list is
+ * completed by linkWaterQualityToTerrain() once the terrain variable exists (README s1). Bacteria cross both ways;
+ * organic matter arrives in the flow from the ground only, since nothing in a stream settles down and becomes litter.
  *
  * Sources are persistent emitters rather than one-shot doses: `addPollutantSource` registers a soft disc that
  * releases `amount` per pass at 60 fps until `clearPollutantSources()` runs. A farm patch, a septic outflow or a
@@ -179,6 +186,9 @@ export const createGpuWaterQuality = (
         value: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
       };
       uniforms.washOffRate = { value: SUBSTANCE_EXCHANGE_RATES.washOffRate };
+      uniforms.organicWashOffRate = {
+        value: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
+      };
       uniforms.uInjectCount = { value: 0 };
       uniforms.uInjectPoints = {
         value: Array.from(
@@ -210,6 +220,8 @@ export const createGpuWaterQuality = (
      * @param amount - Mass released per pass at 60 fps, scaled by dtScale
      * @param species - Channel to feed, see POLLUTANT_SPECIES. Dissolved oxygen only lands where there is water:
      *   it is a property of the column rather than of the ground, so an emitter on dry cells releases nothing.
+     *   Organic matter released here joins the film only; the ground's share comes from animals
+     *   (`createGpuTerrainQuality.addOrganicDeposit`), not from an emitter aimed at the water.
      * @returns false when all emitter slots are busy; nothing is added in that case
      */
     addPollutantSource: (
