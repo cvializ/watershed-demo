@@ -26,7 +26,8 @@ export const createCameraControlsResource = (
   controls = new OrbitControls(camera, domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
-  controls.autoRotate = true;
+  // Keep the camera still by default; keyboard/mouse input owns the view.
+  controls.autoRotate = false;
   controls.autoRotateSpeed = 2.0;
   controls.target.set(0, 0, 0);
 

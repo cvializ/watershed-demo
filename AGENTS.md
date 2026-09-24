@@ -332,7 +332,7 @@ npm run build    # Build for production
 
 ## Pre-Completion Checklist
 
-**Mandatory**: Before marking any task that changes code as complete, you MUST run the validate script using a subagent:
+**Mandatory**: Before marking any task that changes code as complete, you MUST run the validate script:
 
 ```bash
 npm run validate
@@ -341,8 +341,6 @@ yarn validate
 ```
 
 This is required for all code-changing tasks. The task is not complete until validation passes.
-
-**Use subagents for validation**: Delegate validation tasks to a dedicated subagent to ensure isolation and proper execution context. Use the `pi-subagents` skill with a fresh-context fork for validation runs.
 
 ## Strict Coding Preferences
 
