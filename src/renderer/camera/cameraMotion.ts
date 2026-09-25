@@ -61,21 +61,21 @@ const NEUTRAL_INTENT: AxisIntent = {
  *
  * - W/S: pan forward/back along the camera's view direction flattened to XZ.
  * - A/D: strafe left/right across that plane.
- * - Z/X: orbit the eye left/right around the pivot at constant radius.
- * - E/Q: tilt the eye up toward top-down / down toward the horizon around the pivot.
- * - R/F: zoom in/out (orthographic frustum magnification).
+ * - Q/E: orbit the eye left/right around the pivot at constant radius.
+ * - F/R: tilt the eye up toward top-down / down toward the horizon around the pivot.
+ * - Z/X: zoom in/out (orthographic frustum magnification).
  */
 export const CAMERA_KEY_BINDINGS: Readonly<Record<string, AxisIntent>> = {
   KeyW: { strafe: 0, forward: 1, orbit: 0, tilt: 0, zoom: 0 },
   KeyS: { strafe: 0, forward: -1, orbit: 0, tilt: 0, zoom: 0 },
   KeyA: { strafe: -1, forward: 0, orbit: 0, tilt: 0, zoom: 0 },
   KeyD: { strafe: 1, forward: 0, orbit: 0, tilt: 0, zoom: 0 },
-  KeyZ: { strafe: 0, forward: 0, orbit: 1, tilt: 0, zoom: 0 },
-  KeyX: { strafe: 0, forward: 0, orbit: -1, tilt: 0, zoom: 0 },
-  KeyE: { strafe: 0, forward: 0, orbit: 0, tilt: 1, zoom: 0 },
-  KeyQ: { strafe: 0, forward: 0, orbit: 0, tilt: -1, zoom: 0 },
-  KeyR: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: 1 },
-  KeyF: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: -1 },
+  KeyQ: { strafe: 0, forward: 0, orbit: 1, tilt: 0, zoom: 0 },
+  KeyE: { strafe: 0, forward: 0, orbit: -1, tilt: 0, zoom: 0 },
+  KeyF: { strafe: 0, forward: 0, orbit: 0, tilt: 1, zoom: 0 },
+  KeyR: { strafe: 0, forward: 0, orbit: 0, tilt: -1, zoom: 0 },
+  KeyZ: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: 1 },
+  KeyX: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: -1 },
 };
 
 /** Clamp a value into an inclusive range. */

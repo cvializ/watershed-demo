@@ -25,11 +25,11 @@ import { logger } from "@/utils/logger";
 const TUNING = {
   /** World units per second at zoom 1, divided by zoom for constant screen speed. */
   panSpeed: 14,
-  /** Radians per second that Z/X orbit the eye around the pivot. */
+  /** Radians per second that Q/E orbit the eye around the pivot. */
   orbitSpeedRadiansPerSecond: 0.9,
-  /** Radians per second that Q/E tilt the eye around the pivot. */
+  /** Radians per second that F/R tilt the eye around the pivot. */
   tiltSpeedRadiansPerSecond: 1.1,
-  /** Exponential zoom rate per second for R/F. */
+  /** Exponential zoom rate per second for Z/X. */
   zoomRatePerSecond: 1.5,
   /** How quickly held keys ramp up and release glides out (per second). */
   rampRatePerSecond: 12,
