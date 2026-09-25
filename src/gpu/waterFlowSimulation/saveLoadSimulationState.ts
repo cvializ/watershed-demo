@@ -36,7 +36,7 @@ export interface GPUSimulationState {
  * The substance pair is optional because files written before substances were persisted lack those keys outright,
  * which is also how "no data" arrives from a save that had no such Variable in its graph.
  */
-export type SerializedGpuSimulationState = {
+type SerializedGpuSimulationState = {
   heightMapData: number[];
   waterHeightData: number[];
   velocityData: number[];
