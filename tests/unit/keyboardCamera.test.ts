@@ -254,15 +254,39 @@ test.describe("held-key intent", () => {
     expect(sumIntents(["KeyA", "KeyD"]).strafe).toBe(0);
   });
 
-  test("Z orbits left and X orbits right as equal and opposite intent", () => {
-    expect(CAMERA_KEY_BINDINGS.KeyZ.orbit).toBe(1);
-    expect(CAMERA_KEY_BINDINGS.KeyX.orbit).toBe(-1);
+  test("Q orbits left and E orbits right as equal and opposite intent", () => {
+    expect(CAMERA_KEY_BINDINGS.KeyQ.orbit).toBe(1);
+    expect(CAMERA_KEY_BINDINGS.KeyE.orbit).toBe(-1);
     // Orbit keys must not disturb the other axes.
-    expect(CAMERA_KEY_BINDINGS.KeyZ).toMatchObject({
+    expect(CAMERA_KEY_BINDINGS.KeyQ).toMatchObject({
       strafe: 0,
       forward: 0,
       tilt: 0,
       zoom: 0,
+    });
+  });
+
+  test("F tilts up and R tilts down as equal and opposite intent", () => {
+    expect(CAMERA_KEY_BINDINGS.KeyF.tilt).toBe(1);
+    expect(CAMERA_KEY_BINDINGS.KeyR.tilt).toBe(-1);
+    // Tilt keys must not disturb the other axes.
+    expect(CAMERA_KEY_BINDINGS.KeyF).toMatchObject({
+      strafe: 0,
+      forward: 0,
+      orbit: 0,
+      zoom: 0,
+    });
+  });
+
+  test("Z zooms in and X zooms out as equal and opposite intent", () => {
+    expect(CAMERA_KEY_BINDINGS.KeyZ.zoom).toBe(1);
+    expect(CAMERA_KEY_BINDINGS.KeyX.zoom).toBe(-1);
+    // Zoom keys must not disturb the other axes.
+    expect(CAMERA_KEY_BINDINGS.KeyZ).toMatchObject({
+      strafe: 0,
+      forward: 0,
+      orbit: 0,
+      tilt: 0,
     });
   });
 
@@ -277,7 +301,7 @@ test.describe("held-key intent", () => {
   });
 
   test("opposing axes compose independently", () => {
-    const intent = sumIntents(["KeyW", "KeyD", "KeyE", "KeyF"]);
+    const intent = sumIntents(["KeyW", "KeyD", "KeyX", "KeyF"]);
 
     expect(intent).toEqual({
       strafe: 1,
@@ -289,18 +313,18 @@ test.describe("held-key intent", () => {
   });
 
   test("opposing orbit keys cancel, and the axis stays unit-capped", () => {
-    const intent = sumIntents(["KeyW", "KeyZ", "KeyX"]);
+    const intent = sumIntents(["KeyW", "KeyQ", "KeyE"]);
 
     expect(intent.forward).toBe(1);
     expect(intent.orbit).toBe(0);
     // heldCodes is a Set, so repeats cannot reach sumIntents in production; these
     // pin the clamp itself for the axis.
-    expect(sumIntents(["KeyZ", "KeyZ"]).orbit).toBe(1);
-    expect(sumIntents(["KeyX", "KeyX"]).orbit).toBe(-1);
+    expect(sumIntents(["KeyQ", "KeyQ"]).orbit).toBe(1);
+    expect(sumIntents(["KeyE", "KeyE"]).orbit).toBe(-1);
   });
 
   test("intent never exceeds unit magnitude per axis on absurd key rollovers", () => {
-    const intent = sumIntents(["KeyW", "KeyW", "KeyE"]);
+    const intent = sumIntents(["KeyW", "KeyW", "KeyF"]);
 
     expect(intent.forward).toBeLessThanOrEqual(1);
     expect(intent.tilt).toBeLessThanOrEqual(1);

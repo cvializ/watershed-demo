@@ -31,12 +31,12 @@ export const createCameraControlsResource = (
   controls.autoRotateSpeed = 2.0;
   controls.target.set(0, 0, 0);
 
-  // Limits shared by mouse wheel and the R/F keyboard zoom: OrbitControls applies
+  // Limits shared by mouse wheel and the Z/X keyboard zoom: OrbitControls applies
   // them to `camera.zoom` inside update(), so both input paths agree.
   controls.minZoom = 1;
   controls.maxZoom = 8;
 
-  // Keep Q/E tilt above the horizon (the terrain plane is at y = 0) and away from
+  // Keep F/R tilt above the horizon (the terrain plane is at y = 0) and away from
   // the poles, where panning and orbiting degenerate.
   controls.minPolarAngle = 0.1;
   controls.maxPolarAngle = Math.PI / 2 - 0.05;
