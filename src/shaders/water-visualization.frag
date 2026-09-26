@@ -120,8 +120,10 @@ float getBlurredShadow(vec2 uv, sampler2D shadowMap) {
 
 // Species ids of the substances with a ground compartment as well as a water one, and thus the only ones whose view
 // reads the terrain texture. Mirrors POLLUTANT_SPECIES in
-// src/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts and channels R (bacteria) and G (organic matter) of
-// uTerrainSubstanceMap.
+// src/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts. The ids are not channel indices across textures:
+// the water column packs bacteria in A (so species 3 is its channel 3) while the ground packs bacteria in R and
+// organic matter in G and leaves B and A at zero, so species 3 is the terrain's channel 0. See
+// src/shaders/compute/terrain-quality.frag.
 const float SPECIES_ORGANIC_MATTER = 1.0;
 const float SPECIES_BACTERIA = 3.0;
 
@@ -139,16 +141,20 @@ vec4 pollutantTint(vec2 uv) {
     float fromWater = max(dot(mass, channelMask), 0.0);
 
     // Bacteria and organic matter have a second home, so they alone add the ground's share - each of its own channel,
-    // because the two are different substances rather than two names for dirt. This is what keeps a contaminated flood
-    // plain readable once its puddles are gone, and what makes the pats animals left visible while the land is dry.
-    // Nitrogen has no dry counterpart in the terrain texture, and dissolved oxygen cannot even keep one -
-    // water-quality.frag lets it evaporate with the film it was dissolved in, so an oxygen view simply goes blank where
-    // water has left.
+    // because the two are different substances rather than two names for dirt, and because the ground files them the
+    // other way round from the film above it: R is bacterial content, G is organic matter. Reusing the water
+    // column's layout here (bacteria in slot A) reads the terrain's unused B and A, which stay zero, so a Bacteria
+    // view lost every cell that had banked its load in the soil - which is precisely where a film crossing a manure
+    // pat was handing its load over, and why nothing ever turned magenta over organic matter.
+    // This is what keeps a contaminated flood plain readable once its puddles are gone, and what makes the pats
+    // animals left visible while the land is dry. Nitrogen has no dry counterpart in the terrain texture, and
+    // dissolved oxygen cannot even keep one - water-quality.frag lets it evaporate with the film it was dissolved in,
+    // so an oxygen view simply goes blank where water has left.
     vec4 soilMass = max(texture2D(uTerrainSubstanceMap, uv), 0.0);
     float organicSelector =
         1.0 - min(abs(uPollutantSpecies - SPECIES_ORGANIC_MATTER), 1.0);
     float bacteriaSelector = 1.0 - min(abs(uPollutantSpecies - SPECIES_BACTERIA), 1.0);
-    float fromGround = dot(soilMass, vec4(0.0, organicSelector, 0.0, bacteriaSelector));
+    float fromGround = dot(soilMass, vec4(bacteriaSelector, organicSelector, 0.0, 0.0));
 
     float selected = fromWater + fromGround;
 

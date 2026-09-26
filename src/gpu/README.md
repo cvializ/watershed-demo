@@ -100,7 +100,8 @@ Sources ─────┘                     ↑              │             
 
                   WaterHeight, TerrainQuality
                         ↓        ↓
-WaterVelocity ──→ WaterQuality ⇄ TerrainQuality   (bacteria settle out and wash back)
+WaterVelocity ──→ WaterQuality ⇄ TerrainQuality   (bacteria settle onto the soil's organic matter, wash back,
+                                                     and grow on the carbon in whichever compartment holds it)
 
 Each arrow is a declared dependency, i.e. an injected sampler:
   waterHeight    → clouds, sources, self
@@ -262,7 +263,7 @@ substance, not an alpha: the texture is only ever sampled by hand:
 | R       | Nitrogen         | Water            | No - residue stays where the puddle was |
 | G       | Organic matter   | Water and ground | No                                      |
 | B       | Dissolved oxygen | Water only       | **Yes**                                 |
-| A       | Bacteria         | Water and ground | Settles into the ground                 |
+| A       | Bacteria         | Water and ground | Only onto organic matter, and it breeds |
 
 `terrainQuality` is an RGBA32F texture of mass per unit area in the same units, so the two compartments of one
 species can be added. R is bacterial content bound to the bed and G organic matter lying on it; B and A stay zero.
@@ -282,23 +283,46 @@ sources, which is what lets a moving animal leave pats instead of a smear behind
 They are applied after decay and exchange, so mass cannot be washed off by the pass that laid it (plan A3). The only
 leg that takes it away is runoff: `organicWashOffRate` scales with wetness and moves ground organics into the film,
 one-way - nothing in this model scrapes material out of a flowing column and buries it, so there is no attach rate for
-organics. Mineralisation (`organicDecayRate`, terrain only) weathers what is left in place.
+organics. Mineralisation (`organicDecayRate`, terrain only) weathers what is left in place. What the organic channel
+does decide, besides its own run-off, is where bacteria can grow: whichever compartment is holding carbon converts
+some of it into bacteria (see **Growth** below).
+
+**Growth.** The second law in `substanceExchange.ts` is `BACTERIA_GROWTH`, and unlike the exchange it is not a
+transfer across the water/ground boundary. Each compartment converts the organic matter _it_ is holding into
+bacteria in that same compartment - the film eats what is dissolved or suspended in it, the soil eats what lies on
+it - so the two shaders each apply their own copy of `growthAt(organic, population, wetness)` to their own two
+channels and never need to agree on a number. The rate is `organicConversionRate` plus `growthGain × population`,
+so organic matter seeds a population even where none existed and an established colony works through its food
+faster; both are gated by wetness (nothing multiplies in air) and capped by `GROWTH_CEILING` (0.25), and the whole
+thing is a conversion rather than minting, so a cell's organic plus bacterial mass only changes by what decay
+removes. That is the only route this model has to new bacteria at all: animals, emitters and deposits never add
+bacterial content directly, so without this law a Bacteria view could only ever show a plume someone injected.
 
 **Bacteria.** Settling and wash-off are computed by `exchangeAt()`, which is textually duplicated in both shaders
 and evaluated on the same committed texels, exactly like sediment-flow.frag's `outfluxAt()`. What one compartment
-subtracts the other adds, so total bacteria only move - they do not appear. Both directions scale with wetness (no
-film, no trade: a dry bed neither gains nor loses) and are capped:
+subtracts the other adds, so a pass never moves more of a population than it has - and growth adds to that
+population out of the carbon in whichever compartment holds it. Both directions scale with wetness (no
+film, no trade: a dry bed neither gains nor loses) and are capped. Settling is conditional in a way wash-off is not:
+a film only loses its load where the ground beneath it holds organic matter, and only in proportion to how much of
+that carbon is present - so a plume rides across clean gravel and gets banked where it crosses a pat. A population
+that already banked itself in the bed stays banked whether or not the food is still there, and thins only by
+die-off or by a film lifting it back up:
 
-| Uniform              | Default | Role                                                                         |
-| -------------------- | ------- | ---------------------------------------------------------------------------- |
-| `soilAttachRate`     | 0.02    | Fraction of water-borne bacteria the ground takes per pass                   |
-| `washOffRate`        | 0.008   | Fraction of soil bacteria a film picks up per pass                           |
-| `organicWashOffRate` | 0.06    | Fraction of the ground's organic matter a film scours off per pass           |
-| `soilDecayRate`      | 0.02    | Die-off of the ground population, first order like the water column's fade   |
-| `organicDecayRate`   | 0.004   | Mineralisation of ground organic matter, so pats weather away (terrain-only) |
+| Uniform                   | Default | Role                                                                         |
+| ------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `soilDepositRate`         | 0.06    | Fraction of water-borne bacteria the soil's organic matter catches per pass  |
+| `organicDepositThreshold` | 0.1     | Soil organic that saturates that rate; below it the deposit scales down      |
+| `washOffRate`             | 0.008   | Fraction of soil bacteria a film picks up per pass                           |
+| `organicWashOffRate`      | 0.06    | Fraction of the ground's organic matter a film scours off per pass           |
+| `organicConversionRate`   | 0.08    | Fraction of a compartment's organic matter that colonises into bacteria      |
+| `growthGain`              | 0.06    | Extra fraction converted per unit of population already in that compartment  |
+| `soilDecayRate`           | 0.02    | Die-off of the ground population, first order like the water column's fade   |
+| `organicDecayRate`        | 0.004   | Mineralisation of ground organic matter, so pats weather away (terrain-only) |
 
-The three exchange rates come from `SUBSTANCE_EXCHANGE_RATES` in `variables/substanceExchange.ts`, which is what stops
-one side of a ledger being edited without the other; the two decay rates belong to whichever variable owns that
+The four exchange and growth rates come from `SUBSTANCE_EXCHANGE_RATES` and `BACTERIA_GROWTH`, both in
+`variables/substanceExchange.ts`, together with `ORGANIC_DEPOSIT_THRESHOLD`, which is what stops one side of a ledger
+being edited without the other; the two decay
+rates belong to whichever variable owns that
 compartment. Their shared ceiling `EXCHANGE_CEILING = 0.15` binds the organic leg exactly as it binds this one, and is arithmetic rather
 than taste: a wet cell may simultaneously export up to `FLUX_CEILING` (0.75) of its bacteria downslope and be faded
 by up to `DECAY_CEILING` (0.25), so handing over more than `(1 - 0.75) × (1 - 0.25) = 0.1875` of the committed

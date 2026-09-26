@@ -13,7 +13,10 @@ import {
 } from "@/gpu/waterFlowSimulation/saveLoadSimulationState.ts";
 import { createGpuTerrainQuality } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainQuality.ts";
 import { createGpuWaterQuality } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts";
-import { SUBSTANCE_EXCHANGE_RATES } from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
+import {
+  ORGANIC_DEPOSIT_THRESHOLD,
+  SUBSTANCE_EXCHANGE_RATES,
+} from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
 
 import { test } from "./clientTestUtils.ts";
 import fixturePassthroughShader from "./fixture-passthrough.frag?raw";
@@ -170,7 +173,8 @@ const seedWaterMass: readonly ScalarField[] = [
 ];
 
 // Ground channels: R is soil bacteria and G the organic matter animals leave behind, each seeded both under standing
-// water - where it can be scoured off - and on the dry strip, where nothing can move it. The two behave differently
+// water - where it can be scoured off, and where it also catches whatever bacteria the film carries over it - and on
+// the dry strip, where nothing can move it. The two behave differently
 // enough at the boundary (bacteria trade both ways, organics only ever leave) that both belong in a persistence test.
 const seedGroundMass: readonly ScalarField[] = [
   (column, row) =>
@@ -191,7 +195,8 @@ const seedGroundMass: readonly ScalarField[] = [
 type Coefficients = {
   fluxFraction: number;
   decayRate: number;
-  soilAttachRate: number;
+  soilDepositRate: number;
+  organicDepositThreshold: number;
   washOffRate: number;
   organicWashOffRate: number;
   soilDecayRate: number;
@@ -199,12 +204,14 @@ type Coefficients = {
 };
 
 // The rates production runs on, so the trade exercised here is the real one rather than invented numbers that would
-// then quietly disagree with SUBSTANCE_EXCHANGE_RATES. Decay stays off: mass that survives a round trip should be
+// then quietly disagree with SUBSTANCE_EXCHANGE_RATES - organic threshold included, since that is what decides
+// whether the deposit leg is paid at all. Decay stays off: mass that survives a round trip should be
 // attributable to save/load alone, not to a decay curve this file happens to have picked.
 const COEFFICIENTS: Coefficients = {
   fluxFraction: 0.5,
   decayRate: 0.0,
-  soilAttachRate: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
+  soilDepositRate: SUBSTANCE_EXCHANGE_RATES.soilDepositRate,
+  organicDepositThreshold: ORGANIC_DEPOSIT_THRESHOLD,
   washOffRate: SUBSTANCE_EXCHANGE_RATES.washOffRate,
   organicWashOffRate: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
   soilDecayRate: 0.0,
@@ -293,14 +300,18 @@ const createGraph = (restored?: RestoredSeed) => {
   const waterUniforms = quality.getWaterQualityUniforms();
   waterUniforms.fluxFraction.value = COEFFICIENTS.fluxFraction;
   waterUniforms.decayRate.value = COEFFICIENTS.decayRate;
-  waterUniforms.soilAttachRate.value = COEFFICIENTS.soilAttachRate;
+  waterUniforms.soilDepositRate.value = COEFFICIENTS.soilDepositRate;
+  waterUniforms.organicDepositThreshold.value =
+    COEFFICIENTS.organicDepositThreshold;
   waterUniforms.washOffRate.value = COEFFICIENTS.washOffRate;
   waterUniforms.organicWashOffRate.value = COEFFICIENTS.organicWashOffRate;
 
   const terrainUniforms = terrain.getTerrainQualityUniforms();
   terrainUniforms.soilDecayRate.value = COEFFICIENTS.soilDecayRate;
   terrainUniforms.organicDecayRate.value = COEFFICIENTS.organicDecayRate;
-  terrainUniforms.soilAttachRate.value = COEFFICIENTS.soilAttachRate;
+  terrainUniforms.soilDepositRate.value = COEFFICIENTS.soilDepositRate;
+  terrainUniforms.organicDepositThreshold.value =
+    COEFFICIENTS.organicDepositThreshold;
   terrainUniforms.washOffRate.value = COEFFICIENTS.washOffRate;
   terrainUniforms.organicWashOffRate.value = COEFFICIENTS.organicWashOffRate;
 

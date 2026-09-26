@@ -13,11 +13,22 @@
  * - waterMass:  index 0 nitrogen, 1 organic matter, 2 dissolved oxygen, 3 bacteria (column-integrated mass)
  * - groundMass: index 0 bacterial content bound to the ground, index 1 organic matter on it; 2..3 unused, matching
  *   terrain-quality.frag
+ *
+ * Growth is modelled as a conversion, not a transfer: whichever compartment holds organic matter spends some of it
+ * on bacteria of its own (`growthFor` mirrors `growthAt` in both shaders), so the pair to keep an eye on across a
+ * pass is organic plus bacteria rather than either channel alone.
  */
 
 // Channel ids come from the production module so this model cannot drift out of its layout (plan: channels are
-// load-bearing, not colours).
+// load-bearing, not colours). The one threshold of the exchange law is taken from production too, since it is a
+// property of the law rather than a knob a scenario tunes. Same for the growth law's two coefficients, which are
+// properties of the law too: a scenario that switches growth on has to start from the rates production runs on.
 import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts";
+
+import {
+  BACTERIA_GROWTH,
+  ORGANIC_DEPOSIT_THRESHOLD,
+} from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
 
 const DIRECTION_STEPS: ReadonlyArray<readonly [number, number]> = [
   [0, 1], // North
@@ -36,6 +47,9 @@ const EPS = 1e-7;
 const FLUX_CEILING = 0.75;
 const DECAY_CEILING = 0.25;
 const EXCHANGE_CEILING = 0.15;
+// Taken from production rather than copied, since the ceiling is part of the law and a scenario that runs the law
+// at its ceiling has to be measured against the same number the shaders clamp to.
+const GROWTH_CEILING = BACTERIA_GROWTH.growthCeiling;
 
 // Depth at and above which a cell counts as holding standing water: below it, dissolved oxygen is gone and the two
 // compartments cannot trade. Same constant in both shaders, tied to water-visualization.frag's wet threshold.
@@ -55,24 +69,32 @@ export type WaterQualityOptions = {
   fluxFraction: number;
   dtScale: number;
   decayRate: number;
-  soilAttachRate: number;
+  soilDepositRate: number;
+  organicDepositThreshold: number;
   washOffRate: number;
   organicWashOffRate: number;
   soilDecayRate: number;
   organicDecayRate: number;
+  organicConversionRate: number;
+  growthGain: number;
 };
 
-// The conservation harness wants a pure transport step, so fade, die-off and the bacterial exchange all default to
-// off and dtScale to one pass.
+// The conservation harness wants a pure transport step, so fade, die-off, the bacterial exchange and the growth law
+// all default to off and dtScale to one pass. With the deposit rate at zero the organic threshold decides nothing,
+// and with the conversion rate at zero so does the growth law, but both still take the production value so a
+// scenario that switches them on starts from the real law.
 export const WATER_QUALITY_TEST_DEFAULTS: WaterQualityOptions = {
   fluxFraction: 0.5,
   dtScale: 1.0,
   decayRate: 0.0,
-  soilAttachRate: 0.0,
+  soilDepositRate: 0.0,
+  organicDepositThreshold: ORGANIC_DEPOSIT_THRESHOLD,
   washOffRate: 0.0,
   organicWashOffRate: 0.0,
   soilDecayRate: 0.0,
   organicDecayRate: 0.0,
+  organicConversionRate: 0.0,
+  growthGain: 0.0,
 };
 
 /** Velocity of one cell: the (direction * speed) pair water-velocity.frag writes into rg. */
@@ -176,7 +198,8 @@ const exportFraction = (
 /**
  * Every leg of the hand-over for one cell: exchangeAt from both shaders. The committed values are the ones each
  * shader reads through its samplers, which is why a species only moves between compartments rather than appearing.
- * Organic matter has one leg only - the ground gives it to a film and never takes it back.
+ * Organic matter has one leg only - the ground gives it to a film and never takes it back. Bacteria have two, and
+ * the deposit is worth whatever carbon the soil is holding: no organic matter, nothing for them to settle onto.
  */
 const exchangeFor = (
   depth: number,
@@ -191,11 +214,20 @@ const exchangeFor = (
 } => {
   const wetness = wetnessForDepth(depth);
 
+  // How much of the deposit the soil's carbon is worth, matching the shaders' saturating ramp: nothing on clean
+  // ground, the full soilDepositRate at organicDepositThreshold and above, proportional in between.
+  const carbon = clampUnit(
+    Math.max(groundOrganic, 0) / Math.max(options.organicDepositThreshold, EPS),
+    0,
+    1,
+  );
+
   return {
     toGroundBacteria:
       Math.max(waterBacteria, 0) *
-      Math.min(options.soilAttachRate * options.dtScale, EXCHANGE_CEILING) *
-      wetness,
+      Math.min(options.soilDepositRate * options.dtScale, EXCHANGE_CEILING) *
+      wetness *
+      carbon,
     toWaterBacteria:
       Math.max(groundBacteria, 0) *
       Math.min(options.washOffRate * options.dtScale, EXCHANGE_CEILING) *
@@ -205,6 +237,32 @@ const exchangeFor = (
       Math.min(options.organicWashOffRate * options.dtScale, EXCHANGE_CEILING) *
       wetness,
   };
+};
+
+/**
+ * How much of a compartment's organic matter becomes bacteria in one pass: `growthAt` from both shaders, applied
+ * to whichever compartment is being stepped. This is a conversion rather than a transfer - each side spends the
+ * carbon it is holding, so nothing crosses the boundary here - which is why it takes each compartment's own two
+ * numbers instead of a shared committed texel.
+ */
+const growthFor = (
+  organic: number,
+  population: number,
+  wetness: number,
+  options: WaterQualityOptions,
+): number => {
+  const available = Math.max(organic, 0);
+
+  // Same clamp as the shaders: the combined rate is bounded, and the result is a fraction of what is there, so a
+  // cell can never convert more than it holds and nothing multiplies on a dry bed.
+  const rate = Math.min(
+    (options.organicConversionRate +
+      options.growthGain * Math.max(population, 0)) *
+      options.dtScale,
+    GROWTH_CEILING,
+  );
+
+  return available * rate * wetness;
 };
 
 /** Texel centre in the shaders' shared world space; see water-quality.frag and terrain-quality.frag's mapping. */
@@ -418,12 +476,23 @@ export const simulateWaterQualityReference = (
         // nominal pass, so dtScale belongs in the exponent - the shader's pow(wetness, dtScale) (plan S6).
         nextWater[index + CHANNEL_OXYGEN] *= Math.pow(wetness, options.dtScale);
 
+        // Growth, taken out of the film's own organic and paid into its own bacteria. Measured on the amount left
+        // after transport and fade, exactly as `growthAt` is called on `faded` in water-quality.frag.
+        const converted = growthFor(
+          nextWater[index + CHANNEL_ORGANIC],
+          nextWater[index + CHANNEL_BACTERIA],
+          wetness,
+          options,
+        );
+
         nextWater[index + CHANNEL_BACTERIA] +=
-          exchange.toWaterBacteria - exchange.toGroundBacteria;
+          exchange.toWaterBacteria - exchange.toGroundBacteria + converted;
 
         // Organic matter crosses into the film and never back out of it, so this leg is an addition here and the
-        // subtraction of exactly the same number on the ground below.
-        nextWater[index + CHANNEL_ORGANIC] += exchange.toWaterOrganic;
+        // subtraction of exactly the same number on the ground below. `converted` then shrinks the film's own
+        // organic, which is what lets a plume grow without minting mass out of nothing.
+        nextWater[index + CHANNEL_ORGANIC] +=
+          exchange.toWaterOrganic - converted;
 
         const emitted = emissionFor(
           column,
@@ -438,17 +507,32 @@ export const simulateWaterQualityReference = (
           nextWater[index + channel] += emitted[channel];
         }
 
-        // The ground's bacterial channel: die-off plus the same two numbers the water column just moved.
+        // The ground's bacterial channel: die-off, the same two numbers the water column just moved, and whatever
+        // the soil converted into bacteria. Read off the committed soil, so a deposit dropped this pass cannot feed
+        // the population that lands with it (plan A3).
         nextGround[index + GROUND_CHANNEL_BACTERIA] =
           ground[index + GROUND_CHANNEL_BACTERIA] * (1 - soilDecay) +
           exchange.toGroundBacteria -
-          exchange.toWaterBacteria;
+          exchange.toWaterBacteria +
+          growthFor(
+            ground[index + GROUND_CHANNEL_ORGANIC],
+            ground[index + GROUND_CHANNEL_BACTERIA],
+            wetness,
+            options,
+          );
 
-        // The ground's organic channel: mineralisation, the wash-off the film just received, and whatever animals
-        // dropped this pass. Deposits come last, so a pat cannot be washed away by the pass that laid it (plan A3).
+        // The ground's organic channel: mineralisation, the wash-off the film just received, what the population
+        // above converts into itself, and whatever animals dropped this pass. Deposits come last, so a pat cannot
+        // be washed away by the pass that laid it (plan A3).
         nextGround[index + GROUND_CHANNEL_ORGANIC] =
           ground[index + GROUND_CHANNEL_ORGANIC] * (1 - soilOrganicDecay) -
-          exchange.toWaterOrganic +
+          exchange.toWaterOrganic -
+          growthFor(
+            ground[index + GROUND_CHANNEL_ORGANIC],
+            ground[index + GROUND_CHANNEL_BACTERIA],
+            wetness,
+            options,
+          ) +
           depositFor(column, row, size, terrainSize, deposits, options);
       }
     }
@@ -489,10 +573,18 @@ export const totalBacteria = (fields: SubstanceFields): number =>
 
 /**
  * Total organic matter across both compartments: what the animals dropped on the land plus what a stream is carrying.
- * Exchange moves it between those two and nothing else may change the sum but decay.
+ * Exchange moves it between those two, and growth spends it on bacteria - so the invariant to hold across a pass is
+ * this plus `totalBacteria`, not either number alone.
  */
 export const totalOrganicMatter = (fields: SubstanceFields): number =>
   totalAcrossCompartments(fields, CHANNEL_ORGANIC, GROUND_CHANNEL_ORGANIC);
+
+/**
+ * Organic matter plus bacteria across both compartments: the quantity that only changes when decay removes some,
+ * since every conversion just moves mass from one of these channels into the other.
+ */
+export const totalBacteriaAndOrganic = (fields: SubstanceFields): number =>
+  totalBacteria(fields) + totalOrganicMatter(fields);
 
 /** Kahan-compensated sum of one water channel and its ground partner over the whole grid. */
 const totalAcrossCompartments = (

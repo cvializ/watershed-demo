@@ -9,7 +9,11 @@ import {
   POLLUTANT_SPECIES,
   type PollutantSpeciesId,
 } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts";
-import { SUBSTANCE_EXCHANGE_RATES } from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
+import {
+  BACTERIA_GROWTH,
+  ORGANIC_DEPOSIT_THRESHOLD,
+  SUBSTANCE_EXCHANGE_RATES,
+} from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
 
 import { test } from "./clientTestUtils.ts";
 import fixturePassthroughShader from "./fixture-passthrough.frag?raw";
@@ -17,6 +21,7 @@ import {
   channelTotals,
   simulateWaterQualityReference,
   totalBacteria,
+  totalBacteriaAndOrganic,
   totalOrganicMatter,
   WET_DEPTH,
   type OrganicDepositSource,
@@ -72,7 +77,7 @@ const assert = (condition: boolean, message: string): void => {
 // Scenarios that actually finished. A throw inside a scenario skips its increment, so the final check is
 // evidence of work rather than just a statement having executed.
 let completedScenarios = 0;
-const SCENARIO_COUNT = 20;
+const SCENARIO_COUNT = 28;
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(256, 256);
@@ -127,24 +132,30 @@ type Coefficients = {
   fluxFraction: number;
   dtScale: number;
   decayRate: number;
-  soilAttachRate: number;
+  soilDepositRate: number;
+  organicDepositThreshold: number;
   washOffRate: number;
   organicWashOffRate: number;
   soilDecayRate: number;
   organicDecayRate: number;
+  organicConversionRate: number;
+  growthGain: number;
 };
 
-// Pure transport: no fade, no exchange and one pass per step, so totals are exact and any movement came from
-// routing alone. Scenarios that care about the compartments override what they need.
+// Pure transport: no fade, no exchange, no growth and one pass per step, so totals are exact and any movement came
+// from routing alone. Scenarios that care about the compartments override what they need.
 const TRANSPORT_ONLY: Coefficients = {
   fluxFraction: 0.5,
   dtScale: 1.0,
   decayRate: 0.0,
-  soilAttachRate: 0.0,
+  soilDepositRate: 0.0,
+  organicDepositThreshold: ORGANIC_DEPOSIT_THRESHOLD,
   washOffRate: 0.0,
   organicWashOffRate: 0.0,
   soilDecayRate: 0.0,
   organicDecayRate: 0.0,
+  organicConversionRate: 0.0,
+  growthGain: 0.0,
 };
 
 const coefficientsFor = (overrides: Partial<Coefficients>): Coefficients => ({
@@ -153,11 +164,21 @@ const coefficientsFor = (overrides: Partial<Coefficients>): Coefficients => ({
 });
 
 // The rates production runs on, so a scenario about the trade can use the real one instead of inventing numbers
-// that would then quietly disagree with SUBSTANCE_EXCHANGE_RATES.
+// that would then quietly disagree with SUBSTANCE_EXCHANGE_RATES - including the organic threshold that decides how
+// much of the bacterial deposit a given cell's soil is worth.
 const EXCHANGE = {
-  soilAttachRate: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
+  soilDepositRate: SUBSTANCE_EXCHANGE_RATES.soilDepositRate,
+  organicDepositThreshold: ORGANIC_DEPOSIT_THRESHOLD,
   washOffRate: SUBSTANCE_EXCHANGE_RATES.washOffRate,
   organicWashOffRate: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
+};
+
+// Likewise the growth law, kept separate from EXCHANGE: the scenarios above hold the trade to "mass only moves",
+// which stays true with conversion switched off. The scenarios below turn it on at production's rates, since that
+// is the law a player sees - and a hand-invented rate would only prove the harness agrees with itself.
+const GROWTH = {
+  organicConversionRate: BACTERIA_GROWTH.organicConversionRate,
+  growthGain: BACTERIA_GROWTH.growthGain,
 };
 
 /**
@@ -168,7 +189,8 @@ const EXCHANGE = {
  * @param seedMass - Initial water-column mass per channel, index 0 nitrogen .. 3 bacteria
  * @param coefficients - Per-pass coefficients both shaders and the reference run on
  * @param options.depth - Committed water depth, which gates oxygen and the bacterial exchange (default standing)
- * @param options.seedGround - Initial ground compartments; only index 0 is read (bacteria in the soil)
+ * @param options.seedGround - Initial ground compartments; index 0 is bacteria in the soil and index 1 the organic
+ *   matter that gates how much of the film's load settles into it
  */
 const createGraph = (
   velocityX: ScalarField,
@@ -221,16 +243,24 @@ const createGraph = (
   const uniforms = quality.getWaterQualityUniforms();
   uniforms.fluxFraction.value = coefficients.fluxFraction;
   uniforms.decayRate.value = coefficients.decayRate;
-  uniforms.soilAttachRate.value = coefficients.soilAttachRate;
+  uniforms.soilDepositRate.value = coefficients.soilDepositRate;
+  uniforms.organicDepositThreshold.value = coefficients.organicDepositThreshold;
   uniforms.washOffRate.value = coefficients.washOffRate;
   uniforms.organicWashOffRate.value = coefficients.organicWashOffRate;
+  uniforms.organicConversionRate.value = coefficients.organicConversionRate;
+  uniforms.growthGain.value = coefficients.growthGain;
 
   const terrainUniforms = terrain.getTerrainQualityUniforms();
   terrainUniforms.soilDecayRate.value = coefficients.soilDecayRate;
   terrainUniforms.organicDecayRate.value = coefficients.organicDecayRate;
-  terrainUniforms.soilAttachRate.value = coefficients.soilAttachRate;
+  terrainUniforms.soilDepositRate.value = coefficients.soilDepositRate;
+  terrainUniforms.organicDepositThreshold.value =
+    coefficients.organicDepositThreshold;
   terrainUniforms.washOffRate.value = coefficients.washOffRate;
   terrainUniforms.organicWashOffRate.value = coefficients.organicWashOffRate;
+  terrainUniforms.organicConversionRate.value =
+    coefficients.organicConversionRate;
+  terrainUniforms.growthGain.value = coefficients.growthGain;
 
   const initError = gpuCompute.init();
   assert(initError === null, `gpuCompute.init() failed: ${String(initError)}`);
@@ -544,17 +574,20 @@ await test("dtScale stress stays inside its clamps", async () => {
     fluxFraction: 0.9,
     dtScale: 2.0, // two frames' worth of work in one pass
     decayRate: 0.9,
-    soilAttachRate: 0.5,
+    soilDepositRate: 0.5,
     washOffRate: 0.5,
     soilDecayRate: 0.9,
   });
   const seedBacteria: ScalarField = () => 0.4;
+  // Soil worth full carbon on every cell, or the deposit leg - the one whose clamp matters most here - would
+  // never be reached and this stress case would only exercise wash-off.
+  const seedSoilOrganic: ScalarField = () => 0.5;
   const graph = createGraph(
     () => FLOW_SPEED,
     zero,
     [zero, zero, zero, seedBacteria],
     coefficients,
-    { seedGround: [seedBacteria, zero, zero, zero] },
+    { seedGround: [seedBacteria, seedSoilOrganic, zero, zero] },
   );
 
   computePasses(graph, 10, 2 / 60); // updateWaterQuality turns this into dtScale 2
@@ -563,7 +596,7 @@ await test("dtScale stress stays inside its clamps", async () => {
   const cpuFields = simulateWaterQualityReference(
     {
       waterMass: channelData([zero, zero, zero, seedBacteria]),
-      groundMass: channelData([seedBacteria, zero, zero, zero]),
+      groundMass: channelData([seedBacteria, seedSoilOrganic, zero, zero]),
     },
     depthField(() => STANDING_WATER),
     velocityField(() => FLOW_SPEED, zero),
@@ -790,16 +823,19 @@ await test("oxygen thins with a half-there film, on frame time", async () => {
 // Bacteria belongs to the water and to the ground at once
 // ---------------------------------------------------------------------------
 
-await test("bacteria settle out of standing water into the ground", async () => {
-  // Still water with a bacterial load, exchange switched on and no die-off: everything that appears in the soil has
-  // to have left the column, so the pair's total is the invariant and the two compartments are the evidence.
+await test("water deposits its bacteria on organic matter sitting under it", async () => {
+  // Still water with a bacterial load over a cell whose soil holds manure, exchange switched on and no die-off:
+  // everything that appears in the soil has to have left the column, so the pair's total is the invariant and the two
+  // compartments are the evidence. A film over clean soil gets no such deposit - see the scenario after this one.
   const seedWaterBacteria = atCell(6, 6, 0.8);
+  const seedSoilOrganic = atCell(6, 6, 0.5);
   const coefficients = coefficientsFor(EXCHANGE);
   const graph = createGraph(
     zero,
     zero,
     [zero, zero, zero, seedWaterBacteria],
     coefficients,
+    { seedGround: [zero, seedSoilOrganic, zero, zero] },
   );
 
   const before = readFields(graph);
@@ -826,9 +862,79 @@ await test("bacteria settle out of standing water into the ground", async () => 
   completedScenarios += 1;
 });
 
+await test("a film over soil with no organic matter keeps its bacteria", async () => {
+  // The counter-case, and the reason the deposit is a rule about the soil rather than about the water: the same load
+  // over ground that was never contaminated or grazed has nothing for it to settle into, so with no current and no
+  // die-off the column keeps every last one of them - the plume rides straight on past.
+  const seedWaterBacteria = atCell(6, 6, 0.8);
+  const graph = createGraph(
+    zero,
+    zero,
+    [zero, zero, zero, seedWaterBacteria],
+    coefficientsFor(EXCHANGE),
+  );
+
+  computePasses(graph, 30);
+
+  const fields = readFields(graph);
+  const seededTexel = texelIndex(6, 6) * 4;
+
+  assert(
+    Math.abs(fields.groundMass[seededTexel]) <= PARITY_TOLERANCE,
+    `bacteria settled onto soil with nothing to live on: ${String(fields.groundMass[seededTexel])}`,
+  );
+  assert(
+    Math.abs(fields.waterMass[seededTexel + 3] - 0.8) <= PARITY_TOLERANCE,
+    `a film over clean soil lost its load: ${String(fields.waterMass[seededTexel + 3])}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("a plume is carried past clean soil and banked on organic matter", async () => {
+  // The behaviour the whole rule exists for: a current sweeps a bacterial load east across clean soil, over one cell
+  // whose soil holds manure, so the load has to ride on past the clean cells and only drop out where there is carbon
+  // for it to live on. Depth stays standing everywhere, so this is about the deposit condition rather than wetness.
+  const seedWaterBacteria = atCell(2, 6, 0.8);
+  const seedSoilOrganic = atCell(8, 6, 0.5);
+  const graph = createGraph(
+    () => FLOW_SPEED,
+    zero,
+    [zero, zero, zero, seedWaterBacteria],
+    coefficientsFor(EXCHANGE),
+    { seedGround: [zero, seedSoilOrganic, zero, zero] },
+  );
+
+  const before = readFields(graph);
+  computePasses(graph, 20);
+  const after = readFields(graph);
+
+  // The source cell's soil stayed clean: the load rode away with the water instead of settling where it started.
+  assert(
+    Math.abs(after.groundMass[texelIndex(2, 6) * 4]) <= PARITY_TOLERANCE,
+    `the film deposited on soil with nothing to live on: ${String(after.groundMass[texelIndex(2, 6) * 4])}`,
+  );
+
+  // The pat's cell did catch what the film was carrying once it arrived there.
+  assert(
+    after.groundMass[texelIndex(8, 6) * 4] > 0.02,
+    `the carried load never deposited on the organic matter: ${String(after.groundMass[texelIndex(8, 6) * 4])}`,
+  );
+
+  // And the pair only moved - nothing was minted by the deposit or forgotten by the film.
+  assert(
+    Math.abs(totalBacteria(after) - totalBacteria(before)) <=
+      CONSERVATION_TOLERANCE,
+    `depositing the plume minted or destroyed bacteria: ${String(totalBacteria(before))} -> ${String(totalBacteria(after))}`,
+  );
+
+  completedScenarios += 1;
+});
+
 await test("standing water picks bacteria back up off the ground", async () => {
   // The reverse leg, from a load that started in the soil: wash-off needs a film to carry them, so this is also the
-  // proof that the exchange runs in both directions rather than being a one-way sink.
+  // proof that the exchange runs in both directions rather than being a one-way sink. The soil here has no organic
+  // matter, which is why that population can only ever leave - nothing is depositing on top of it.
   const seedSoilBacteria = atCell(9, 4, 0.6);
   const coefficients = coefficientsFor(EXCHANGE);
   const graph = createGraph(zero, zero, nothing, coefficients, {
@@ -882,13 +988,16 @@ await test("dry ground holds what it was given", async () => {
 
 await test("settling and wash-off agree between the two shaders", async () => {
   // The exchange is one helper copied into both shaders, so a divergence would look like mass appearing or vanishing
-  // at the boundary. Compare every texel's pair against the model over enough passes for both legs to matter:
-  // bacteria start in the water on the wet half and in the soil on the dry half.
+  // at the boundary. Compare every texel's pair against the model over enough passes for both legs to matter - and
+  // seed carbon on the cells that hold a load, or the deposit leg is never paid and this only proves that the two
+  // copies of wash-off agree.
   const depth: ScalarField = (column) =>
     column < 8 ? STANDING_WATER : DRY_GROUND;
   const coefficients = coefficientsFor({ ...EXCHANGE, soilDecayRate: 0.01 });
   const seedWaterBacteria = (column: number): number =>
     column < 8 && column % 2 === 0 ? 0.5 : 0;
+  const seedSoilOrganic = (column: number): number =>
+    column < 8 && column % 2 === 0 ? 0.3 : 0;
   const seedSoilBacteria = (column: number): number =>
     column >= 8 && column % 3 === 0 ? 0.4 : 0;
 
@@ -897,7 +1006,7 @@ await test("settling and wash-off agree between the two shaders", async () => {
     zero,
     [zero, zero, zero, seedWaterBacteria],
     coefficients,
-    { depth, seedGround: [seedSoilBacteria, zero, zero, zero] },
+    { depth, seedGround: [seedSoilBacteria, seedSoilOrganic, zero, zero] },
   );
 
   const passes = 40;
@@ -907,7 +1016,7 @@ await test("settling and wash-off agree between the two shaders", async () => {
   const cpuFields = simulateWaterQualityReference(
     {
       waterMass: channelData([zero, zero, zero, seedWaterBacteria]),
-      groundMass: channelData([seedSoilBacteria, zero, zero, zero]),
+      groundMass: channelData([seedSoilBacteria, seedSoilOrganic, zero, zero]),
     },
     depthField(depth),
     velocityField(zero, zero),
@@ -1017,14 +1126,17 @@ await test("standing water scours organic matter off the ground", async () => {
 });
 
 await test("organic matter never settles out of the flow into the ground", async () => {
-  // The counter-leg to the two above. Bacteria do settle, so a scenario claiming organics don't has to prove the
-  // settling mechanism is running in the same pass - and then show that litter did not follow it into the bed.
+  // The counter-leg to the two above. Bacteria do settle onto the pat in this cell's soil, so a scenario claiming
+  // organics don't has to prove the settling mechanism is running in the same pass - and then show that the litter
+  // floating above it did not follow them down.
+  const seedSoilOrganic = atCell(4, 4, 0.5);
   const coefficients = coefficientsFor(EXCHANGE);
   const graph = createGraph(
     zero,
     zero,
     [zero, atCell(4, 4, 0.8), zero, atCell(4, 4, 0.5)],
     coefficients,
+    { seedGround: [zero, seedSoilOrganic, zero, zero] },
   );
 
   computePasses(graph, 30);
@@ -1035,10 +1147,17 @@ await test("organic matter never settles out of the flow into the ground", async
     fields.groundMass[seededTexel] > 0.02,
     `bacteria never settled, so this scenario cannot show organics don't: ${String(fields.groundMass[seededTexel])}`,
   );
-  const groundOrganic = channelTotals(fields.groundMass)[1];
+
+  // The pat is down to whatever its run-off and mineralisation took out of it and never grew: the film's load stays
+  // in the film, so a cell's organic matter can only ever be spent, never topped up from above.
+  const groundOrganic = fields.groundMass[seededTexel + 1];
   assert(
-    groundOrganic <= PARITY_TOLERANCE,
+    groundOrganic <= 0.5 + PARITY_TOLERANCE,
     `the flow banked ${String(groundOrganic)} of organic matter in the ground; nothing here scrapes the column`,
+  );
+  assert(
+    groundOrganic < 0.5 - 0.01,
+    `the film never ran any of the pat off into itself: ${String(groundOrganic)}`,
   );
 
   completedScenarios += 1;
@@ -1280,6 +1399,338 @@ await test("injection matches the CPU reference", async () => {
   assert(
     wetOxygen > 0.1,
     `no dissolved oxygen anywhere in the water: ${String(wetOxygen)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+// ---------------------------------------------------------------------------
+// Bacteria grow: organic matter is food, and each compartment converts its own
+// ---------------------------------------------------------------------------
+
+await test("bacteria appear in a film that runs over organic matter", async () => {
+  // The case the growth law exists for, started from a clean catchment: nothing has seeded bacteria anywhere, so a
+  // population can only appear where a film crosses carbon and then travel with the water. Flow is east and the
+  // manure lies in a four-cell band mid-grid, so anything found east of column 7 arrived there by growing, not by
+  // being injected - and the band is wide enough that the tail of the plume is measurable rather than a rounding
+  // error, since a single pat's load halves again every cell it travels.
+  const seedSoilOrganic = (column: number, row: number): number =>
+    row === 6 && column >= 4 && column <= 7 ? 0.5 : 0;
+  const graph = createGraph(
+    () => FLOW_SPEED,
+    zero,
+    nothing,
+    coefficientsFor({ ...EXCHANGE, ...GROWTH }),
+    { seedGround: [zero, seedSoilOrganic, zero, zero] },
+  );
+
+  const before = readFields(graph);
+  computePasses(graph, 30);
+  const after = readFields(graph);
+
+  // Bacteria appeared out of the carbon alone, and enough of them to read as magenta.
+  assert(
+    totalBacteria(after) > 0.05,
+    `barely any bacteria grew anywhere: ${String(totalBacteria(after))}`,
+  );
+  assert(
+    totalBacteria(before) <= PARITY_TOLERANCE,
+    "the scenario started with bacteria in it, so growth proves nothing",
+  );
+
+  // The soil under the band holds its share too - and keeps holding it while the film above keeps draining east.
+  let soilBacteriaOnBand = 0;
+  for (let column = 4; column <= 7; column++) {
+    soilBacteriaOnBand += after.groundMass[texelIndex(column, 6) * 4];
+  }
+  assert(
+    soilBacteriaOnBand > 0.05,
+    `nothing grew on the organic matter: soil bacteria ${String(soilBacteriaOnBand)}`,
+  );
+
+  // And the population travelled: nothing east of the band has carbon of its own, so whatever it holds grew at the
+  // band and rode out on the film.
+  let downstreamBacteria = 0;
+  for (let column = 8; column < WIDTH; column++) {
+    downstreamBacteria += after.waterMass[texelIndex(column, 6) * 4 + 3];
+  }
+  assert(
+    downstreamBacteria > 0.005,
+    `the film barely carried its new bacteria downstream: ${String(downstreamBacteria)}`,
+  );
+
+  // Growth is a conversion, so with decay off the two channels together have to sit still at what the band brought.
+  const pairAtStart = totalBacteriaAndOrganic(before);
+  const pairAtEnd = totalBacteriaAndOrganic(after);
+  assert(
+    Math.abs(pairAtEnd - pairAtStart) <= CONSERVATION_TOLERANCE,
+    `growth minted or destroyed mass: organic plus bacteria went ${String(pairAtStart)} -> ${String(pairAtEnd)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("a grazed cell starts holding bacteria even under a still film", async () => {
+  // Same law with no current to move anything, so the only story is the conversion inside one cell: organic lying
+  // there feeds a population that was never seeded, out of nothing but the carbon and the water over it.
+  const seedSoilOrganic = atCell(6, 6, 0.5);
+  const graph = createGraph(
+    zero,
+    zero,
+    nothing,
+    coefficientsFor({ ...EXCHANGE, ...GROWTH }),
+    { seedGround: [zero, seedSoilOrganic, zero, zero] },
+  );
+
+  computePasses(graph, 30);
+
+  const fields = readFields(graph);
+  const patTexel = texelIndex(6, 6) * 4;
+
+  assert(
+    fields.groundMass[patTexel] > 0.05,
+    `no bacteria grew on a pat with a film over it: ${String(fields.groundMass[patTexel])}`,
+  );
+  assert(
+    fields.groundMass[patTexel + 1] < 0.5 - 0.01,
+    `the pat did not shrink as its carbon turned into bacteria: ${String(fields.groundMass[patTexel + 1])}`,
+  );
+
+  // Nothing else in the grid has either of them: with no current the pat cannot spread, and the clean cells have no
+  // carbon of their own to grow on.
+  let elsewhere = 0;
+  for (let row = 0; row < WIDTH; row++) {
+    for (let column = 0; column < WIDTH; column++) {
+      if (column === 6 && row === 6) {
+        continue;
+      }
+      elsewhere +=
+        fields.groundMass[texelIndex(column, row) * 4] +
+        fields.groundMass[texelIndex(column, row) * 4 + 1] +
+        fields.waterMass[texelIndex(column, row) * 4 + 1] +
+        fields.waterMass[texelIndex(column, row) * 4 + 3];
+    }
+  }
+  assert(
+    elsewhere <= CONSERVATION_TOLERANCE,
+    `organic matter or bacteria showed up away from the pat: ${String(elsewhere)}`,
+  );
+
+  // And the whole cell only changed hands: with the exchange running, organic and bacteria can move between the
+  // film and the soil under it, but neither may leave the pair - so across both compartments the total stays at the
+  // 0.5 that was dropped there, which is what rules out the conversion minting mass out of nothing.
+  assert(
+    Math.abs(totalBacteriaAndOrganic(fields) - 0.5) <= CONSERVATION_TOLERANCE,
+    `the pat's organic plus its bacteria total ${String(totalBacteriaAndOrganic(fields))}, not 0.5`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("an established colony works through its food faster than a fresh seed", async () => {
+  // The second term of the law: conversion scales with the population already working on the carbon, so a cell that
+  // starts with bacteria eats through the same 0.5 of organic faster than one that has to grow them first. Both
+  // halves matter - if only the seeded cell converted anything, there would be no colonisation, and if only the
+  // clean cell did, there would be no growth.
+  const seedSoilOrganic = atCell(6, 6, 0.5);
+  const seedSoilBacteria = atCell(6, 6, 0.5);
+  const seeded = createGraph(
+    zero,
+    zero,
+    nothing,
+    coefficientsFor({ ...EXCHANGE, ...GROWTH }),
+    { seedGround: [seedSoilBacteria, seedSoilOrganic, zero, zero] },
+  );
+  const clean = createGraph(
+    zero,
+    zero,
+    nothing,
+    coefficientsFor({ ...EXCHANGE, ...GROWTH }),
+    { seedGround: [zero, seedSoilOrganic, zero, zero] },
+  );
+
+  // Only three passes: at production's rates a pat is largely eaten within twenty, so a longer run would leave both
+  // cells down to dregs and the comparison would say nothing about which one got there faster.
+  computePasses(seeded, 3);
+  computePasses(clean, 3);
+
+  const seededOrganic = readFields(seeded).groundMass[texelIndex(6, 6) * 4 + 1];
+  const cleanOrganic = readFields(clean).groundMass[texelIndex(6, 6) * 4 + 1];
+
+  assert(
+    cleanOrganic < 0.5 - 0.02,
+    `a clean cell never colonised its pat: ${String(cleanOrganic)} of organic left`,
+  );
+  assert(
+    seededOrganic < cleanOrganic - 0.01,
+    `a cell that already held bacteria converted ${String(0.5 - seededOrganic)} of organic, a fresh seed ${String(0.5 - cleanOrganic)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("a dry bed does not grow bacteria", async () => {
+  // The gating on the other side: organic on land with nothing over it just weathers. Nothing multiplies in air,
+  // which is what keeps a pat waiting for rain instead of seeding a population the moment it lands.
+  const seedSoilOrganic = atCell(6, 6, 0.5);
+  const graph = createGraph(
+    zero,
+    zero,
+    nothing,
+    coefficientsFor({ ...EXCHANGE, ...GROWTH }),
+    {
+      depth: () => DRY_GROUND,
+      seedGround: [zero, seedSoilOrganic, zero, zero],
+    },
+  );
+
+  computePasses(graph, 20);
+
+  const fields = readFields(graph);
+  const patTexel = texelIndex(6, 6) * 4;
+  assert(
+    fields.groundMass[patTexel] <= PARITY_TOLERANCE,
+    `bacteria grew on a dry bed: ${String(fields.groundMass[patTexel])}`,
+  );
+  assert(
+    Math.abs(fields.groundMass[patTexel + 1] - 0.5) <= PARITY_TOLERANCE,
+    `organic on a dry bed was eaten anyway: ${String(fields.groundMass[patTexel + 1])}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("organic carried in the film turns into bacteria with nothing on the land", async () => {
+  // Growth in the water compartment specifically: a spring of organic matter over standing water, with soil that
+  // never held either substance. The film has to start making bacteria out of what it is carrying, and the ground
+  // underneath has to stay clean, since it has no carbon of its own to convert.
+  const graph = createGraph(zero, zero, nothing, coefficientsFor(GROWTH));
+  const source = sourceAtTexelCentre(3, 10, 1, 0.2);
+  graph.addPollutantSource(
+    source.x,
+    source.y,
+    source.radius,
+    source.amount,
+    source.species,
+  );
+
+  computePasses(graph, 5);
+  const first = readFields(graph);
+  computePasses(graph, 15);
+  const later = readFields(graph);
+
+  const sourceTexel = texelIndex(3, 10) * 4;
+  assert(
+    later.waterMass[sourceTexel + 3] > 0.05,
+    `no bacteria grew in the film: ${String(later.waterMass[sourceTexel + 3])}`,
+  );
+  assert(
+    later.waterMass[sourceTexel + 3] > first.waterMass[sourceTexel + 3],
+    `the population did not keep growing: ${String(first.waterMass[sourceTexel + 3])} -> ${String(later.waterMass[sourceTexel + 3])}`,
+  );
+  assert(
+    totalBacteria(later) - totalBacteria(first) > 0,
+    "bacteria only appeared at the source and nowhere else",
+  );
+  assert(
+    channelTotals(later.groundMass)[0] <= PARITY_TOLERANCE,
+    `bacteria grew in soil that never held organic matter: ${String(channelTotals(later.groundMass)[0])}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("growth matches the CPU reference", async () => {
+  // The mirror-image guard on all of the above: a run that actually uses the growth law, over half a flooded grid,
+  // compared texel by texel against the model. A divergence between the shaders' copy of growthAt and the model's
+  // growthFor shows up here as a whole-texture disagreement rather than as a slightly brighter patch of magenta.
+  const seedWaterOrganic = (column: number): number =>
+    column < 8 && column % 3 === 0 ? 0.4 : 0;
+  const seedSoilOrganic = (column: number): number =>
+    column < 8 && column % 2 === 0 ? 0.5 : 0;
+  const depth: ScalarField = (column) =>
+    column < 8 ? STANDING_WATER : DRY_GROUND;
+  const velocityX: ScalarField = (column) => (column < 8 ? FLOW_SPEED : 0);
+  const coefficients = coefficientsFor({
+    ...EXCHANGE,
+    ...GROWTH,
+    soilDecayRate: 0.01,
+    organicDecayRate: 0.01,
+  });
+
+  const graph = createGraph(
+    velocityX,
+    zero,
+    [zero, seedWaterOrganic, zero, zero],
+    coefficients,
+    {
+      depth,
+      seedGround: [zero, seedSoilOrganic, zero, zero],
+    },
+  );
+
+  const deposits: OrganicDepositSource[] = [
+    depositAtTexelCentre(2, 5, 0.1),
+    depositAtTexelCentre(10, 9, 0.08),
+  ];
+  for (const deposit of deposits) {
+    assert(
+      graph.addOrganicDeposit(deposit),
+      `addOrganicDeposit refused a free slot at ${String(deposit.x)}, ${String(deposit.y)}`,
+    );
+  }
+
+  const passes = 12;
+  computePasses(graph, passes);
+
+  const fields = readFields(graph);
+  const cpuFields = simulateWaterQualityReference(
+    {
+      waterMass: channelData([zero, seedWaterOrganic, zero, zero]),
+      groundMass: channelData([zero, seedSoilOrganic, zero, zero]),
+    },
+    depthField(depth),
+    velocityField(velocityX, zero),
+    WIDTH,
+    TERRAIN_SIZE,
+    passes,
+    coefficients,
+    [],
+    deposits,
+  );
+
+  assert(
+    worstDifference(fields.waterMass, cpuFields.waterMass) <= PARITY_TOLERANCE,
+    `growth disagrees with the reference in water by ${String(worstDifference(fields.waterMass, cpuFields.waterMass))}`,
+  );
+  assert(
+    worstDifference(fields.groundMass, cpuFields.groundMass) <=
+      PARITY_TOLERANCE,
+    `growth disagrees with the reference on the ground by ${String(worstDifference(fields.groundMass, cpuFields.groundMass))} - one copy of growthAt has drifted from the model`,
+  );
+
+  // Both sides must actually be producing something, or parity would only prove that nothing happened.
+  assert(
+    totalBacteria(fields) > 0.05,
+    `no bacteria grew anywhere: ${String(totalBacteria(fields))}`,
+  );
+  assert(
+    totalOrganicMatter(fields) <
+      totalOrganicMatter({
+        waterMass: channelData([zero, seedWaterOrganic, zero, zero]),
+        groundMass: channelData([zero, seedSoilOrganic, zero, zero]),
+      }),
+    "organic matter never turned into anything",
+  );
+
+  // And no channel went negative on the way, which is what the growth ceiling is there to guarantee.
+  const lowestValue = [...fields.waterMass, ...fields.groundMass].reduce(
+    (lowest, value) => Math.min(lowest, value),
+    Number.POSITIVE_INFINITY,
+  );
+  assert(
+    lowestValue >= 0.0,
+    `a missing clamp produced negative mass: ${String(lowestValue)}`,
   );
 
   completedScenarios += 1;
