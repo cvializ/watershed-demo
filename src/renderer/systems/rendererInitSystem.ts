@@ -5,6 +5,7 @@ import type { RendererInitSystem } from "@/renderer/types";
 import { addWaterInitSystem } from "@/renderer/systems/init/addWater";
 import { cameraInitSystem } from "@/renderer/systems/init/camera";
 import { resizeInitSystem } from "@/renderer/systems/init/resize";
+import { selectionInitSystem } from "@/renderer/systems/init/selection";
 import { simulationInitSystem } from "@/renderer/systems/init/simulation";
 
 export const rendererInitSystem: RendererInitSystem = (
@@ -19,5 +20,6 @@ export const rendererInitSystem: RendererInitSystem = (
   cameraInitSystem(world, scene, renderer);
   simulationInitSystem(world, scene, renderer);
   addWaterInitSystem(world, scene, renderer);
+  selectionInitSystem(world, scene, renderer);
   resizeInitSystem(world, scene, renderer);
 };

@@ -8,6 +8,9 @@ export const Animal = {};
 export const Renderable = {};
 export const Hidden = {};
 
+/** Tag component: this entity was right-clicked and is shown in the inspector pane. */
+export const Selected = {};
+
 export const Name = {
   value: str([]),
 };
