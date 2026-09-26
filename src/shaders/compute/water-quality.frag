@@ -2,17 +2,21 @@
 
 // Dependency samplers waterVelocity / waterHeight / waterQuality / terrainQuality are injected by
 // GPUComputationRenderer from this variable's declared dependencies, so re-declaring them here would be a compile
-// error. The last of those is the ground's share of bacterial content, and its edge is added by
-// linkWaterQualityToTerrain once both Variables exist. Only the custom uniforms below belong to this shader
-// (src/gpu/README.md, section 1).
+// error. The last of those is the ground's share of the two species that live in the soil as well as the water - its
+// bacterial content in R and its organic matter in G, the second of which is what conditions the bacterial deposit -
+// and its edge is added by linkWaterQualityToTerrain once both Variables exist. Only the custom uniforms below
+// belong to this shader (src/gpu/README.md, section 1).
 
 uniform float uTerrainSize; // World size of the terrain: how source points map to texels, as in water-sources.frag
 uniform float fluxFraction; // Fraction of a cell's content one pass exports; mirrors water-height.frag's flux law
 uniform float dtScale; // Frame-rate coupling, same convention and clamps as sediment-flow.frag (plan S6)
 uniform float decayRate; // First-order fade, so an emitter cannot slowly fill the whole catchment
-uniform float soilAttachRate; // Ground exchange: shares its value with terrain-quality.frag via SUBSTANCE_EXCHANGE_RATES
+uniform float soilDepositRate; // Ground exchange: shares its value with terrain-quality.frag via SUBSTANCE_EXCHANGE_RATES
+uniform float organicDepositThreshold; // ...and this is what conditions it: soil organic that saturates that deposit
 uniform float washOffRate;    // ...and so does this one, which is what balances the ledger between compartments
 uniform float organicWashOffRate; // ...and this third, the ground's organic matter running off into this film
+uniform float organicConversionRate; // Growth, not exchange: shares its value with terrain-quality.frag via BACTERIA_GROWTH
+uniform float growthGain; // ...and this is the extra fraction an already-established colony converts with
 uniform int uInjectCount;
 uniform vec4 uInjectPoints[8]; // (x, y, radius, amount) in world units; amount is mass per pass at 60 fps
 uniform float uInjectSpecies[8]; // Channel fed: 0 nitrogen, 1 organic matter, 2 oxygen, 3 bacteria
@@ -46,6 +50,12 @@ const float WET_DEPTH = 0.01;
 // be faded by DECAY_CEILING (0.25), which leaves 0.1875 available - so anything above that would let the water
 // column go negative. terrain-quality.frag carries the same ceiling; see below for why it has to.
 const float EXCHANGE_CEILING = 0.15;
+
+// Most of a cell's organic matter either compartment may convert into bacteria in one pass. Same reasoning as the
+// ceilings above, and the same value on both sides so a scenario that runs the growth law at its ceiling gets the
+// same answer from the film and from the ground. See BACTERIA_GROWTH in
+// src/gpu/waterFlowSimulation/variables/substanceExchange.ts.
+const float GROWTH_CEILING = 0.25;
 
 bool insideGrid(vec2 uv) {
     return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
@@ -100,10 +110,11 @@ float exportFractionAt(vec2 p, vec2 cellSize, out vec2 routeStep) {
  * so what leaves one compartment arrives in the other, exactly as sediment-flow.frag's outfluxAt makes erosion and
  * deposition agree without either side minting mass (plan A4). Keep the two copies in step by hand; GLSL cannot import.
  *
- * Two species cross this boundary and they do not travel the same way. Bacteria go both directions: they settle out of
- * a film and a film can pick them back up. Organic matter only leaves the ground - the flow has no mechanism for
- * scraping material out of itself and burying it, so `toWaterOrganic` is the organic leg's only term, and a cell that
- * holds manure either keeps waiting or hands some to the water above it.
+ * Two species cross this boundary and they do not travel the same way. Bacteria go both directions, but only one of
+ * those directions is conditional: they settle out of a film wherever the soil holds organic matter to live on, and a
+ * film can pick them back up from the ground whether that food is still there or not. Organic matter only leaves the
+ * ground - the flow has no mechanism for scraping material out of itself and burying it, so `toWaterOrganic` is the
+ * organic leg's only term, and a cell that holds manure either keeps waiting or hands some to the water above it.
  */
 void exchangeAt(
     vec2 uv,
@@ -118,13 +129,47 @@ void exchangeAt(
     // well as of the water, and why a manure pat dries out in place instead of silently running off dry land.
     float wetness = clamp(depth / WET_DEPTH, 0.0, 1.0);
 
-    float attach = min(soilAttachRate * dtScale, EXCHANGE_CEILING) * wetness;
+    // How much of the deposit the soil's carbon is worth: nothing where it has never been contaminated or grazed,
+    // the full soilDepositRate at organicDepositThreshold and above, proportional in between. Both sides of the
+    // ledger read this through the same committed terrainQuality texel, so the condition cannot disagree.
+    float soilOrganic = max(texture2D(terrainQuality, uv).g, 0.0);
+    float carbon = clamp(soilOrganic / max(organicDepositThreshold, EPS), 0.0, 1.0);
+
+    // The deposit is gated by that carbon, so a film crossing clean gravel keeps its bacteria and one crossing a pat
+    // hands them over. Wash-off deliberately is not: a population that banked itself in the bed stays banked there,
+    // and only dies off (see soilDecayRate in terrain-quality.frag) unless a film lifts it back up.
+    float deposit = min(soilDepositRate * dtScale, EXCHANGE_CEILING) * wetness * carbon;
     float washOff = min(washOffRate * dtScale, EXCHANGE_CEILING) * wetness;
     float organicRunoff = min(organicWashOffRate * dtScale, EXCHANGE_CEILING) * wetness;
 
-    toTerrainBacteria = max(texture2D(waterQuality, uv).a, 0.0) * attach;
+    toTerrainBacteria = max(texture2D(waterQuality, uv).a, 0.0) * deposit;
     toWaterBacteria = max(texture2D(terrainQuality, uv).r, 0.0) * washOff;
     toWaterOrganic = max(texture2D(terrainQuality, uv).g, 0.0) * organicRunoff;
+}
+
+/**
+ * How much of this compartment's organic matter its bacteria convert into more bacteria this pass.
+ *
+ * Textually identical to `growthAt` in src/shaders/compute/terrain-quality.frag, which applies it to the ground's
+ * own two channels: this is not a transfer across the boundary, so the two copies never need to read the same
+ * texel - each side spends only the carbon it is holding, and organic plus bacteria in a cell only change by what
+ * decay takes. Keep the two copies in step by hand; GLSL cannot import - and keep
+ * `growthFor` in tests/waterQualityReferenceModel.ts in step with them, since that is what the parity tests
+ * compare against.
+ *
+ * Two terms, both paid out of `organic`: `organicConversionRate` seeds a population where there was none (organic
+ * matter arrives carrying it), and `growthGain` lets an established one work through its food faster. Neither runs
+ * on a dry bed: nothing multiplies in air, which is what lets a pat sit there until rain comes.
+ */
+float growthAt(float organic, float population, float wetness) {
+    float available = max(organic, 0.0);
+
+    // Clamped before it is applied, so the conversion cannot outpace one pass's budget and cannot take more than
+    // the cell holds: rate <= GROWTH_CEILING and the result is a fraction of `available`.
+    float rate =
+        min((organicConversionRate + growthGain * max(population, 0.0)) * dtScale, GROWTH_CEILING);
+
+    return available * rate * wetness;
 }
 
 /**
@@ -172,8 +217,8 @@ void main() {
     // Two channels are treated differently below, because they are not properties of the ground:
     // - B dissolved oxygen belongs to the water alone. It cannot be banked in dry soil, so it thins out with the
     //   film it was dissolved in and an emitter aimed at dry ground releases nothing.
-    // - A bacteria belongs to both compartments: what is here flows with the water, and what settles out of it is
-    //   handed to terrain-quality.frag, which holds the ground's share until the next flood washes some back.
+    // - A bacteria belongs to both compartments: what is here flows with the water, and what settles out of it does
+    //   so only over ground with organic matter in it, which is then held until the next flood washes some back.
     // - G organic matter belongs to both compartments too, but it only ever arrives in this column from above: animals
     //   drop it on the ground and a film picks some of that up. Nothing settles out of a stream and becomes manure in
     //   the soil, so this shader is a receiver for organic matter and never a donor.
@@ -229,11 +274,17 @@ void main() {
     float toWaterBacteria;
     float toWaterOrganic;
     exchangeAt(uv, toTerrainBacteria, toWaterBacteria, toWaterOrganic);
-    faded.a += toWaterBacteria - toTerrainBacteria;
+
+    // Growth, on the other hand, is read off the amount this cell actually has left after transport and fade - it
+    // is a conversion within the compartment rather than a transfer across the boundary, so there is no other side
+    // to agree with, and taking it from the post-transport amount is what guarantees the organic cannot go negative.
+    float converted = growthAt(faded.g, faded.a, wetness);
+    faded.a += toWaterBacteria - toTerrainBacteria + converted;
 
     // The organic leg runs one way only, which is why this reads as an addition rather than as a difference: the
-    // ground's manure comes from animals and leaves with water, and never the other way round.
-    faded.g += toWaterOrganic;
+    // ground's manure comes from animals and leaves with water, and never the other way round. `converted` then
+    // comes straight out of the film, so a plume that grows is only spending the carbon it is carrying.
+    faded.g += toWaterOrganic - converted;
 
     // Emission lands after transport, so substance a source adds this pass cannot be exported by the same pass:
     // the one-step lag sediment-flow.frag uses for eroded material (plan A3). Sources are persistent emitters -

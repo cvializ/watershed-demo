@@ -10,8 +10,11 @@ import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
 import {
+  BACTERIA_GROWTH,
+  ORGANIC_DEPOSIT_THRESHOLD,
   SUBSTANCE_EXCHANGE_RATES,
   type SubstanceExchangeUniforms,
+  type SubstanceGrowthUniforms,
 } from "./substanceExchange";
 
 /**
@@ -43,8 +46,14 @@ export type PollutantSpecies = {
  * alone: it thins out with the film around it and cannot be banked in dry ground (see water-quality.frag).
  * Two species have two homes - nitrogen stays dissolved, organic matter does not but still only leaves the ground
  * with water. For each of them the channel here is its share of the water column, while `terrain-quality.frag` holds
- * the share on or in the ground (bacteria in R, organic matter in G). Bacteria trade both ways; organic matter only
- * ever crosses from the ground into a film, which is why animals are the only way it gets there.
+ * the share on or in the ground (bacteria in R, organic matter in G). Bacteria trade both ways, and they settle out
+ * of a film only where the ground holds organic matter for them to live on; organic matter only ever crosses from
+ * the ground into a film, which is why animals are the only way it gets there.
+ *
+ * Bacteria also grow rather than only move: whatever organic matter a compartment is holding, it converts some of it
+ * into more bacteria (BACTERIA_GROWTH), each compartment spending its own carbon. That is the only way this model
+ * ever produces bacteria at all - nothing seeds them otherwise - so a film that reaches a pat picks up a population
+ * it did not carry in, and a grazed field turns magenta without anyone injecting anything.
  *
  * `src/shaders/compute/water-quality.frag` and the visualization files repeat this order as literals because GLSL
  * cannot import TypeScript - keep them in step by hand for now.
@@ -66,8 +75,10 @@ export const POLLUTANT_SPECIES: readonly PollutantSpecies[] = [
 
 /**
  * Uniforms for the water quality computation; dependency samplers are deliberately absent (see README s1).
- * The two exchange coefficients come from SUBSTANCE_EXCHANGE_RATES so this variable and the terrain one cannot
- * be given different halves of the same trade.
+ * The exchange coefficients and the organic threshold that conditions the bacterial deposit come from
+ * SUBSTANCE_EXCHANGE_RATES and ORGANIC_DEPOSIT_THRESHOLD so this variable and the terrain one cannot be given
+ * different halves of the same trade, and the growth coefficients come from BACTERIA_GROWTH for the same reason -
+ * though that law is applied to each compartment's own channels rather than traded between them.
  */
 export type WaterQualityUniforms = {
   uTerrainSize: THREE.IUniform<number>;
@@ -77,7 +88,8 @@ export type WaterQualityUniforms = {
   uInjectCount: THREE.IUniform<number>;
   uInjectPoints: THREE.IUniform<THREE.Vector4[]>;
   uInjectSpecies: THREE.IUniform<number[]>;
-} & SubstanceExchangeUniforms;
+} & SubstanceExchangeUniforms &
+  SubstanceGrowthUniforms;
 
 /** Must match `uInjectPoints[8]` / `uInjectSpecies[8]` in water-quality.frag. */
 const MAX_POLLUTANT_SOURCES = 8;
@@ -121,8 +133,10 @@ const createInitialWaterQualityTexture = (size: number): THREE.DataTexture => {
  * (unit downslope direction times speed) and this variable's shader snaps back to the canonical D8 step it was
  * emitted from, which is the same trick `sediment-flow.frag` uses - so plumes follow the water even though this
  * shader never reads terrain. Export and import re-evaluate one shared helper on the exporter's texel, so mass
- * is moved rather than minted: with decay switched off, the grid sum of each channel is constant pass to pass,
- * except where a cell would export off-grid and keeps its load instead (border retention).
+ * is moved rather than minted: with decay switched off and the growth law switched off, the grid sum of each channel
+ * is constant pass to pass, except where a cell would export off-grid and keeps its load instead (border retention).
+ * Growth is the one place mass changes channel without leaving the cell - organic converts into bacteria - so the
+ * invariant to hold is the sum of those two channels, not either one alone.
  *
  * Channels hold column-integrated mass (concentration times depth), not concentration. water-height.frag removes
  * water by infiltration and drainage; substance that tracked concentration would vanish with it, whereas mass
@@ -133,8 +147,15 @@ const createInitialWaterQualityTexture = (size: number): THREE.DataTexture => {
  * Two species have two compartments rather than one. This variable holds the share dissolved or suspended in the
  * flow; `createGpuTerrainQuality` holds the share on or in the ground. Both shaders evaluate the same exchange helper
  * on the same committed texel, so mass crosses between them exactly - which is why this variable's dependency list is
- * completed by linkWaterQualityToTerrain() once the terrain variable exists (README s1). Bacteria cross both ways;
- * organic matter arrives in the flow from the ground only, since nothing in a stream settles down and becomes litter.
+ * completed by linkWaterQualityToTerrain() once the terrain variable exists (README s1). Bacteria cross both ways,
+ * but they only settle out of the film onto ground that holds organic matter, so a plume rides across clean ground and
+ * drops its load wherever the catchment has something for it to feed on; organic matter arrives in the flow from the
+ * ground only, since nothing in a stream settles down and becomes litter.
+ *
+ * On top of that trade, each compartment eats its own organic matter: `growthAt` (BACTERIA_GROWTH) converts a
+ * fraction of whatever organic the cell holds into bacteria in the same compartment, seeded even where there were
+ * none. That is why the two textures have to be read together - a film over a pat and the soil beneath it are the
+ * same population working through the same carbon, from two sides.
  *
  * Sources are persistent emitters rather than one-shot doses: `addPollutantSource` registers a soft disc that
  * releases `amount` per pass at 60 fps until `clearPollutantSources()` runs. A farm patch, a septic outflow or a
@@ -182,13 +203,23 @@ export const createGpuWaterQuality = (
       uniforms.fluxFraction = { value: DEFAULT_FLUX_FRACTION };
       uniforms.dtScale = { value: 1.0 }; // neutral until the first update
       uniforms.decayRate = { value: DEFAULT_DECAY_RATE };
-      uniforms.soilAttachRate = {
-        value: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
+      uniforms.soilDepositRate = {
+        value: SUBSTANCE_EXCHANGE_RATES.soilDepositRate,
+      };
+      uniforms.organicDepositThreshold = {
+        value: ORGANIC_DEPOSIT_THRESHOLD,
       };
       uniforms.washOffRate = { value: SUBSTANCE_EXCHANGE_RATES.washOffRate };
       uniforms.organicWashOffRate = {
         value: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
       };
+      // ...and the same for the growth law, so a film and the ground under it cannot disagree about how fast
+      // organic turns into bacteria. Both are applied to this cell's own channels, so neither side has to
+      // balance a ledger against the other the way the exchange legs do.
+      uniforms.organicConversionRate = {
+        value: BACTERIA_GROWTH.organicConversionRate,
+      };
+      uniforms.growthGain = { value: BACTERIA_GROWTH.growthGain };
       uniforms.uInjectCount = { value: 0 };
       uniforms.uInjectPoints = {
         value: Array.from(
@@ -221,7 +252,11 @@ export const createGpuWaterQuality = (
      * @param species - Channel to feed, see POLLUTANT_SPECIES. Dissolved oxygen only lands where there is water:
      *   it is a property of the column rather than of the ground, so an emitter on dry cells releases nothing.
      *   Organic matter released here joins the film only; the ground's share comes from animals
-     *   (`createGpuTerrainQuality.addOrganicDeposit`), not from an emitter aimed at the water.
+     *   (`createGpuTerrainQuality.addOrganicDeposit`), not from an emitter aimed at the water. Bacteria released here
+     *   ride the flow until they reach ground with organic matter on it, where they settle out (see
+     *   SUBSTANCE_EXCHANGE_RATES). You do not have to release any bacteria to see them, though: organic matter
+     *   seeds a population wherever there is water to do it in (see BACTERIA_GROWTH), and that population then
+     *   multiplies on whatever carbon is left in the film.
      * @returns false when all emitter slots are busy; nothing is added in that case
      */
     addPollutantSource: (

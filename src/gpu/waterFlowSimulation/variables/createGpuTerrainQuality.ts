@@ -10,8 +10,11 @@ import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
 import {
+  BACTERIA_GROWTH,
+  ORGANIC_DEPOSIT_THRESHOLD,
   SUBSTANCE_EXCHANGE_RATES,
   type SubstanceExchangeUniforms,
+  type SubstanceGrowthUniforms,
 } from "./substanceExchange";
 
 /**
@@ -24,7 +27,8 @@ export type TerrainQualityUniforms = {
   uTerrainSize: THREE.IUniform<number>;
   uDepositCount: THREE.IUniform<number>;
   uDepositPoints: THREE.IUniform<THREE.Vector4[]>;
-} & SubstanceExchangeUniforms;
+} & SubstanceExchangeUniforms &
+  SubstanceGrowthUniforms;
 
 // Die-off of the ground population, first order like the water column's fade. Slower is pointless and faster would
 // erase the thing this variable exists to remember: bacteria in the bed are what a catchment still carries after
@@ -67,17 +71,23 @@ const createInitialTerrainQualityTexture = (
  * Creates the terrain-side substance computation: what the ground is holding.
  *
  * Two fields so far, each a companion of the water column's channel of the same name rather than a copy of it - hence
- * two variables per species. Bacterial content attaches to the bed and trades with the film above it in both
- * directions; organic matter lies on the ground (animals drop it there - see `addOrganicDeposit`) and only ever leaves,
+ * two variables per species. Bacterial content settles onto the bed only where this cell's organic matter is around to
+ * catch it, and trades back with the film above it whether or not that food is still there; organic matter lies on the
+ * ground (animals drop it there - see `addOrganicDeposit`) and only ever leaves,
  * scoured off by whatever water covers the cell. This compartment does not advect: transport belongs to whatever water
  * covers the cell (see `createGpuWaterQuality`) and mineral movement belongs to sediment-flow.frag, which currently moves
  * grains and neither of these populations.
  *
+ * It does, however, breed: while a film covers the cell, some of the organic lying on it turns into bacterial content
+ * in the same texel (`growthAt`, BACTERIA_GROWTH), seeded even where the soil had never seen either. That is the only
+ * route this model has to new bacteria at all, so a cell an animal grazed - or a click smeared with manure - starts
+ * holding bacterial content within a few seconds of rain arriving, and keeps holding it after the water has gone.
+ *
  * Exchange with the flow happens at both ends of a shared, pure helper: `terrain-quality.frag` and
  * `water-quality.frag` each evaluate `exchangeAt` on the same committed texel, so settling and wash-off are two
  * readings of one number rather than two guesses. Total bacteria (this compartment plus the water column's) is
- * therefore conserved across a pass except where decay intends to remove it - asserted in
- * tests/test-gpu-water-quality.ts.
+ * conserved across a pass except where decay removes some and the growth law converts organic into more of it - the
+ * invariant to hold is bacteria plus organic, which is what tests/test-gpu-water-quality.ts does hold.
  *
  * A dry cell neither gains nor loses - except from a deposit, which is the one way mass enters a dry cell: no film means
  * nothing to carry bacteria down and nothing to lift anything back up, which is what lets contamination, and a grazed
@@ -144,14 +154,24 @@ export const createGpuTerrainQuality = (
       uniforms.organicDecayRate = { value: DEFAULT_ORGANIC_DECAY_RATE };
       // World units are what a depositor speaks in, so the shader needs the grid's physical edge to place one.
       uniforms.uTerrainSize = { value: terrainSize };
-      // Same values the water column was given, and for the same reason: one trade, two ledgers.
-      uniforms.soilAttachRate = {
-        value: SUBSTANCE_EXCHANGE_RATES.soilAttachRate,
+      // Same values the water column was given, and for the same reason: one trade, two ledgers - including the
+      // organic threshold that decides how much of that trade the bacterial deposit is worth.
+      uniforms.soilDepositRate = {
+        value: SUBSTANCE_EXCHANGE_RATES.soilDepositRate,
+      };
+      uniforms.organicDepositThreshold = {
+        value: ORGANIC_DEPOSIT_THRESHOLD,
       };
       uniforms.washOffRate = { value: SUBSTANCE_EXCHANGE_RATES.washOffRate };
       uniforms.organicWashOffRate = {
         value: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
       };
+      // ...and the same growth coefficients as the film above, so a pat cannot be eaten at one rate by the water
+      // over it and another by the soil under it.
+      uniforms.organicConversionRate = {
+        value: BACTERIA_GROWTH.organicConversionRate,
+      };
+      uniforms.growthGain = { value: BACTERIA_GROWTH.growthGain };
       uniforms.uDepositCount = { value: 0 };
       uniforms.uDepositPoints = {
         value: Array.from(
