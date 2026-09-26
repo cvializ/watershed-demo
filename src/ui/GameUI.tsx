@@ -1,4 +1,8 @@
-import { togglePause, setVisualizationMode, type GameWorldContext } from "@/context";
+import {
+  togglePause,
+  setVisualizationMode,
+  type GameWorldContext,
+} from "@/context";
 import { POLLUTANT_SPECIES } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 import { waterSimulation } from "@/renderer/systems/init/simulation";
 import {
@@ -9,6 +13,7 @@ import {
 import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import { logger } from "@/utils/logger";
 
+import { EntityInspector } from "./EntityInspector";
 import { TerrainPaintingControls } from "./TerrainPaintingControls";
 
 type GameUiProps = {
@@ -133,6 +138,7 @@ export const GameUI = ({ world }: GameUiProps) => {
           loadSurfaceMaterials,
         }}
       />
+      <EntityInspector world={world} />
       <div style={styles.container}>
         <div style={styles.panel}>
           <div style={styles.fpsSection}>

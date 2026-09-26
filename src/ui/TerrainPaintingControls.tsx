@@ -99,7 +99,10 @@ export const TerrainPaintingControls = ({
 
       <div style={styles.section}>
         <label htmlFor="brush-radius" style={styles.label}>
-          Brush Size: <span style={styles.value}>{world.terrainBrushRadius.toFixed(1)}</span>
+          Brush Size:{" "}
+          <span style={styles.value}>
+            {world.terrainBrushRadius.toFixed(1)}
+          </span>
         </label>
         <input
           type="range"
