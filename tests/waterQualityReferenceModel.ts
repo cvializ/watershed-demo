@@ -17,6 +17,12 @@
  * Growth is modelled as a conversion, not a transfer: whichever compartment holds organic matter spends some of it
  * on bacteria of its own (`growthFor` mirrors `growthAt` in both shaders), so the pair to keep an eye on across a
  * pass is organic plus bacteria rather than either channel alone.
+ *
+ * Dissolved oxygen is the one channel that is neither conserved nor converted: `relaxOxygenFor` mirrors the
+ * atmospheric-reaeration and bacterial-respiration law in water-quality.frag, so a clean wet film climbs towards
+ * (and stops at) the saturation amount its depth implies while a bloom holds it below. This is a conversion against
+ * an external reservoir - the air - so no conservation assertion holds for the oxygen channel; scenarios assert the
+ * qualitative outcome (clean reads oxygenated, a bloom reads starved) and whole-texture parity instead.
  */
 
 // Channel ids come from the production module so this model cannot drift out of its layout (plan: channels are
@@ -27,6 +33,7 @@ import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/cre
 
 import {
   BACTERIA_GROWTH,
+  DISSOLVED_OXYGEN,
   ORGANIC_DEPOSIT_THRESHOLD,
 } from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
 
@@ -50,6 +57,11 @@ const EXCHANGE_CEILING = 0.15;
 // Taken from production rather than copied, since the ceiling is part of the law and a scenario that runs the law
 // at its ceiling has to be measured against the same number the shaders clamp to.
 const GROWTH_CEILING = BACTERIA_GROWTH.growthCeiling;
+
+// Likewise the two ceilings on the oxygen law: a scenario that runs reaeration or respiration at its ceiling has to
+// be measured against the same per-pass cap the shader clamps to.
+const REAERATION_CEILING = DISSOLVED_OXYGEN.reaerationCeiling;
+const DEOXYGENATION_CEILING = DISSOLVED_OXYGEN.deoxygenationCeiling;
 
 // Depth at and above which a cell counts as holding standing water: below it, dissolved oxygen is gone and the two
 // compartments cannot trade. Same constant in both shaders, tied to water-visualization.frag's wet threshold.
@@ -77,6 +89,9 @@ export type WaterQualityOptions = {
   organicDecayRate: number;
   organicConversionRate: number;
   growthGain: number;
+  oxygenSaturation: number;
+  reaerationRate: number;
+  deoxygenationRate: number;
 };
 
 // The conservation harness wants a pure transport step, so fade, die-off, the bacterial exchange and the growth law
@@ -95,6 +110,13 @@ export const WATER_QUALITY_TEST_DEFAULTS: WaterQualityOptions = {
   organicDecayRate: 0.0,
   organicConversionRate: 0.0,
   growthGain: 0.0,
+  // Oxygen is a saturating source/sink, not a conservation law, so the scenario defaults leave it off: transport
+  // stays purely conservative and any appearance of oxygen came from an emitter, until a scenario turns the law on.
+  // The saturation concentration is still taken from production so a scenario that switches the law on starts from
+  // the real equilibrium, not an invented one.
+  oxygenSaturation: DISSOLVED_OXYGEN.saturationConcentration,
+  reaerationRate: 0.0,
+  deoxygenationRate: 0.0,
 };
 
 /** Velocity of one cell: the (direction * speed) pair water-velocity.frag writes into rg. */
@@ -263,6 +285,41 @@ const growthFor = (
   );
 
   return available * rate * wetness;
+};
+
+/**
+ * One pass's dissolved-oxygen balance: `relaxOxygenFor` mirrors the reaeration + respiration law in
+ * water-quality.frag. The channel is neither conserved nor converted - it trades with the air above the film - so
+ * the outcome is a saturating approach to (or decay from) a depth-scaled equilibrium, not a mass transfer.
+ *
+ * Three effects stack, in the shader's order so the reference agrees texel for texel:
+ * - carry: as the film thins, whatever oxygen was dissolved in the water that left goes with it (`pow(wetness,
+ *   dtScale)`, plan S6); a dry bed keeps none.
+ * - reaeration: the remaining oxygen relaxes a clamped fraction of the way to `saturation = oxygenSaturation *
+ *   depth`, so a clean film climbs toward saturation from below and outgasses back to it from above, never past.
+ * - respiration: the population here spends oxygen proportional to how many of them there are, which is what holds
+ *   a bloom below the equilibrium the air would otherwise reach.
+ */
+const relaxOxygenFor = (
+  oxygen: number,
+  depth: number,
+  bacteria: number,
+  wetness: number,
+  options: WaterQualityOptions,
+): number => {
+  const carried =
+    wetness <= 0 ? 0 : oxygen * Math.pow(wetness, options.dtScale);
+
+  const saturation = options.oxygenSaturation * depth;
+  const toAtmosphere =
+    (saturation - carried) *
+    Math.min(options.reaerationRate * options.dtScale, REAERATION_CEILING);
+  const respiration = Math.min(
+    options.deoxygenationRate * Math.max(bacteria, 0) * options.dtScale,
+    DEOXYGENATION_CEILING,
+  );
+
+  return Math.max(carried + toAtmosphere - respiration, 0);
 };
 
 /** Texel centre in the shaders' shared world space; see water-quality.frag and terrain-quality.frag's mapping. */
@@ -472,9 +529,15 @@ export const simulateWaterQualityReference = (
         }
 
         // Dissolved oxygen is a property of the water alone: it thins out with the film rather than being left
-        // behind in dry ground the way nitrogen and organic matter are. wetness is the survival fraction for one
-        // nominal pass, so dtScale belongs in the exponent - the shader's pow(wetness, dtScale) (plan S6).
-        nextWater[index + CHANNEL_OXYGEN] *= Math.pow(wetness, options.dtScale);
+        // behind in dry ground the way nitrogen and organic matter are, then trades with the air and with its own
+        // population. See `relaxOxygenFor` (mirrors water-quality.frag) for the reaeration + respiration law.
+        nextWater[index + CHANNEL_OXYGEN] = relaxOxygenFor(
+          nextWater[index + CHANNEL_OXYGEN],
+          depth,
+          nextWater[index + CHANNEL_BACTERIA],
+          wetness,
+          options,
+        );
 
         // Growth, taken out of the film's own organic and paid into its own bacteria. Measured on the amount left
         // after transport and fade, exactly as `growthAt` is called on `faded` in water-quality.frag.

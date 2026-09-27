@@ -275,6 +275,16 @@ gates an emitter's oxygen contribution by the same number, so the channel cannot
 be released onto it. The other three channels deliberately keep their dry deposits: a drained puddle's residue is
 part of what the view is for.
 
+On top of that carry, dissolved oxygen follows a saturating gas-exchange balance (`DISSOLVED_OXYGEN`, mirrored
+texel-for-texel in `tests/waterQualityReferenceModel.ts`). While a cell holds water it relaxes a clamped fraction of
+the way towards `oxygenSaturation * depth` - the amount this much water would hold at equilibrium with the air - so
+a clean film drinks oxygen back out of the atmosphere and climbs towards saturation, and an over-oxygenated film
+outgasses back down, never past equilibrium. Bacteria then draw on it in proportion to how many the film is
+holding, so a colony that respires faster than the air can refill holds the cell below saturation (a big enough
+bloom drives it anoxic). Unlike the exchange and growth laws there is no ledger on the other side to balance: this
+trades with the air, an external reservoir, so no conservation assertion holds for the channel - only the depth-
+scaled equilibrium and the qualitative "clean reads oxygenated, a plume reads starved" outcome.
+
 **Organic matter.** This is the substance the land receives rather than trades, which is why animals are its only
 gateway into the ground. `createGpuTerrainQuality.addOrganicDeposit({ x, y, radius, amount })` declares one soft disc
 of mass in world units - the same falloff law as `water-sources.frag` and `emissionAt()`, so a pat lands where the

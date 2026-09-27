@@ -11,8 +11,10 @@ import { getUniforms } from "@/utils/uniformUtils";
 
 import {
   BACTERIA_GROWTH,
+  DISSOLVED_OXYGEN,
   ORGANIC_DEPOSIT_THRESHOLD,
   SUBSTANCE_EXCHANGE_RATES,
+  type DissolvedOxygenUniforms,
   type SubstanceExchangeUniforms,
   type SubstanceGrowthUniforms,
 } from "./substanceExchange";
@@ -89,7 +91,8 @@ export type WaterQualityUniforms = {
   uInjectPoints: THREE.IUniform<THREE.Vector4[]>;
   uInjectSpecies: THREE.IUniform<number[]>;
 } & SubstanceExchangeUniforms &
-  SubstanceGrowthUniforms;
+  SubstanceGrowthUniforms &
+  DissolvedOxygenUniforms;
 
 /** Must match `uInjectPoints[8]` / `uInjectSpecies[8]` in water-quality.frag. */
 const MAX_POLLUTANT_SOURCES = 8;
@@ -220,6 +223,16 @@ export const createGpuWaterQuality = (
         value: BACTERIA_GROWTH.organicConversionRate,
       };
       uniforms.growthGain = { value: BACTERIA_GROWTH.growthGain };
+      // ...and the oxygen law, so a film always knows what the air above it is worth and how hard its own
+      // population fights that. The ceilings (REAERATION_CEILING / DEOXYGENATION_CEILING in water-quality.frag)
+      // are not uniforms - the shader clamps against them itself, since GLSL cannot import the constant.
+      uniforms.oxygenSaturation = {
+        value: DISSOLVED_OXYGEN.saturationConcentration,
+      };
+      uniforms.reaerationRate = { value: DISSOLVED_OXYGEN.reaerationRate };
+      uniforms.deoxygenationRate = {
+        value: DISSOLVED_OXYGEN.deoxygenationRate,
+      };
       uniforms.uInjectCount = { value: 0 };
       uniforms.uInjectPoints = {
         value: Array.from(

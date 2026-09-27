@@ -11,6 +11,7 @@ import {
 } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts";
 import {
   BACTERIA_GROWTH,
+  DISSOLVED_OXYGEN,
   ORGANIC_DEPOSIT_THRESHOLD,
   SUBSTANCE_EXCHANGE_RATES,
 } from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
@@ -77,7 +78,7 @@ const assert = (condition: boolean, message: string): void => {
 // Scenarios that actually finished. A throw inside a scenario skips its increment, so the final check is
 // evidence of work rather than just a statement having executed.
 let completedScenarios = 0;
-const SCENARIO_COUNT = 28;
+const SCENARIO_COUNT = 32;
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(256, 256);
@@ -140,6 +141,9 @@ type Coefficients = {
   organicDecayRate: number;
   organicConversionRate: number;
   growthGain: number;
+  oxygenSaturation: number;
+  reaerationRate: number;
+  deoxygenationRate: number;
 };
 
 // Pure transport: no fade, no exchange, no growth and one pass per step, so totals are exact and any movement came
@@ -156,6 +160,11 @@ const TRANSPORT_ONLY: Coefficients = {
   organicDecayRate: 0.0,
   organicConversionRate: 0.0,
   growthGain: 0.0,
+  // ...and the oxygen law starts off, so a transport-only run neither gathers oxygen from the air nor loses it
+  // to respiration - the two scenarios that turn it on start from DISSOLVED_OXYGEN's real numbers instead.
+  oxygenSaturation: DISSOLVED_OXYGEN.saturationConcentration,
+  reaerationRate: 0.0,
+  deoxygenationRate: 0.0,
 };
 
 const coefficientsFor = (overrides: Partial<Coefficients>): Coefficients => ({
@@ -179,6 +188,14 @@ const EXCHANGE = {
 const GROWTH = {
   organicConversionRate: BACTERIA_GROWTH.organicConversionRate,
   growthGain: BACTERIA_GROWTH.growthGain,
+};
+
+// And the oxygen law: production's saturation concentration, reaeration rate and respiration rate, so a scenario
+// about "absorbed from the air, depleted by bacteria" runs the balance a player sees rather than invented numbers.
+const OXYGEN = {
+  oxygenSaturation: DISSOLVED_OXYGEN.saturationConcentration,
+  reaerationRate: DISSOLVED_OXYGEN.reaerationRate,
+  deoxygenationRate: DISSOLVED_OXYGEN.deoxygenationRate,
 };
 
 /**
@@ -249,6 +266,10 @@ const createGraph = (
   uniforms.organicWashOffRate.value = coefficients.organicWashOffRate;
   uniforms.organicConversionRate.value = coefficients.organicConversionRate;
   uniforms.growthGain.value = coefficients.growthGain;
+  // Dissolved oxygen belongs to the water column alone, so only the water variable carries these three.
+  uniforms.oxygenSaturation.value = coefficients.oxygenSaturation;
+  uniforms.reaerationRate.value = coefficients.reaerationRate;
+  uniforms.deoxygenationRate.value = coefficients.deoxygenationRate;
 
   const terrainUniforms = terrain.getTerrainQualityUniforms();
   terrainUniforms.soilDecayRate.value = coefficients.soilDecayRate;
@@ -1731,6 +1752,199 @@ await test("growth matches the CPU reference", async () => {
   assert(
     lowestValue >= 0.0,
     `a missing clamp produced negative mass: ${String(lowestValue)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+// ---------------------------------------------------------------------------
+// Dissolved oxygen trades with the air, and bacteria can win that argument
+// ---------------------------------------------------------------------------
+
+await test("a clean film gathers oxygen back out of the atmosphere", async () => {
+  // The first half of the request, started from a clean catchment: nothing seeded, still standing water, and only
+  // the oxygen law switched on. With no current to move anything and no carbon to grow bacteria on, the sole thing
+  // that can happen to dissolved oxygen is the film drinking it back up from empty towards the saturation its depth
+  // implies - which is exactly what "absorbed from the atmosphere" has to mean, and proves it is not an emitter.
+  const graph = createGraph(zero, zero, nothing, coefficientsFor(OXYGEN));
+
+  computePasses(graph, 30);
+
+  const fields = readFields(graph);
+  const cell = texelIndex(4, 4) * 4;
+  const saturation = DISSOLVED_OXYGEN.saturationConcentration * STANDING_WATER;
+  const oxygen = fields.waterMass[cell + 2];
+
+  // It started at zero (nothing was seeded), so any oxygen here came out of the air.
+  assert(
+    oxygen > 0.5,
+    `a clean standing film only gathered ${String(oxygen)} dissolved oxygen in 30 passes`,
+  );
+  // ...and it settles ON saturation, never past it: the approach to equilibrium is saturating, so a clean film
+  // with nothing respiring stops at what the air can justify rather than over-collecting.
+  assert(
+    oxygen <= saturation + CONSERVATION_TOLERANCE,
+    `a clean film over-collected oxygen past saturation: ${String(oxygen)} > ${String(saturation)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("oxygen over and above saturation outgasses back to the air", async () => {
+  // The mirror of the scenario above: seed one cell with MORE oxygen than the standing water over it can hold at
+  // equilibrium (saturation is 1.0 here, this starts at 2.0) and show the same relaxation drives it back down and
+  // stops there - otherwise "approach to saturation" could be hiding a one-way fill that only ever climbs.
+  const seedOxygen = atCell(4, 4, 2.0);
+  const graph = createGraph(
+    zero,
+    zero,
+    [zero, zero, seedOxygen, zero],
+    coefficientsFor(OXYGEN),
+  );
+
+  computePasses(graph, 30);
+
+  const fields = readFields(graph);
+  const cell = texelIndex(4, 4) * 4;
+  const saturation = DISSOLVED_OXYGEN.saturationConcentration * STANDING_WATER;
+  const oxygen = fields.waterMass[cell + 2];
+
+  assert(
+    oxygen < 2.0 - 0.5,
+    `an over-saturated cell never vented oxygen back: still ${String(oxygen)} of 2.0`,
+  );
+  assert(
+    Math.abs(oxygen - saturation) <= 0.1,
+    `an over-saturated cell did not settle back to saturation: ${String(oxygen)} vs ${String(saturation)}`,
+  );
+  // Outgassing brings it down to equilibrium, it does not strip the water bare.
+  assert(
+    oxygen > 0.5,
+    `outgassing drained the cell below its equilibrium: ${String(oxygen)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("too many bacteria starve the water of the oxygen the air supplies", async () => {
+  // Both halves of the request in one comparison: a clean cell and the same cell hosting a dense, self-sustaining
+  // population, both under still standing water with the oxygen law on. The clean cell climbs to saturation; the
+  // bloom - spending oxygen faster than the air can replace it - is held well below it. Same coefficients on both
+  // so the only difference is whether there are bacteria to do the spending.
+  const coefficients = coefficientsFor({ ...OXYGEN, ...GROWTH });
+
+  const cleanGraph = createGraph(zero, zero, nothing, coefficients);
+  // A bloom that started (population) AND has carbon to feed on (organic), so neither dies off nor starves out
+  // across the run - respiration keeps pace with, and outruns, reaeration the whole way.
+  const bloomGraph = createGraph(
+    zero,
+    zero,
+    [zero, atCell(6, 6, 0.5), zero, atCell(6, 6, 0.6)],
+    coefficients,
+  );
+
+  computePasses(cleanGraph, 30);
+  computePasses(bloomGraph, 30);
+
+  const cleanOxygen =
+    readFields(cleanGraph).waterMass[texelIndex(4, 4) * 4 + 2];
+  const bloomOxygen =
+    readFields(bloomGraph).waterMass[texelIndex(6, 6) * 4 + 2];
+
+  assert(
+    cleanOxygen > 0.5,
+    `the clean control never reached saturation, so the comparison proves nothing: ${String(cleanOxygen)}`,
+  );
+  assert(
+    bloomOxygen < 0.2,
+    `a bloom spent oxygen but the cell still held ${String(bloomOxygen)}`,
+  );
+  // And the whole point, stated as one number: the populated cell sits far below the clean one.
+  assert(
+    bloomOxygen < cleanOxygen - 0.3,
+    `bloom held ${String(bloomOxygen)} oxygen vs clean ${String(cleanOxygen)}: respiration did not outpace reaeration`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("the oxygen cycle matches the CPU reference", async () => {
+  // The mirror-image guard on all of the above: a run that actually uses the oxygen law, over half a flooded grid
+  // with carbon and bacteria to respire, compared texel by texel against the model. A divergence between the
+  // shader's oxygen balance and the model's `relaxOxygenFor` shows up here as a whole-texture disagreement - and
+  // dtScale coupling on the saturating rule is exactly the kind of thing that would drift silently otherwise.
+  const seedWaterOrganic = (column: number): number =>
+    column < 8 && column % 3 === 0 ? 0.4 : 0;
+  const seedWaterBacteria = (column: number): number =>
+    column < 8 && column % 2 === 0 ? 0.5 : 0;
+  const seedSoilOrganic = (column: number): number =>
+    column < 8 && column % 2 === 0 ? 0.5 : 0;
+  const depth: ScalarField = (column) =>
+    column < 8 ? STANDING_WATER : DRY_GROUND;
+  const velocityX: ScalarField = (column) => (column < 8 ? FLOW_SPEED : 0);
+  const coefficients = coefficientsFor({
+    ...EXCHANGE,
+    ...GROWTH,
+    ...OXYGEN,
+    soilDecayRate: 0.01,
+    organicDecayRate: 0.01,
+  });
+
+  const graph = createGraph(
+    velocityX,
+    zero,
+    [zero, seedWaterOrganic, zero, seedWaterBacteria],
+    coefficients,
+    {
+      depth,
+      seedGround: [zero, seedSoilOrganic, zero, zero],
+    },
+  );
+
+  const passes = 20;
+  computePasses(graph, passes);
+
+  const fields = readFields(graph);
+  const cpuFields = simulateWaterQualityReference(
+    {
+      waterMass: channelData([zero, seedWaterOrganic, zero, seedWaterBacteria]),
+      groundMass: channelData([zero, seedSoilOrganic, zero, zero]),
+    },
+    depthField(depth),
+    velocityField(velocityX, zero),
+    WIDTH,
+    TERRAIN_SIZE,
+    passes,
+    coefficients,
+  );
+
+  assert(
+    worstDifference(fields.waterMass, cpuFields.waterMass) <= PARITY_TOLERANCE,
+    `the oxygen cycle disagrees with the reference in water by ${String(worstDifference(fields.waterMass, cpuFields.waterMass))}`,
+  );
+  assert(
+    worstDifference(fields.groundMass, cpuFields.groundMass) <=
+      PARITY_TOLERANCE,
+    `the oxygen cycle disagrees with the reference on the ground by ${String(worstDifference(fields.groundMass, cpuFields.groundMass))} - one copy of the law has drifted from the model`,
+  );
+
+  // Both halves have to be doing something, or parity was won by nothing happening: the flooded half carries
+  // oxygen (gathered from the air or spent on respiration) and the drained column holds none.
+  let dryColumnOxygen = 0;
+  let wetOxygen = 0;
+  for (let row = 0; row < WIDTH; row++) {
+    dryColumnOxygen += fields.waterMass[texelIndex(WIDTH - 1, row) * 4 + 2];
+    for (let column = 0; column < 8; column++) {
+      wetOxygen += fields.waterMass[texelIndex(column, row) * 4 + 2];
+    }
+  }
+  assert(
+    dryColumnOxygen <= PARITY_TOLERANCE,
+    `dissolved oxygen exists on the dry column: ${String(dryColumnOxygen)}`,
+  );
+  assert(
+    wetOxygen > 0.1,
+    `no dissolved oxygen anywhere in the flooded grid: ${String(wetOxygen)}`,
   );
 
   completedScenarios += 1;

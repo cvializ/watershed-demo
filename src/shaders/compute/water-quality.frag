@@ -17,6 +17,9 @@ uniform float washOffRate;    // ...and so does this one, which is what balances
 uniform float organicWashOffRate; // ...and this third, the ground's organic matter running off into this film
 uniform float organicConversionRate; // Growth, not exchange: shares its value with terrain-quality.frag via BACTERIA_GROWTH
 uniform float growthGain; // ...and this is the extra fraction an already-established colony converts with
+uniform float oxygenSaturation; // Concentration a wet film equilibrates to with the air, per DISSOLVED_OXYGEN
+uniform float reaerationRate; // Fraction of the gap to that saturation the atmosphere closes per pass
+uniform float deoxygenationRate; // Oxygen a unit of film bacteria burns per pass, below what the air can replace
 uniform int uInjectCount;
 uniform vec4 uInjectPoints[8]; // (x, y, radius, amount) in world units; amount is mass per pass at 60 fps
 uniform float uInjectSpecies[8]; // Channel fed: 0 nitrogen, 1 organic matter, 2 oxygen, 3 bacteria
@@ -56,6 +59,14 @@ const float EXCHANGE_CEILING = 0.15;
 // same answer from the film and from the ground. See BACTERIA_GROWTH in
 // src/gpu/waterFlowSimulation/variables/substanceExchange.ts.
 const float GROWTH_CEILING = 0.25;
+
+// Most of a cell's oxygen-to-saturation gap the atmosphere may close, and most oxygen a cell may lose to
+// respiration, in a single pass. Same reasoning as the ceilings above and the same values on both sides: the
+// approach is a fraction of a gap and the draw a fraction of what is there, so neither can overshoot equilibrium
+// or drive the channel negative in one step. See DISSOLVED_OXYGEN in
+// src/gpu/waterFlowSimulation/variables/substanceExchange.ts.
+const float REAERATION_CEILING = 0.5;
+const float DEOXYGENATION_CEILING = 0.25;
 
 bool insideGrid(vec2 uv) {
     return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
@@ -265,7 +276,29 @@ void main() {
     // surviving two frames at 0.7 each is 0.49, which is what pow gives (plan S6 - a per-pass coefficient that is
     // not frame-rate coupled just means the substance drains faster on a fast machine). The dry case is spelled out
     // because GLSL's pow is undefined at base zero with a fractional exponent, and a dry cell reaches exactly zero.
-    faded.b *= wetness <= 0.0 ? 0.0 : pow(wetness, dtScale);
+    float oxygen = faded.b;
+    oxygen = wetness <= 0.0 ? 0.0 : oxygen * pow(wetness, dtScale);
+
+    // On top of that carry, two processes set where a wet cell sits rather than just how much it keeps:
+    //
+    // 1. Reaeration. The atmosphere sits above the film as an inexhaustible source, so the oxygen relaxes towards
+    //    the amount this much water could hold at saturation (oxygenSaturation * depth). From below that target
+    //    the film drinks oxygen out of the air and climbs towards it; from above it outgasses back down. A clean
+    //    film with nothing respiring therefore settles exactly on saturation and never above, which is what makes
+    //    "absorbed from the atmosphere" mean a saturating approach rather than an unbounded fill.
+    // 2. Deoxygenation. Bacteria in the film spend oxygen as they work through the carbon here, in proportion to
+    //    how many of them there are. A population that eats faster than the air can refill holds the cell below
+    //    saturation - and a bloom big enough outpaces reaeration entirely, so the film trends to zero. That is the
+    //    whole point: too much bacterial growth starves the water of the oxygen the atmosphere keeps offering it.
+    //
+    // The draw is measured on the committed population (faded.a, still the post-transport amount before growth
+    // below adds to it), so this never depends on whether the reservoir is being topped up this same pass.
+    float saturation = oxygenSaturation * depth;
+    float toAtmosphere =
+        (saturation - oxygen) * min(reaerationRate * dtScale, REAERATION_CEILING);
+    float respiration =
+        min(deoxygenationRate * max(faded.a, 0.0) * dtScale, DEOXYGENATION_CEILING);
+    faded.b = max(oxygen + toAtmosphere - respiration, 0.0);
 
     // The ground exchange is applied on the committed population (ownMass.a and terrainQuality.rg inside exchangeAt),
     // which is what lets terrain-quality.frag move precisely these amounts without seeing transport or decay: its side
