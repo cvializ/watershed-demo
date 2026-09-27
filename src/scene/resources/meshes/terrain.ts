@@ -16,10 +16,10 @@ export const TERRAIN_MESH_SEGMENTS = 160;
 export const createTerrainGeometry = () => {
   logger.info("[terrain:geometry]");
 
-  // Create triangular terrain mesh. The world spans -20..+20 on each axis so
-  // terrain fills the view from any camera angle; the DEM itself covers only
-  // -6..+6, and heights clamp to the DEM edge beyond that, reading as a
-  // broad plain surrounding the real valley.
+  // Create triangular terrain mesh. The world spans -20..+20 on each axis and
+  // the Cobbs Creek DEM window is mapped across that whole span, so real
+  // elevation covers the visible ground and only positions beyond the window
+  // clamp to the nearest DEM edge.
   const geometry = new THREE.PlaneGeometry(
     TERRAIN_SIZE,
     TERRAIN_SIZE,
