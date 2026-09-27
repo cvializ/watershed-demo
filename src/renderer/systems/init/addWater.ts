@@ -9,12 +9,12 @@ import { getMesh, MeshEnum } from "@/scene/resources/mesh";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 import { getOrganicMatterDepositor } from "@/scene/resources/organicMatterDeposition";
+import { TERRAIN_SIZE } from "@/terrain/constants";
 import { logger } from "@/utils/logger";
 
 import { waterSimulation } from "./simulation";
 
 const SIM_SIZE = 512;
-const terrainSize = 12;
 
 // Shift-click releases whatever substance the Water Quality view has selected. Organic matter keeps the animal-pat
 // law: same size and mass as the grazing system, so a click reads as one deposit that washes away rather than as a
@@ -83,16 +83,16 @@ export const addWaterInitSystem: RendererInitSystem = (
     // - World Z corresponds to terrain's height direction (original plane Y, inverted)
     // The displacement texture maps: column→X (-6 to +6), row→Z (-6 to +6)
 
-    // Map world coordinates to [0, terrainSize] for the water simulation
-    const x = point.x + terrainSize / 2;
-    const y = point.z + terrainSize / 2; // Removed the negative sign
+    // Map world coordinates to [0, TERRAIN_SIZE] for the water simulation
+    const x = point.x + TERRAIN_SIZE / 2;
+    const y = point.z + TERRAIN_SIZE / 2; // Removed the negative sign
 
     // Debug: log converted coordinates
     logger.debug({ x, y }, "Converted terrain coords");
 
     // Debug: log texture texel coordinates
-    const uvX = x / terrainSize;
-    const uvY = y / terrainSize;
+    const uvX = x / TERRAIN_SIZE;
+    const uvY = y / TERRAIN_SIZE;
     const width = SIM_SIZE; // simulation grid size
     const texelX = Math.floor(uvX * width);
     const centerY = Math.floor((1.0 - uvY) * width); // Y is flipped for texture coordinates

@@ -8,6 +8,7 @@ import {
 import { MeshEnum, setMesh } from "@/scene/resources/mesh";
 import { setOrganicMatterDepositor } from "@/scene/resources/organicMatterDeposition";
 import { setSurfaceMaterialTexture } from "@/scene/resources/surfaceMaterialTexture";
+import { TERRAIN_SIZE } from "@/terrain/constants";
 import { setTexture, TextureEnum } from "@/scene/resources/texture";
 import { createDisplacementTextureResource } from "@/scene/resources/textures/displacement";
 import {
@@ -17,7 +18,6 @@ import {
 import { logger } from "@/utils/logger";
 
 const SIM_SIZE = 512;
-const terrainSize = 12;
 
 export const createSimulationResource = (
   renderer: THREE.WebGLRenderer,
@@ -32,7 +32,7 @@ export const createSimulationResource = (
   // Create surface material texture for terrain painting
   const surfaceMaterialTexture = createSurfaceMaterialTexture(
     SIM_SIZE,
-    terrainSize,
+    TERRAIN_SIZE,
   );
 
   // If we have saved surface material data, restore it
@@ -70,9 +70,9 @@ export const createSimulationResource = (
 
   const waterSimulation = createGpuWaterFlowSimulation(
     SIM_SIZE,
-    terrainSize,
+    TERRAIN_SIZE,
     renderer,
-    createDisplacementTextureResource(512, 12),
+    createDisplacementTextureResource(SIM_SIZE, TERRAIN_SIZE),
     surfaceMaterialMap,
     savedTextures, // Pass saved textures for recreation
   );

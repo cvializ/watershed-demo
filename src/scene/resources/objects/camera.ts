@@ -15,7 +15,8 @@ export const createCameraResource = () => {
     1000,
   );
   camera.position.set(15, 12, 15);
-  camera.zoom = 2.5;
+  // Zoom out so the default view covers most of the enlarged landscape.
+  camera.zoom = 1.5;
   camera.updateProjectionMatrix();
 
   return camera;

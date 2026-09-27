@@ -1,19 +1,30 @@
 import * as THREE from "three";
 
+import { TERRAIN_SIZE } from "@/terrain/constants";
 import { calculateHeight } from "@/terrainUtils";
 import { logger } from "@/utils/logger";
+
+/**
+ * Grid subdivisions for the terrain plane.
+ *
+ * Keep the previous vertex budget (160 segments); the world is wider, so
+ * per-unit density drops but per-frame rebuilds (height-map sampling plus
+ * `computeVertexNormals`) stay affordable.
+ */
+export const TERRAIN_MESH_SEGMENTS = 160;
 
 export const createTerrainGeometry = () => {
   logger.info("[terrain:geometry]");
 
-  // Create triangular terrain mesh
-  const terrainSize = 12;
-  const segments = 160;
+  // Create triangular terrain mesh. The world spans -20..+20 on each axis so
+  // terrain fills the view from any camera angle; the DEM itself covers only
+  // -6..+6, and heights clamp to the DEM edge beyond that, reading as a
+  // broad plain surrounding the real valley.
   const geometry = new THREE.PlaneGeometry(
-    terrainSize,
-    terrainSize,
-    segments,
-    segments,
+    TERRAIN_SIZE,
+    TERRAIN_SIZE,
+    TERRAIN_MESH_SEGMENTS,
+    TERRAIN_MESH_SEGMENTS,
   );
 
   // Convert plane to height-based terrain (flat slope)
