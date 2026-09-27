@@ -8,7 +8,7 @@ export const createTerrainGeometry = () => {
 
   // Create triangular terrain mesh
   const terrainSize = 12;
-  const segments = 80;
+  const segments = 160;
   const geometry = new THREE.PlaneGeometry(
     terrainSize,
     terrainSize,

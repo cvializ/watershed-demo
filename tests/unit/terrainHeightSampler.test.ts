@@ -10,7 +10,7 @@ import * as THREE from "three";
 
 const terrainSize = 12;
 const halfSize = terrainSize / 2;
-const segments = 80;
+const segments = 160;
 
 /** Local plane vertex position for grid coordinates (ix, iy). */
 const localVertex = (ix: number, iy: number) => ({
@@ -66,7 +66,7 @@ test.describe("getTerrainHeightAt", () => {
       const sampled = getTerrainHeightAt(worldX, worldZ);
       expect(sampled).not.toBeNull();
 
-      // The mesh only samples the analytic field once per vertex at 0.15 unit spacing,
+      // The mesh only samples the analytic field once per vertex at 0.075 unit spacing,
       // so comparing straight against calculateHeight can no longer be tight: on rugged
       // terrain bilinear interpolation differs from the analytic height by up to ~0.17
       // (measured), which is far too loose to catch a weighting or half-cell bug.
