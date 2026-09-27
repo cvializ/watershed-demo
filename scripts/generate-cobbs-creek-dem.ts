@@ -1,11 +1,12 @@
 /**
- * Generate a heightfield for the Wissahickon Creek watershed.
+ * Generate a heightfield for the Cobbs Creek valley past Cedar Park,
+ * Philadelphia - a tight ~6 km window centred on that neighbourhood.
  *
- * Fetches real elevation from AWS Terrain Tiles (Mapzen "terrarium" tiles),
+ * Fetches real elevation from AWS Terrain Tiles (Mapzen "terrarium"),
  * resamples the relevant tiles into a single square grid, and writes a
  * committed TypeScript module that the runtime imports synchronously.
  *
- * Usage:  npx tsx scripts/generate-wissahickon-dem.ts
+ * Usage:  npx tsx scripts/generate-cobbs-creek-dem.ts
  *
  * Only Node built-ins are used (node:zlib for PNG inflation), so there are no
  * new project dependencies. Run this from the project root.
@@ -19,35 +20,93 @@ import { inflateSync } from "node:zlib";
 // ---------------------------------------------------------------------------
 
 /**
- * Bounding box chosen to contain the entire main stem of Wissahickon Creek,
- * from the north-west headwaters down to the confluence with the Schuylkill
- * in the south-east. A single channel running across the frame reads as a
- * creek valley rather than a generic bowl.
+ * Reference point: the Cedar Park neighbourhood of Southwest/West
+ * Philadelphia (bounded roughly by Larchwood Avenue to the north,
+ * Kingsessing Avenue to the south, 46th Street to the east and 52nd Street
+ * to the west, with the Cedar Park park and former "Cedar Park" trolley stop
+ * around 51st Street). The neighbourhood sits on the drainage divide between
+ * the Cobbs Creek valley to its west and the Schuylkill valley to its east,
+ * so the window below is centred on it and reaches far enough west to hold
+ * the Cobbs Creek channel.
+ */
+const CENTER = { longitude: -75.2225, latitude: 39.9482 } as const;
+
+/**
+ * Cobbs Creek (Lenape "Karakung", "the place of the wild geese") runs 11.8 mi
+ * (19 km) from its source in Montgomery County (40.0150 N, 75.3256 W, about
+ * 115 m) south and then south-east past the west edge of Cedar Park to its
+ * confluence with Darby Creek at Darby (39.9064 N, 75.2531 W, about sea
+ * level). Its tributary next to Cedar Park, Naylors Run, cuts through the
+ * same valley a little further north.
  *
- * This box is four times the area of the original window (each linear
- * dimension doubled) so that more of the catchment is on the map, including
- * room around the Schuylkill confluence rather than the mouth sitting on the
- * south edge. The centre is unchanged, so the whole creek stays inside and
- * every previously-covered point is still covered, with margin on all sides.
+ * The window is deliberately tight: about 6 km corner to corner, centred on
+ * Cedar Park, so it frames just the stretch of valley that runs past the
+ * neighbourhood. Both ends of the creek (the source and the Darby confluence)
+ * sit outside it and the channel runs off the north-west and south edges -
+ * that is cheaper and more honest than widening the window to chase the whole
+ * 19 km main stem. Cedar Park itself is the inter-valley ridge at the centre
+ * of the window, with the Cobbs Creek channel crossing the western quarter,
+ * so the relief is a genuine valley rather than a synthetic bowl.
+ *
+ * Half-spans keep grid cells square on the ground: a degree of longitude is
+ * cos(39.95 deg), about 0.767, of a degree of latitude, so the 0.072 deg
+ * east-west span matches the 0.0552 deg north-south one at about 6.1 km.
  */
 const BBOX = {
-  west: -75.3,
-  east: -75.16,
-  south: 39.98,
-  north: 40.14,
+  west: CENTER.longitude - 0.036,
+  east: CENTER.longitude + 0.036,
+  south: CENTER.latitude - 0.0276,
+  north: CENTER.latitude + 0.0276,
 } as const;
+
+/**
+ * Known points along the Cobbs Creek valley inside the window, used as sanity
+ * checks. The source is excluded: it is a spring on high ground outside the
+ * window, and an elevation reference (about 115 m) rather than a low point.
+ */
+const VALLEY_CHECK_POINTS = [
+  {
+    name: "Naylors Run above Cedar Park",
+    longitude: -75.2524,
+    latitude: 39.9508,
+  },
+  {
+    name: "Cobbs Creek beside Cedar Park",
+    longitude: -75.244,
+    latitude: 39.948,
+  },
+  {
+    name: "Cobbs Creek at Island Avenue",
+    longitude: -75.2412,
+    latitude: 39.9307,
+  },
+] as const;
+
+/**
+ * Offsets (degrees) sampled around each check point. Cobbs Creek is narrower
+ * than one grid cell in places and a couple of the recorded points are
+ * culverts, so a single cell is not enough to prove the valley is there.
+ * About 350 m each way at this latitude - a tenth of the window width.
+ */
+const CHECK_OFFSETS = [-0.004, -0.002, 0, 0.002, 0.004] as const;
+
+/** How far below the central ridge the valley floor has to fall to count. */
+const MINIMUM_VALLEY_DROP_METRES = 5;
 
 /** Elevation source: Mapzen/AWS Terrain Tiles, "terrarium" RGB-encoded meters. */
 const TILE_BASE = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium";
 
-/** Tile zoom: 14 spans the whole (now 4x larger) bbox from a manageable set of tiles while retaining creek detail. */
+/**
+ * Tile zoom: 14 covers this ~6 km window with ~9 source tiles at ~28 m per
+ * pixel, matching the source's real resolution; zooming in further would only
+ * repeat the same ~30 m source detail.
+ */
 const TILE_ZOOM = 14;
 
 /**
- * Output grid resolution (cells along each axis). Doubled 256 -> 512 in step
- * with the quadrupled area, so each grid cell keeps covering the same slice
- * of real ground and the creek channel stays resolved rather than blurring as
- * the window widens.
+ * Output grid resolution (cells along each axis), unchanged from the wider
+ * window: ~12 m cells oversample the ~30 m source, which keeps a distinct
+ * sample for every texel of the 512-texel displacement map and water grid.
  */
 const GRID_RESOLUTION = 512;
 
@@ -239,6 +298,13 @@ const terrariumPixelToMetres = (
 
 const tileCache = new Map<string, DecodedPng>();
 
+/**
+ * Fetch and decode one terrain tile, retrying a few times because the tile
+ * endpoint occasionally drops a connection. The whole grid needs every tile,
+ * so a single flaky read must not abort the generation.
+ */
+const FETCH_ATTEMPTS = 3;
+
 const fetchTile = async (address: TileAddress): Promise<DecodedPng> => {
   const key = `${address.x}/${address.y}`;
   const cached = tileCache.get(key);
@@ -246,13 +312,30 @@ const fetchTile = async (address: TileAddress): Promise<DecodedPng> => {
     return cached;
   }
 
-  const response = await fetch(tileUrl(address));
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${tileUrl(address)}: ${response.status}`);
+  let lastErrorMessage = "unknown error";
+
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(tileUrl(address));
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch ${tileUrl(address)}: ${response.status}`,
+        );
+      }
+      const decoded = decodePng(Buffer.from(await response.arrayBuffer()));
+      tileCache.set(key, decoded);
+      return decoded;
+    } catch (error) {
+      lastErrorMessage = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `  attempt ${attempt}/${FETCH_ATTEMPTS} for ${key} failed: ${lastErrorMessage}`,
+      );
+    }
   }
-  const decoded = decodePng(Buffer.from(await response.arrayBuffer()));
-  tileCache.set(key, decoded);
-  return decoded;
+
+  throw new Error(
+    `Gave up on ${tileUrl(address)} after ${FETCH_ATTEMPTS} attempts: ${lastErrorMessage}`,
+  );
 };
 
 /**
@@ -268,6 +351,30 @@ const sampleCell = async (
   const latitude =
     BBOX.north - ((row + 0.5) / GRID_RESOLUTION) * (BBOX.north - BBOX.south);
 
+  const { fractionalX, fractionalY } = geoToFractionalPixel(
+    longitude,
+    latitude,
+  );
+  const address = toTileAddress(fractionalX, fractionalY);
+  const png = await fetchTile(address);
+
+  const pixelX = Math.floor((fractionalX - address.x) * png.width);
+  const pixelY = Math.floor((fractionalY - address.y) * png.height);
+
+  const clampedX = Math.min(png.width - 1, Math.max(0, pixelX));
+  const clampedY = Math.min(png.height - 1, Math.max(0, pixelY));
+
+  return terrariumPixelToMetres(png, clampedY * png.width + clampedX);
+};
+
+/**
+ * Sample elevation straight from the source tiles for an arbitrary coordinate,
+ * used by the valley sanity checks below.
+ */
+const sampleCoordinate = async (
+  longitude: number,
+  latitude: number,
+): Promise<number | null> => {
   const { fractionalX, fractionalY } = geoToFractionalPixel(
     longitude,
     latitude,
@@ -315,6 +422,92 @@ const summarize = (grid: Int16Array): { min: number; max: number } => {
   return { min, max };
 };
 
+/**
+ * Lowest elevation within roughly 350 m of a coordinate, sampled straight
+ * from the source tiles.
+ */
+const lowestNear = async (
+  longitude: number,
+  latitude: number,
+): Promise<number | null> => {
+  let lowest: number | null = null;
+
+  for (const longitudeOffset of CHECK_OFFSETS) {
+    for (const latitudeOffset of CHECK_OFFSETS) {
+      const metres = await sampleCoordinate(
+        longitude + longitudeOffset,
+        latitude + latitudeOffset,
+      );
+      if (metres === null) {
+        continue;
+      }
+      if (lowest === null || metres < lowest) {
+        lowest = metres;
+      }
+    }
+  }
+
+  return lowest;
+};
+
+/**
+ * Sample the lowest ground near every known valley point so the generated
+ * window can be checked to contain the Cobbs Creek valley and not just
+ * ridge top.
+ */
+const checkValleyPoints = async (
+  ridgeHeight: number,
+): Promise<{ name: string; metres: number | null }[]> => {
+  const results: { name: string; metres: number | null }[] = [];
+
+  for (const point of VALLEY_CHECK_POINTS) {
+    const metres = await lowestNear(point.longitude, point.latitude);
+    results.push({ name: point.name, metres });
+  }
+
+  for (const result of results) {
+    if (result.metres === null) {
+      console.warn(`  ! ${result.name}: no source coverage`);
+    } else if (result.metres > ridgeHeight - MINIMUM_VALLEY_DROP_METRES) {
+      console.warn(
+        `  ! ${result.name}: ${result.metres.toFixed(1)}m is not clearly below the central ridge (${ridgeHeight.toFixed(1)}m)`,
+      );
+    } else {
+      console.log(
+        `  ok ${result.name}: ${(ridgeHeight - result.metres).toFixed(1)}m below the central ridge`,
+      );
+    }
+  }
+
+  return results;
+};
+
+/**
+ * Render the grid as a coarse ASCII relief map (higher = later character) so
+ * the valley can be eyeballed without opening the scene.
+ */
+const renderReliefMap = (grid: Int16Array, columns = 64, rows = 32): string => {
+  const ramp = " .:-=+*#%@";
+  const { min, max } = summarize(grid);
+  const lines: string[] = [];
+
+  for (let row = 0; row < rows; row += 1) {
+    let line = "";
+    for (let column = 0; column < columns; column += 1) {
+      const sourceRow = Math.floor((row / rows) * GRID_RESOLUTION);
+      const sourceColumn = Math.floor((column / columns) * GRID_RESOLUTION);
+      const metres = grid[sourceRow * GRID_RESOLUTION + sourceColumn] / 10;
+      const step = Math.round(
+        ((metres - min) / (max - min || 1)) * (ramp.length - 1),
+      );
+      line += ramp[step];
+    }
+    lines.push(line);
+  }
+
+  return lines.join("\n");
+};
+
 // ---------------------------------------------------------------------------
 // Emit the committed data module
 // ---------------------------------------------------------------------------
@@ -326,16 +519,18 @@ const emitModule = (path: string, grid: Int16Array): void => {
   const { min, max } = summarize(grid);
 
   const module = `/**
- * GENERATED by scripts/generate-wissahickon-dem.ts — do not edit by hand.
+ * GENERATED by scripts/generate-cobbs-creek-dem.ts — do not edit by hand.
  *
  * Source: AWS Terrain Tiles (Mapzen "terrarium"), zoom ${TILE_ZOOM}.
- * Coverage: Wissahickon Creek watershed, ${BBOX.south}..${BBOX.north} N,
- * ${BBOX.west}..${BBOX.east} W. Elevation grid of ${GRID_RESOLUTION}x${GRID_RESOLUTION}
- * stored as tenths-of-a-metre Int16 (decode: value / ${DECIMETRES_PER_METRE}).
+ * Coverage: Cobbs Creek valley past Cedar Park, centred on the neighbourhood
+ * of the same name in Philadelphia (${BBOX.south.toFixed(4)}..${BBOX.north.toFixed(4)} N,
+ * ${BBOX.west.toFixed(4)}..${BBOX.east.toFixed(4)} W; about 6 km across).
+ * Elevation grid of ${GRID_RESOLUTION}x${GRID_RESOLUTION} stored as
+ * tenths-of-a-metre Int16 (decode: value / ${DECIMETRES_PER_METRE}).
  * Measured relief in this window: ${min.toFixed(1)}m to ${max.toFixed(1)}m.
  */
 
-export const wissahickon = {
+export const cobbsCreek = {
   resolution: ${GRID_RESOLUTION},
   bounds: { west: ${BBOX.west}, east: ${BBOX.east}, south: ${BBOX.south}, north: ${BBOX.north} },
   heightScale: ${DECIMETRES_PER_METRE},
@@ -348,12 +543,31 @@ export const wissahickon = {
 
 const main = async (): Promise<void> => {
   const grid = await buildHeightGrid();
-  const path = "src/terrain/wissahickonHeightField.ts";
+  const path = "src/terrain/cobbsCreekHeightField.ts";
   emitModule(path, grid);
   const { min, max } = summarize(grid);
   console.log(
     `Wrote ${path}: ${GRID_RESOLUTION}x${GRID_RESOLUTION}, relief ${min.toFixed(1)}m..${max.toFixed(1)}m`,
   );
+
+  // The cell at the centre of the window is the Cedar Park ridge; every
+  // mapped grid cell covers about 35 m of ground, so a couple of
+  // neighbourhood blocks per cell.
+  const centreCell =
+    grid[(GRID_RESOLUTION / 2) * GRID_RESOLUTION + GRID_RESOLUTION / 2] /
+    DECIMETRES_PER_METRE;
+  const valleyChecks = await checkValleyPoints(centreCell);
+  const missed = valleyChecks.filter(
+    (check) =>
+      check.metres === null ||
+      check.metres > centreCell - MINIMUM_VALLEY_DROP_METRES,
+  );
+  if (missed.length > 0) {
+    throw new Error(
+      `Window misses the Cobbs Creek valley: ${missed.map((check) => check.name).join(", ")}`,
+    );
+  }
+  console.log(renderReliefMap(grid));
 };
 
 main().catch((error) => {
