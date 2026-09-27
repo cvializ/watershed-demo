@@ -1,5 +1,6 @@
 import * as THREE from "three";
 
+import type { TerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing";
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 import type { TerrainPainter } from "@/terrain/paintTerrain";
 
@@ -28,6 +29,7 @@ export type TerrainPaintingManager = {
   /** Initialize the painting system with required dependencies */
   initialize: (params: {
     terrainPainter: TerrainPainter;
+    terrainHeightEditor: TerrainHeightEditor | null;
     camera: THREE.Camera;
     terrainMesh: THREE.Mesh;
   }) => void;
@@ -96,10 +98,12 @@ export const createTerrainPaintingManager = (): TerrainPaintingManager => {
 
     initialize: ({
       terrainPainter,
+      terrainHeightEditor,
       camera,
       terrainMesh,
     }: {
       terrainPainter: TerrainPainter;
+      terrainHeightEditor: TerrainHeightEditor | null;
       camera: THREE.Camera;
       terrainMesh: THREE.Mesh;
     }) => {
@@ -107,8 +111,11 @@ export const createTerrainPaintingManager = (): TerrainPaintingManager => {
       terrainPainterInstance = terrainPainter;
 
       // Set up painting system
-      if (paintingSystemInstance && terrainPainterInstance) {
-        paintingSystemInstance.setTerrainPainter(terrainPainterInstance);
+      if (paintingSystemInstance) {
+        if (terrainPainterInstance) {
+          paintingSystemInstance.setTerrainPainter(terrainPainterInstance);
+        }
+        paintingSystemInstance.setTerrainHeightEditor(terrainHeightEditor);
         paintingSystemInstance.setCamera(camera);
         paintingSystemInstance.setTerrainMesh(terrainMesh);
       }

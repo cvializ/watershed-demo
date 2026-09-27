@@ -4,6 +4,7 @@ uniform sampler2D terrainHeightmap;
 uniform sampler2D surfaceMaterialMap; // Surface material texture
 uniform sampler2D cloudShadowMap; // Cloud shadow texture from cloud shadow computation variable
 uniform sampler2D waterSourcesMap; // Water sources texture from water sources computation variable
+uniform sampler2D terrainEditMap; // User-painted height offset, added on top of every terrain sample
 uniform float uTerrainSize;
 uniform float simulationSpeed;
 uniform float baseDrainageRate;
@@ -85,8 +86,8 @@ void main() {
     // Add all water sources to current height
     float newWaterHeight = currentWaterHeight + cloudDeposition + sourceAmount;
 
-    // Read terrain height at this cell
-    float terrainHeight = texture2D(terrainHeightmap, uv).r;
+    // Read terrain height at this cell (painted edits add on top of the computed bed)
+    float terrainHeight = texture2D(terrainHeightmap, uv).r + texture2D(terrainEditMap, uv).r;
     float centerTotalHeight = terrainHeight + newWaterHeight;
 
     // Find the lowest neighbor (downslope) among all 8 neighbors
@@ -103,7 +104,7 @@ void main() {
         if (neighborUV.x >= 0.0 && neighborUV.x <= 1.0 &&
             neighborUV.y >= 0.0 && neighborUV.y <= 1.0) {
             
-            float neighborTerrainHeight = texture2D(terrainHeightmap, neighborUV).r;
+            float neighborTerrainHeight = texture2D(terrainHeightmap, neighborUV).r + texture2D(terrainEditMap, neighborUV).r;
             float neighborWaterHeight = texture2D(waterHeight, neighborUV).r;
             float neighborTotalHeight = neighborTerrainHeight + neighborWaterHeight;
             
@@ -151,7 +152,7 @@ void main() {
             neighborUV.y >= 0.0 && neighborUV.y <= 1.0) {
             
             // Get the neighbor's total height
-            float neighborTerrainHeight = texture2D(terrainHeightmap, neighborUV).r;
+            float neighborTerrainHeight = texture2D(terrainHeightmap, neighborUV).r + texture2D(terrainEditMap, neighborUV).r;
             float neighborWaterHeight = texture2D(waterHeight, neighborUV).r;
             float neighborTotalHeight = neighborTerrainHeight + neighborWaterHeight;
             
@@ -166,7 +167,7 @@ void main() {
                 if (neighborOfNeighborUV.x >= 0.0 && neighborOfNeighborUV.x <= 1.0 &&
                     neighborOfNeighborUV.y >= 0.0 && neighborOfNeighborUV.y <= 1.0) {
                     
-                    float n2TerrainHeight = texture2D(terrainHeightmap, neighborOfNeighborUV).r;
+                    float n2TerrainHeight = texture2D(terrainHeightmap, neighborOfNeighborUV).r + texture2D(terrainEditMap, neighborOfNeighborUV).r;
                     float n2WaterHeight = texture2D(waterHeight, neighborOfNeighborUV).r;
                     float n2TotalHeight = n2TerrainHeight + n2WaterHeight;
                     

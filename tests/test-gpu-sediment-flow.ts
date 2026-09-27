@@ -5,6 +5,7 @@ import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer
 
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow.ts";
 import { createGpuTerrainHeight } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainHeight.ts";
+import { createTerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing.ts";
 
 import { test } from "./clientTestUtils.ts";
 import fixturePassthroughShader from "./fixture-passthrough.frag?raw";
@@ -239,6 +240,12 @@ const createSedimentGraph = (
         alpha: () => 1.0,
       })
     : null;
+  // Nothing is painted in these fixtures, but the real shader always samples the terrain edit
+  // map, so bind a fresh all-zero editor (same world-per-texel span as the production grid).
+  const terrainHeightEditor = createTerrainHeightEditor(
+    WIDTH,
+    DEFAULT_SEDIMENT_PARAMS.texelSpan * WIDTH,
+  );
   const { sedimentFlowVariable, updateSedimentFlow, getSedimentFlowUniforms } =
     createGpuSedimentFlow(
       gpuCompute,
@@ -247,6 +254,7 @@ const createSedimentGraph = (
       // slope, so parity compares against the same world-per-texel span the shader gets.
       DEFAULT_SEDIMENT_PARAMS.texelSpan,
       baseHeightMapTexture,
+      terrainHeightEditor.getTexture(),
       waterVelocityVariable,
       waterHeightVariable,
       heightMapVariable,

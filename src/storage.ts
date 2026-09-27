@@ -616,6 +616,7 @@ const updateVisualizationUniformsAfterLoad = (
         updateTerrainGeometryFromRenderTarget(
           heightRenderTarget,
           getRenderer()!,
+          waterSimulation.getTerrainHeightEditor(),
         );
       }
 

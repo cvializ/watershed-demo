@@ -101,7 +101,13 @@ export const simulationSystem: RendererSystem = (
   if (gpuCompute) {
     const heightRenderTarget =
       gpuCompute.getCurrentRenderTarget(heightMapVariable);
-    updateTerrainGeometryFromRenderTarget(heightRenderTarget, renderer);
+    // Re-apply the user-painted height field on top of the GPU heights every rebuild,
+    // so keyboard (H/J) bumps survive the per-frame overwrite from the render target.
+    updateTerrainGeometryFromRenderTarget(
+      heightRenderTarget,
+      renderer,
+      waterSimulation.getTerrainHeightEditor(),
+    );
   }
 
   // Update water visualization with dynamic height map (modified by sediment) and all simulation textures

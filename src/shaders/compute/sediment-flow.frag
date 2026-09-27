@@ -6,6 +6,7 @@
 
 uniform sampler2D uBaseHeightMap; // Static base displacement -> immovable bedrock proxy (A2)
 uniform sampler2D surfaceMaterialMap; // Surface material id per cell (A9)
+uniform sampler2D terrainEditMap; // User-painted height offset, added whenever the bed's elevation is compared
 
 // Parameters (S6/A8) and the A5-A7 constants below. Exchange at the bed is added after transport in
 // the same pass, and both clamps are mass-returning, so nothing here needs a re-normalisation.
@@ -131,12 +132,15 @@ float bedShearAt(
     float speed,
     vec2 cellSize
 ) {
-    // heightMap.r is the bed; terrain-height.frag owns it and this variable only reads it (section 2).
-    float ownBed = texture2D(heightMap, p).r;
+    // heightMap.r is the chain bed and terrainEditMap.r the persistent painted offset; together they
+    // are the bed's actual elevation (terrain-height.frag owns the chain, this variable only reads).
+    // Painting raises or lowers slopes without touching the chain, so erosion still integrates against
+    // the chain below and the painted offset never mints or destroys soil.
+    float ownBed = texture2D(heightMap, p).r + texture2D(terrainEditMap, p).r;
     float downBed = texture2D(
         heightMap,
         clamp(p + flowDirection * cellSize, vec2(0.0), vec2(1.0))
-    ).r;
+    ).r + texture2D(terrainEditMap, clamp(p + flowDirection * cellSize, vec2(0.0), vec2(1.0))).r;
 
     float slopeDrop = max(ownBed - downBed, 0.0);
     return speed * speed * (1.0 + SLOPE_GAIN * slopeDrop);
@@ -146,7 +150,8 @@ float bedShearAt(
  * How much of the bed in texel `p` may be cut without crossing the immovable floor (A2). The
  * pending bed delta is included: this pass' neighbours may already have scheduled material out of that
  * cell, and ignoring it would let two cells each cut the same gram in one step. The max() makes a base
- * map that dips below its own erodibleDepth harmless rather than NaN-producing.
+ * map that dips below its own erodibleDepth harmless rather than NaN-producing. This stays in chain space
+ * on purpose: the painted offset lifts the surface but never manufactures erodible soil above bedrock.
  */
 float availableSoilAt(vec2 p) {
     float scheduledBedDelta = texture2D(sedimentFlow, p).a;
@@ -178,8 +183,8 @@ float talusExcessAt(vec2 p, vec2 cellSize, int index) {
         return 0.0; // border retention: nothing is exported off-grid, so no neighbour imports from beyond either
     }
 
-    float ownBed = texture2D(heightMap, p).r;
-    float downBed = texture2D(heightMap, clamp(target, vec2(0.0), vec2(1.0))).r;
+    float ownBed = texture2D(heightMap, p).r + texture2D(terrainEditMap, p).r;
+    float downBed = texture2D(heightMap, clamp(target, vec2(0.0), vec2(1.0))).r + texture2D(terrainEditMap, clamp(target, vec2(0.0), vec2(1.0))).r;
     return max(ownBed - downBed - talusDropFor(index), 0.0);
 }
 

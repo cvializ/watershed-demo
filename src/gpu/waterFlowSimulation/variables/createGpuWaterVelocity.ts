@@ -12,6 +12,7 @@ import { getUniforms } from "@/utils/uniformUtils";
 export type WaterVelocityUniforms = {
   uWaterHeightmap: THREE.IUniform<THREE.Texture | null>;
   surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+  terrainEditMap: THREE.IUniform<THREE.Texture>;
 };
 
 /**
@@ -54,6 +55,7 @@ export const createGpuWaterVelocity = (
   width: number,
   waterHeightVariable: Variable,
   heightMapVariable: Variable,
+  terrainEditMap: THREE.Texture,
   surfaceMaterialMap?: THREE.Texture | null,
   savedTexture?: THREE.DataTexture,
 ) => {
@@ -73,6 +75,13 @@ export const createGpuWaterVelocity = (
     heightMapVariable, // dynamic bed: flow follows the incised surface, not the base terrain
   ]);
 
+  // Bind the persistent user-painted offset before init: every terrain-height read in the
+  // shader adds it on top of the dependency sampler.
+  const uniformsAtCreate = getUniforms<WaterVelocityUniforms>(
+    waterVelocityVariable.material,
+  );
+  uniformsAtCreate.terrainEditMap = { value: terrainEditMap };
+
   return {
     waterVelocityVariable,
     initWaterVelocity: () => {
@@ -89,6 +98,7 @@ export const createGpuWaterVelocity = (
       } else {
         uniforms.surfaceMaterialMap = { value: null };
       }
+      uniforms.terrainEditMap = { value: terrainEditMap };
     },
   };
 };

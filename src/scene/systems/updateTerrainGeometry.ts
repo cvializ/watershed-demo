@@ -1,6 +1,9 @@
 import * as THREE from "three";
 
+import type { TerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing";
+
 import { getMesh, MeshEnum } from "@/scene/resources/mesh";
+import { TERRAIN_HALF_SIZE } from "@/terrain/constants";
 import { logger } from "@/utils/logger";
 
 const heightMapSize = 512;
@@ -8,10 +11,18 @@ const heightMapSize = 512;
 /**
  * Update terrain mesh geometry vertices by reading from GPU render target.
  * This ensures wireframe follows actual eroded terrain contours.
+ *
+ * The user-painted height offset (keyboard H/J brush) is added on top of each
+ * sampled GPU height, so the mesh shows painted bumps that the simulation never
+ * overwrites: the edit layer lives CPU-side and is re-applied every rebuild.
+ * Vertex terrain coordinates use the same mapping as the paint strokes
+ * (terrain coord = local plane coord offset by half the terrain size), so
+ * strokes land under the cursor and stay where they were painted.
  */
 export const updateTerrainGeometryFromRenderTarget = (
   renderTarget: THREE.WebGLRenderTarget,
   renderer: THREE.WebGLRenderer,
+  terrainHeightEditor: TerrainHeightEditor | null = null,
 ) => {
   const terrainMesh = getMesh(MeshEnum.Terrain);
   const wireframeOverlay = getMesh(MeshEnum.TerrainWireframeOverlay);
@@ -60,8 +71,21 @@ export const updateTerrainGeometryFromRenderTarget = (
       const index = clampedY * heightMapSize + clampedX;
       const heightValue = pixelData[index * 4];
 
+      // Add the user-painted offset at this vertex. The terrain is a plane
+      // rotated -PI/2 around X: world x = local x, world z = -local y, so
+      // terrain coordinates (same space paint strokes use) are
+      // (local x + half, -local y + half).
+      const localX = positions.getX(i);
+      const localY = positions.getY(i);
+      const terrainEdit = terrainHeightEditor
+        ? terrainHeightEditor.getEditAt(
+            localX + TERRAIN_HALF_SIZE,
+            -localY + TERRAIN_HALF_SIZE,
+          )
+        : 0;
+
       // Update Z position (height)
-      positions.setZ(i, heightValue);
+      positions.setZ(i, heightValue + terrainEdit);
       updated++;
     }
 
