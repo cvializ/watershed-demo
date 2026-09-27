@@ -14,6 +14,7 @@ import {
 import { createGpuTerrainQuality } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainQuality.ts";
 import { createGpuWaterQuality } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality.ts";
 import {
+  DISSOLVED_OXYGEN,
   ORGANIC_DEPOSIT_THRESHOLD,
   SUBSTANCE_EXCHANGE_RATES,
 } from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
@@ -201,6 +202,9 @@ type Coefficients = {
   organicWashOffRate: number;
   soilDecayRate: number;
   organicDecayRate: number;
+  oxygenSaturation: number;
+  reaerationRate: number;
+  deoxygenationRate: number;
 };
 
 // The rates production runs on, so the trade exercised here is the real one rather than invented numbers that would
@@ -216,6 +220,13 @@ const COEFFICIENTS: Coefficients = {
   organicWashOffRate: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
   soilDecayRate: 0.0,
   organicDecayRate: 0.0,
+  // Dissolved oxygen is deliberately left off here, unlike the exchange rates above: this file checks that substance
+  // data survives a save/load round trip unchanged, not the reaeration law (that lives in test-gpu-water-quality.ts).
+  // A world that grew oxygen straight out of the air on wet cells would fail the "loaded without data stays empty"
+  // scenario for a reason that has nothing to do with restoration fidelity - so these scenarios run the law off.
+  oxygenSaturation: DISSOLVED_OXYGEN.saturationConcentration,
+  reaerationRate: 0.0,
+  deoxygenationRate: 0.0,
 };
 
 /** The textures a second graph takes from save/load instead of freshly authored fixtures. */
@@ -305,6 +316,9 @@ const createGraph = (restored?: RestoredSeed) => {
     COEFFICIENTS.organicDepositThreshold;
   waterUniforms.washOffRate.value = COEFFICIENTS.washOffRate;
   waterUniforms.organicWashOffRate.value = COEFFICIENTS.organicWashOffRate;
+  waterUniforms.oxygenSaturation.value = COEFFICIENTS.oxygenSaturation;
+  waterUniforms.reaerationRate.value = COEFFICIENTS.reaerationRate;
+  waterUniforms.deoxygenationRate.value = COEFFICIENTS.deoxygenationRate;
 
   const terrainUniforms = terrain.getTerrainQualityUniforms();
   terrainUniforms.soilDecayRate.value = COEFFICIENTS.soilDecayRate;

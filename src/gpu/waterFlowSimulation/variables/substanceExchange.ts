@@ -100,3 +100,57 @@ export type SubstanceGrowthUniforms = {
   organicConversionRate: THREE.IUniform<number>;
   growthGain: THREE.IUniform<number>;
 };
+
+/**
+ * The single source of truth for how dissolved oxygen behaves in the film - a saturating gas-exchange balance
+ * rather than the mass-conserving laws above.
+ *
+ * Oxygen is the only channel that is not conserved. The atmosphere is an effectively infinite reservoir, so a wet
+ * cell that has been starved of oxygen drinks it back out of the air (reaeration), and one that is holding more
+ * than the air can justify gives the surplus back (outgassing). Neither is a transfer to or from the ground - the
+ * gas crosses the water/air boundary, which the ground never has - so unlike the exchange law there is no ledger on
+ * the other side to balance, and unlike the growth law nothing here trades one channel for another.
+ *
+ * The target of that relaxation is depth-scaled: `saturationConcentration` is a concentration, while the channel
+ * stores column-integrated mass (concentration times depth), so a cell that is `depth` deep wants
+ * `saturationConcentration * depth`. A thin film therefore cannot stockpile more oxygen than it could actually
+ * hold, and a dry bed (depth zero) wants none - which is what lets the gas leave with water that drains away.
+ *
+ * On top of that, bacteria breathe. `deoxygenationRate` is the oxygen a unit of population burns per pass while it
+ * works through the carbon in the film: with a clean film the only draw is what the atmosphere can refill, so the
+ * cell sits at saturation, but a bloom that consumes faster than reaeration can replace holds the cell below
+ * equilibrium - and, if the population is large enough, anoxic. That is the whole point: heavy bacterial growth
+ * strips the water of the very oxygen the air keeps trying to give it.
+ *
+ * Not calibrated to anything; these numbers only have to make "clean water reads oxygenated, a manure plume reads
+ * oxygen-starved" true within a handful of seconds.
+ */
+export const DISSOLVED_OXYGEN = {
+  /**
+   * Concentration at, or towards which, a wet film equilibrates with the air. Scaled by depth in the shader to the
+   * column-integrated mass the channel actually stores.
+   */
+  saturationConcentration: 1.0,
+  /** Fraction of the gap to saturation that the atmosphere closes per pass, ceilinged in the shader */
+  reaerationRate: 0.12,
+  /** Ceiling on that per-pass approach, so a long frame cannot refill a whole deficit in one step */
+  reaerationCeiling: 0.5,
+  /**
+   * Oxygen a unit of bacterial population consumes per pass, gated only by how much oxygen the film is holding.
+   * Set high enough that a growing colony outruns reaeration and drives its cell anoxic.
+   */
+  deoxygenationRate: 0.35,
+  /** Ceiling on that per-pass draw, so an enormous population cannot drain a cell below zero in one step */
+  deoxygenationCeiling: 0.25,
+} as const;
+
+/**
+ * The oxygen uniforms the water shader declares. Only the water column owns dissolved oxygen, so - unlike the
+ * exchange and growth uniforms - there is no terrain-side copy to keep the values identical; the shader still
+ * clamps the ceilings itself, since GLSL cannot import `DISSOLVED_OXYGEN`.
+ */
+export type DissolvedOxygenUniforms = {
+  oxygenSaturation: THREE.IUniform<number>;
+  reaerationRate: THREE.IUniform<number>;
+  deoxygenationRate: THREE.IUniform<number>;
+};
