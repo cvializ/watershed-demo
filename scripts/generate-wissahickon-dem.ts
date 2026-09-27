@@ -23,22 +23,33 @@ import { inflateSync } from "node:zlib";
  * from the north-west headwaters down to the confluence with the Schuylkill
  * in the south-east. A single channel running across the frame reads as a
  * creek valley rather than a generic bowl.
+ *
+ * This box is four times the area of the original window (each linear
+ * dimension doubled) so that more of the catchment is on the map, including
+ * room around the Schuylkill confluence rather than the mouth sitting on the
+ * south edge. The centre is unchanged, so the whole creek stays inside and
+ * every previously-covered point is still covered, with margin on all sides.
  */
 const BBOX = {
-  west: -75.265,
-  east: -75.195,
-  south: 40.02,
-  north: 40.1,
+  west: -75.3,
+  east: -75.16,
+  south: 39.98,
+  north: 40.14,
 } as const;
 
 /** Elevation source: Mapzen/AWS Terrain Tiles, "terrarium" RGB-encoded meters. */
 const TILE_BASE = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium";
 
-/** Tile zoom: 14 keeps the whole bbox to a handful of tiles while retaining detail. */
+/** Tile zoom: 14 spans the whole (now 4x larger) bbox from a manageable set of tiles while retaining creek detail. */
 const TILE_ZOOM = 14;
 
-/** Output grid resolution (cells along each axis). 256 covers the 12-unit plane finely. */
-const GRID_RESOLUTION = 256;
+/**
+ * Output grid resolution (cells along each axis). Doubled 256 -> 512 in step
+ * with the quadrupled area, so each grid cell keeps covering the same slice
+ * of real ground and the creek channel stays resolved rather than blurring as
+ * the window widens.
+ */
+const GRID_RESOLUTION = 512;
 
 /** Elevation encoding precision retained in the committed file: tenths of a metre. */
 const DECIMETRES_PER_METRE = 10;
