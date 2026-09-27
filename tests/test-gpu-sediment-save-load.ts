@@ -9,6 +9,7 @@ import {
 } from "@/gpu/waterFlowSimulation/saveLoadSimulationState.ts";
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow.ts";
 import { createGpuTerrainHeight } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainHeight.ts";
+import { createTerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing.ts";
 
 import { test } from "./clientTestUtils.ts";
 import fixturePassthroughShader from "./fixture-passthrough.frag?raw";
@@ -266,6 +267,12 @@ const createSedimentGraph = (restored?: RestoredSeed) => {
     bedSeedTexture,
   );
 
+  // Nothing is painted in this fixture, but the real shader always samples the terrain edit
+  // map, so bind a fresh all-zero editor (same world-per-texel span as the production grid).
+  const terrainHeightEditor = createTerrainHeightEditor(
+    WIDTH,
+    TEXEL_SPAN * WIDTH,
+  );
   const { sedimentFlowVariable, updateSedimentFlow, getSedimentFlowUniforms } =
     createGpuSedimentFlow(
       gpuCompute,
@@ -274,6 +281,7 @@ const createSedimentGraph = (restored?: RestoredSeed) => {
       // both graphs (saved and restored) relax against an identical angle of repose.
       TEXEL_SPAN,
       baseHeightMapTexture,
+      terrainHeightEditor.getTexture(),
       waterVelocityVariable,
       waterHeightVariable,
       heightMapVariable,

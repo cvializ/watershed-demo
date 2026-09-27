@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { GPUComputationRenderer } from "three/addons/misc/GPUComputationRenderer.js";
 
 import type { OrganicDeposit } from "@/gpu/waterFlowSimulation/variables/createGpuTerrainQuality";
+import type { TerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing";
 import type { WaterHeightUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 
@@ -16,6 +17,7 @@ import { createGpuWaterHeight } from "@/gpu/waterFlowSimulation/variables/create
 import { createGpuWaterQuality } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 import { createGpuWaterSources } from "@/gpu/waterFlowSimulation/variables/createGpuWaterSources";
 import { createGpuWaterVelocity } from "@/gpu/waterFlowSimulation/variables/createGpuWaterVelocity";
+import { createTerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing";
 import { logger } from "@/utils/logger";
 import { getUniforms } from "@/utils/uniformUtils";
 
@@ -150,6 +152,13 @@ export type WaterFlowVisualization = {
   getDynamicHeightMapTexture: () => THREE.Texture;
 
   /**
+   * Get the terrain height editor: the CPU-painted field of signed height offsets that every
+   * terrain-height consumer (compute shaders, geometry rebuild, height sampler) adds on top of
+   * the simulation's own height field. Keyboard painting (H raise / J lower) writes it.
+   */
+  getTerrainHeightEditor: () => TerrainHeightEditor;
+
+  /**
    * Get the GPU computation variable for terrain height.
    */
   getHeightMapVariable: () => Variable;
@@ -276,11 +285,19 @@ export const createGpuWaterFlowSimulation = (
 
   const { waterSourcesVariable, initWaterSources, addWater, clearWater } =
     createGpuWaterSources(gpuCompute, width, heightMapTexture, terrainSize);
+
+  // Persistent user-painted height offsets, created before the variables that sample it.
+  // It lives entirely CPU-side (a DataTexture edited from JS), so compute passes never
+  // overwrite a painted bump: every consumer adds the offset on top of the chain value.
+  const terrainHeightEditor = createTerrainHeightEditor(width, terrainSize);
+  const terrainEditMap = terrainHeightEditor.getTexture();
+
   const { waterHeightVariable, initWaterHeight, updateWaterHeight } =
     createGpuWaterHeight(
       gpuCompute,
       width,
       heightMapTexture,
+      terrainEditMap,
       cloudVariable,
       waterSourcesVariable,
       surfaceMaterialMap ?? null,
@@ -301,6 +318,7 @@ export const createGpuWaterFlowSimulation = (
     width,
     waterHeightVariable,
     heightMapVariable, // dynamic bed via the injected dependency sampler (A11)
+    terrainEditMap,
     surfaceMaterialMap ?? null,
     savedTextures && savedTextures.velocityTexture, // Pass saved velocity texture
   );
@@ -315,6 +333,7 @@ export const createGpuWaterFlowSimulation = (
     width,
     terrainSize / width, // world units per texel: what makes the shader's repose angle a slope, not a constant
     heightMapTexture, // static base displacement -> erodible-depth proxy (A2)
+    terrainEditMap,
     waterVelocityVariable,
     waterHeightVariable,
     heightMapVariable,
@@ -463,6 +482,7 @@ export const createGpuWaterFlowSimulation = (
     getWaterHeightVariable: () => waterHeightVariable,
     getCloudVariable: () => cloudVariable,
     getHeightMapVariable: () => heightMapVariable,
+    getTerrainHeightEditor: () => terrainHeightEditor,
     getHeightData: () => {
       // Access the terrain height texture data from heightMapVariable
       const texture = heightMapVariable.initialValueTexture;

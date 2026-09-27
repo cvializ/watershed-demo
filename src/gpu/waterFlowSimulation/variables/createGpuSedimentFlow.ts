@@ -19,6 +19,7 @@ import { getUniforms } from "@/utils/uniformUtils";
 export type SedimentFlowUniforms = {
   uBaseHeightMap: THREE.IUniform<THREE.Texture>;
   surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+  terrainEditMap: THREE.IUniform<THREE.Texture>;
   erosionCoefficient: THREE.IUniform<number>;
   capacityExponent: THREE.IUniform<number>;
   criticalSpeed: THREE.IUniform<number>;
@@ -126,6 +127,7 @@ export const createGpuSedimentFlow = (
   width: number,
   texelSpan: number,
   baseHeightMapTexture: THREE.Texture,
+  terrainEditMap: THREE.Texture,
   waterVelocityVariable: Variable,
   waterHeightVariable: Variable,
   heightMapVariable: Variable,
@@ -154,6 +156,9 @@ export const createGpuSedimentFlow = (
     sedimentFlowVariable.material,
   );
   uniforms.uBaseHeightMap = { value: baseHeightMapTexture };
+  // Persistent user-painted offset, bound before init: every bed elevation comparison in the
+  // shader adds it on top of the chain sampler, while the bedrock/soil budget stays in chain space.
+  uniforms.terrainEditMap = { value: terrainEditMap };
   uniforms.surfaceMaterialMap = {
     value: surfaceMaterialMap ?? getDirtTexture(),
   };

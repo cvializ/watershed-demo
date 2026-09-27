@@ -4,6 +4,7 @@
 // variable's declared dependency (plan S3/A11), so it is deliberately not declared here.
 uniform sampler2D uWaterHeightmap;
 uniform sampler2D surfaceMaterialMap; // Surface material texture
+uniform sampler2D terrainEditMap; // User-painted height offset, added on top of every terrain sample
 
 // Material types
 const float MATERIAL_BARE_DIRT = 0.0;
@@ -43,8 +44,8 @@ void main() {
         return;
     }
 
-    // Get current terrain height
-    float terrainHeight = texture2D(heightMap, uv).r;
+    // Get current terrain height (painted edits add on top of the computed bed)
+    float terrainHeight = texture2D(heightMap, uv).r + texture2D(terrainEditMap, uv).r;
     
     // Find the downslope neighbor and calculate elevation drop
     const vec2 directions[8] = vec2[](
@@ -72,7 +73,7 @@ void main() {
         if (neighborUV.x >= 0.0 && neighborUV.x <= 1.0 &&
             neighborUV.y >= 0.0 && neighborUV.y <= 1.0) {
             
-            float neighborTerrainHeight = texture2D(heightMap, neighborUV).r;
+            float neighborTerrainHeight = texture2D(heightMap, neighborUV).r + texture2D(terrainEditMap, neighborUV).r;
             float neighborWaterHeight = texture2D(uWaterHeightmap, neighborUV).r;
             float neighborTotalHeight = neighborTerrainHeight + neighborWaterHeight;
             

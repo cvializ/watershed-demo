@@ -1,5 +1,8 @@
 import * as THREE from "three";
 
+import type {
+  TerrainHeightEditor,
+} from "@/gpu/waterFlowSimulation/variables/createTerrainHeightEditing";
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
 import { TERRAIN_SIZE } from "@/terrain/constants";
@@ -22,6 +25,8 @@ export type TerrainPaintingConfig = {
 /**
  * Terrain painting system for interactive material painting.
  * Handles mouse/touch input and raycasting to paint materials on terrain.
+ * Also supports keyboard terrain height editing: hold H while hovering the
+ * terrain to raise it, hold J to lower it, using the same brush radius.
  */
 export type TerrainPaintingSystem = {
   /** Update the system (call every frame) */
@@ -29,6 +34,9 @@ export type TerrainPaintingSystem = {
 
   /** Set the terrain painter instance */
   setTerrainPainter: (painter: TerrainPainter) => void;
+
+  /** Set the terrain height editor for keyboard (H/J) height editing */
+  setTerrainHeightEditor: (editor: TerrainHeightEditor | null) => void;
 
   /** Set the camera for raycasting */
   setCamera: (camera: THREE.Camera) => void;
@@ -102,6 +110,7 @@ export const createTerrainPaintingSystem = (
   let camera: THREE.Camera | null = null;
   let terrainMesh: THREE.Mesh | null = null;
   let surfaceMaterialTexture: SurfaceMaterialTexture | null = null;
+  let terrainHeightEditor: TerrainHeightEditor | null = null;
 
   // Raycaster for mouse interaction
   const raycaster = new THREE.Raycaster();
@@ -113,6 +122,17 @@ export const createTerrainPaintingSystem = (
   const paintCooldown = 50; // ms between paint operations
   let lastMousePosition: { x: number; y: number } | null = null;
   let lastWorldPosition: { x: number; y: number } | null = null;
+
+  // Keyboard height editing state: hold H to raise, hold J to lower the
+  // terrain under the cursor while painting is enabled.
+  const HEIGHT_KEYS: Record<string, "raise" | "lower"> = {
+    KeyH: "raise",
+    KeyJ: "lower",
+  };
+  /** Height added/subtracted per stroke while a height key is held. */
+  const HEIGHT_STROKE_STEP = 0.4;
+  const heldHeightKeys = new Set<"raise" | "lower">();
+  let lastHeightPaintTime = 0;
 
   // Clear materials event handler
   const handleClearMaterials = () => {
@@ -162,6 +182,38 @@ export const createTerrainPaintingSystem = (
     // Always prevent context menu on right-click
     event.preventDefault();
     event.stopPropagation();
+  };
+
+  // Track H/J presses for keyboard terrain height editing.
+  const isTextEntryTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+    return (
+      target.isContentEditable ||
+      ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+    );
+  };
+
+  const handleHeightKeyDown = (event: KeyboardEvent): void => {
+    if (!config.enabled || !terrainHeightEditor || event.repeat) return;
+    if (isTextEntryTarget(event.target)) return;
+
+    const direction = HEIGHT_KEYS[event.code];
+    if (!direction) return;
+
+    heldHeightKeys.add(direction);
+    // Stamp immediately so a single tap already shows, then let update()
+    // re-stamp on the shared cooldown while the key is held (smooth build-up
+    // until the editor's per-texel cap).
+    lastHeightPaintTime = 0;
+  };
+
+  const handleHeightKeyUp = (event: KeyboardEvent): void => {
+    const direction = HEIGHT_KEYS[event.code];
+    if (direction) {
+      heldHeightKeys.delete(direction);
+    }
   };
 
   // Convert mouse coordinates to normalized device coordinates
@@ -249,6 +301,8 @@ export const createTerrainPaintingSystem = (
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("keydown", handleHeightKeyDown);
+    window.addEventListener("keyup", handleHeightKeyUp);
   };
 
   // Attach listeners on creation
@@ -274,10 +328,47 @@ export const createTerrainPaintingSystem = (
           lastPaintTime = now;
         }
       }
+
+      // Continuous height editing while H (raise) or J (lower) is held and the
+      // cursor hovers the terrain. Only one direction applies at a time; with
+      // both held they cancel, so nothing gets painted.
+      if (
+        config.enabled &&
+        terrainHeightEditor &&
+        lastWorldPosition &&
+        lastMousePosition
+      ) {
+        const raising = heldHeightKeys.has("raise");
+        const lowering = heldHeightKeys.has("lower");
+        if (raising !== lowering) {
+          const now = performance.now();
+          if (now - lastHeightPaintTime >= paintCooldown) {
+            const step = raising
+              ? HEIGHT_STROKE_STEP
+              : -HEIGHT_STROKE_STEP;
+            terrainHeightEditor.paint(
+              lastWorldPosition.x,
+              lastWorldPosition.y,
+              step,
+              config.brushRadius,
+            );
+            lastHeightPaintTime = now;
+            console.log(
+              "[painting] Height edit", step, "at",
+              lastWorldPosition.x,
+              lastWorldPosition.y,
+            );
+          }
+        }
+      }
     },
 
     setTerrainPainter: (painter: TerrainPainter): void => {
       terrainPainter = painter;
+    },
+
+    setTerrainHeightEditor: (editor: TerrainHeightEditor | null): void => {
+      terrainHeightEditor = editor;
     },
 
     setCamera: (cam: THREE.Camera): void => {
@@ -311,6 +402,7 @@ export const createTerrainPaintingSystem = (
     disable: (): void => {
       config.enabled = false;
       isPainting = false;
+      heldHeightKeys.clear();
     },
 
     isEnabled: (): boolean => {

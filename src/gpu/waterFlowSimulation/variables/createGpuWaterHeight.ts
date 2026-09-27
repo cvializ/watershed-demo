@@ -14,6 +14,7 @@ import { getUniforms } from "@/utils/uniformUtils";
  */
 export type WaterHeightUniforms = {
   terrainHeightmap: THREE.IUniform<THREE.Texture>;
+  terrainEditMap: THREE.IUniform<THREE.Texture>;
   simulationSpeed: THREE.IUniform<number>;
   baseDrainageRate: THREE.IUniform<number>;
   waterSourcesMap: THREE.IUniform<THREE.Texture | null>;
@@ -85,6 +86,7 @@ export const createGpuWaterHeight = (
   gpuCompute: GPUComputationRenderer,
   width: number,
   heightMapTexture: THREE.Texture,
+  terrainEditMap: THREE.Texture,
   cloudShadowVariable: Variable,
   waterSourcesVariable: Variable,
   surfaceMaterialMap?: THREE.Texture | null,
@@ -109,6 +111,8 @@ export const createGpuWaterHeight = (
     waterHeightVariable.material,
   );
   uniforms.terrainHeightmap = { value: heightMapTexture };
+  // User-painted terrain offset: every terrain-height read in the shader adds this on top.
+  uniforms.terrainEditMap = { value: terrainEditMap };
   uniforms.simulationSpeed = { value: 0.5 }; // Default: moderate flow speed
   uniforms.baseDrainageRate = { value: 0.003 }; // Low drainage: water collects in low areas
   uniforms.waterSourcesMap = { value: null };
@@ -127,6 +131,9 @@ export const createGpuWaterHeight = (
       if (surfaceMaterialMap) {
         uniforms.surfaceMaterialMap.value = surfaceMaterialMap;
       }
+      // Re-pin the edit map too: the painted field persists across init, but re-assigning the
+      // same texture keeps the binding explicit next to the other custom samplers.
+      uniforms.terrainEditMap.value = terrainEditMap;
     },
     updateWaterHeight: (time: number) => {
       uniforms.waterSourcesMap.value =

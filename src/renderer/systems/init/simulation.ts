@@ -68,6 +68,7 @@ export const recreateSimulationWithSavedState = (
     if (tm && camera && terrainMesh) {
       tm.initialize({
         terrainPainter,
+        terrainHeightEditor: waterSimulation.getTerrainHeightEditor(),
         camera,
         terrainMesh,
       });
@@ -119,6 +120,7 @@ export const simulationInitSystem: RendererInitSystem = (
     if (tm && camera && terrainMesh) {
       tm.initialize({
         terrainPainter,
+        terrainHeightEditor: waterSimulation.getTerrainHeightEditor(),
         camera,
         terrainMesh,
       });

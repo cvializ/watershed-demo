@@ -147,7 +147,11 @@ export const TerrainPaintingControls = ({
       </div>
 
       <div style={styles.instructions}>
-        <strong>How to paint:</strong> Left-click and drag on terrain
+        <strong>How to paint:</strong> Left-click and drag on terrain.
+        <br />
+        <strong>Height editing:</strong> With Painting ON, hover the terrain
+        and hold <b>H</b> to raise or <b>J</b> to lower a smooth bump (use
+        the Brush Size slider to configure it; hold to deepen).
       </div>
 
       <div style={styles.materialInfo}>
