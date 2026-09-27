@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 import type { SurfaceMaterialTexture } from "@/scene/resources/textures/surfaceMaterial";
+import { TERRAIN_SIZE } from "@/terrain/constants";
 import type { TerrainPainter } from "@/terrain/paintTerrain";
 
 /**
@@ -169,11 +170,6 @@ export const createTerrainPaintingSystem = (
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
   };
 
-  // Get terrain size (assumes terrain is centered at origin)
-  const getTerrainSize = (): number => {
-    return 12; // Matches the terrain size in the project
-  };
-
   // Update cursor position for UI display (without painting)
   const updateCursorPosition = (): void => {
     if (!camera || !terrainMesh) return;
@@ -191,10 +187,9 @@ export const createTerrainPaintingSystem = (
       const intersection = intersects[0];
       const point = intersection.point;
 
-      // Convert world coordinates to terrain coordinates (0 to terrainSize)
-      const terrainSize = getTerrainSize();
-      const x = point.x + terrainSize / 2;
-      const y = point.z + terrainSize / 2;
+      // Convert world coordinates to terrain coordinates (0 to TERRAIN_SIZE)
+      const x = point.x + TERRAIN_SIZE / 2;
+      const y = point.z + TERRAIN_SIZE / 2;
 
       // Store last world position for UI display
       lastWorldPosition = { x, y };
@@ -225,10 +220,9 @@ export const createTerrainPaintingSystem = (
       const intersection = intersects[0];
       const point = intersection.point;
 
-      // Convert world coordinates to terrain coordinates (0 to terrainSize)
-      const terrainSize = getTerrainSize();
-      const x = point.x + terrainSize / 2;
-      const y = point.z + terrainSize / 2;
+      // Convert world coordinates to terrain coordinates (0 to TERRAIN_SIZE)
+      const x = point.x + TERRAIN_SIZE / 2;
+      const y = point.z + TERRAIN_SIZE / 2;
 
       // Store last world position for UI display
       lastWorldPosition = { x, y };

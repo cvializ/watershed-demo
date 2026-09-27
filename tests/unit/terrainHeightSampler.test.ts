@@ -1,16 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { getMesh, MeshEnum, setMesh } from "src/scene/resources/mesh";
-import { createTerrainGeometry } from "src/scene/resources/meshes/terrain";
+import { createTerrainGeometry, TERRAIN_MESH_SEGMENTS } from "src/scene/resources/meshes/terrain";
 import {
   getTerrainHeightAt,
   resetTerrainHeightSampler,
 } from "src/scene/resources/meshes/terrainHeightSampler";
+import { getMesh, MeshEnum, setMesh } from "src/scene/resources/mesh";
+import { TERRAIN_HALF_SIZE, TERRAIN_SIZE } from "src/terrain/constants";
 import { calculateHeight } from "src/terrainUtils";
 import * as THREE from "three";
 
-const terrainSize = 12;
-const halfSize = terrainSize / 2;
-const segments = 160;
+const terrainSize = TERRAIN_SIZE;
+const halfSize = TERRAIN_HALF_SIZE;
+const segments = TERRAIN_MESH_SEGMENTS;
 
 /** Local plane vertex position for grid coordinates (ix, iy). */
 const localVertex = (ix: number, iy: number) => ({
@@ -66,7 +67,7 @@ test.describe("getTerrainHeightAt", () => {
       const sampled = getTerrainHeightAt(worldX, worldZ);
       expect(sampled).not.toBeNull();
 
-      // The mesh only samples the analytic field once per vertex at 0.075 unit spacing,
+      // The mesh only samples the analytic field once per vertex at 0.25 unit spacing,
       // so comparing straight against calculateHeight can no longer be tight: on rugged
       // terrain bilinear interpolation differs from the analytic height by up to ~0.17
       // (measured), which is far too loose to catch a weighting or half-cell bug.

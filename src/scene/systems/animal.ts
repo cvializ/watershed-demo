@@ -8,6 +8,7 @@ import { ANIMAL_RADIUS } from "@/scene/resources/meshes/animal";
 import { getTerrainHeightAt } from "@/scene/resources/meshes/terrainHeightSampler";
 import { getOrganicMatterDepositor } from "@/scene/resources/organicMatterDeposition";
 import { getSurfaceMaterialTexture } from "@/scene/resources/surfaceMaterialTexture";
+import { TERRAIN_HALF_SIZE, TERRAIN_SIZE } from "@/terrain/constants";
 
 // Behaviour state per animal. Wander cadence and deposit cadence both accumulate seconds of game time -
 // never wall-clock time - so pausing does not quietly advance behaviour.
@@ -119,10 +120,8 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
   const directionChangeInterval = 4.0; // Seconds between random direction changes
   const grassBiasStrength = 0.3; // How strongly animals are pulled toward grass (0-1)
 
-  // Terrain and texture configuration
-  const terrainSize = 12; // Physical size of terrain (-6 to +6)
-  const textureSize = 128; // Texture resolution
-  const terrainCenter = terrainSize / 2; // 6 - half size for coordinate conversion
+  // Terrain and texture coordinates use the shared TERRAIN_SIZE / TERRAIN_HALF_SIZE
+  // constants (see src/terrain/constants.ts).
 
   for (const entity$ of animals$) {
     const x = Position.x[entity$];
@@ -137,13 +136,13 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
       const checkX = x + Math.cos(angle) * grazingRadius;
       const checkZ = z + Math.sin(angle) * grazingRadius;
       if (
-        checkX >= -terrainCenter &&
-        checkX <= terrainCenter &&
-        checkZ >= -terrainCenter &&
-        checkZ <= terrainCenter
+        checkX >= -TERRAIN_HALF_SIZE &&
+        checkX <= TERRAIN_HALF_SIZE &&
+        checkZ >= -TERRAIN_HALF_SIZE &&
+        checkZ <= TERRAIN_HALF_SIZE
       ) {
-        const texX = checkX + terrainCenter;
-        const texZ = checkZ + terrainCenter;
+        const texX = checkX + TERRAIN_HALF_SIZE;
+        const texZ = checkZ + TERRAIN_HALF_SIZE;
         if (
           surfaceMaterialTexture.getMaterialAtPosition(texX, texZ) === "grass"
         ) {
@@ -166,10 +165,10 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
         const checkZ = z + Math.sin(angle) * grassDetectionRadius;
 
         if (
-          checkX >= -terrainCenter &&
-          checkX <= terrainCenter &&
-          checkZ >= -terrainCenter &&
-          checkZ <= terrainCenter
+          checkX >= -TERRAIN_HALF_SIZE &&
+          checkX <= TERRAIN_HALF_SIZE &&
+          checkZ >= -TERRAIN_HALF_SIZE &&
+          checkZ <= TERRAIN_HALF_SIZE
         ) {
           // Count grass in a small area around this point
           let grassCount = 0;
@@ -178,13 +177,13 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
             const innerX = checkX + Math.cos(innerAngle) * 1.0;
             const innerZ = checkZ + Math.sin(innerAngle) * 1.0;
             if (
-              innerX >= -terrainCenter &&
-              innerX <= terrainCenter &&
-              innerZ >= -terrainCenter &&
-              innerZ <= terrainCenter
+              innerX >= -TERRAIN_HALF_SIZE &&
+              innerX <= TERRAIN_HALF_SIZE &&
+              innerZ >= -TERRAIN_HALF_SIZE &&
+              innerZ <= TERRAIN_HALF_SIZE
             ) {
-              const innerTexX = innerX + terrainCenter;
-              const innerTexZ = innerZ + terrainCenter;
+              const innerTexX = innerX + TERRAIN_HALF_SIZE;
+              const innerTexZ = innerZ + TERRAIN_HALF_SIZE;
               if (
                 surfaceMaterialTexture.getMaterialAtPosition(
                   innerTexX,
@@ -249,14 +248,14 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
     Position.x[entity$] += Velocity.x[entity$] * dt;
     Position.z[entity$] += Velocity.z[entity$] * dt;
 
-    // Keep animals within terrain bounds (-terrainCenter to +terrainCenter)
+    // Keep animals within terrain bounds (-TERRAIN_HALF_SIZE to +TERRAIN_HALF_SIZE)
     Position.x[entity$] = Math.max(
-      -terrainCenter,
-      Math.min(terrainCenter, Position.x[entity$]),
+      -TERRAIN_HALF_SIZE,
+      Math.min(TERRAIN_HALF_SIZE, Position.x[entity$]),
     );
     Position.z[entity$] = Math.max(
-      -terrainCenter,
-      Math.min(terrainCenter, Position.z[entity$]),
+      -TERRAIN_HALF_SIZE,
+      Math.min(TERRAIN_HALF_SIZE, Position.z[entity$]),
     );
 
     // Step 5.5: Seat the animal on the terrain surface.
@@ -271,62 +270,31 @@ export const animalSystem: SceneSystem = (world, _scene, dt): void => {
       Position.y[entity$] = terrainHeight + ANIMAL_RADIUS;
     }
 
-    // Step 6: Convert world coordinates to texture coordinates (0 to terrainSize)
-    const textureX = Position.x[entity$] + terrainCenter;
-    const textureZ = Position.z[entity$] + terrainCenter;
+    // Step 6: Convert world coordinates to texture coordinates (0 to TERRAIN_SIZE)
+    const textureX = Position.x[entity$] + TERRAIN_HALF_SIZE;
+    const textureZ = Position.z[entity$] + TERRAIN_HALF_SIZE;
 
-    // Step 7: Check and convert grass to bare dirt within grazing radius
-    const radiusPixels = (grazingRadius / terrainSize) * textureSize;
-    const radiusSquared = radiusPixels * radiusPixels;
+    // Step 7: Check and convert grass to bare dirt within grazing radius.
+    // One centered brushstroke keeps the patch aligned with where the animal
+    // stands; the previous per-offset loop re-derived "world" coordinates
+    // that drifted off center, which was invisible on a 12-unit world but
+    // lands outside the shrunk brush radius on a 40-unit one.
+    const textureXClamped = Math.max(0, Math.min(TERRAIN_SIZE, textureX));
+    const textureZClamped = Math.max(0, Math.min(TERRAIN_SIZE, textureZ));
 
-    // Get the center pixel coordinates for efficient iteration
-    const centerX = (textureX / terrainSize) * (textureSize - 1);
-    const centerY =
-      ((terrainSize - textureZ) / terrainSize) * (textureSize - 1); // Flip Y to match texture coordinates
-
-    // Iterate over pixels within the grazing radius
-    const searchRadius = Math.ceil(radiusPixels);
-
-    for (let py = -searchRadius; py <= searchRadius; py++) {
-      for (let px = -searchRadius; px <= searchRadius; px++) {
-        const dx = px;
-        const dy = py;
-        const distanceSquared = dx * dx + dy * dy;
-
-        if (distanceSquared <= radiusSquared) {
-          const pixelX = Math.floor(centerX + px);
-          const pixelY = Math.floor(centerY + py);
-
-          // Clamp to valid texture range
-          if (
-            pixelX >= 0 &&
-            pixelX < textureSize &&
-            pixelY >= 0 &&
-            pixelY < textureSize
-          ) {
-            const worldX = textureX + (px / (textureSize - 1)) * terrainSize;
-            const worldZ = textureZ - (py / (textureSize - 1)) * terrainSize; // Account for Y flip
-
-            // Check if this position has grass and convert to bare dirt
-            const currentMaterial =
-              surfaceMaterialTexture.getMaterialAtPosition(
-                Math.max(0, Math.min(terrainSize, worldX)),
-                Math.max(0, Math.min(terrainSize, worldZ)),
-              );
-
-            if (currentMaterial === "grass") {
-              // Convert grass to bare dirt with a rate factor based on dt
-              // This creates gradual grazing over time
-              surfaceMaterialTexture.paint(
-                Math.max(0, Math.min(terrainSize, worldX)),
-                Math.max(0, Math.min(terrainSize, worldZ)),
-                "bareDirt",
-                0.1, // Small brush for gradual effect
-              );
-            }
-          }
-        }
-      }
+    if (
+      surfaceMaterialTexture.getMaterialAtPosition(
+        textureXClamped,
+        textureZClamped,
+      ) === "grass"
+    ) {
+      // Convert grass to bare dirt under the whole grazing patch.
+      surfaceMaterialTexture.paint(
+        textureXClamped,
+        textureZClamped,
+        "bareDirt",
+        grazingRadius,
+      );
     }
 
     // Step 8: Drop organic matter where it stands, on the same game-time cadence as navigation - a paused world does

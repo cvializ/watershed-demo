@@ -1,5 +1,6 @@
 import type { World } from "bitecs";
 
+import { TERRAIN_SIZE } from "@/terrain/constants";
 import { createAnimal } from "@/world/factories/animal";
 
 /**
@@ -27,11 +28,10 @@ export const addAnimal = (
   world: World,
   options: AnimalOptions = {},
 ): number => {
-  const terrainSize = 12; // Match the terrain size
 
-  const x = options.x ?? Math.random() * terrainSize - terrainSize / 2;
+  const x = options.x ?? Math.random() * TERRAIN_SIZE - TERRAIN_SIZE / 2;
   const y = options.y ?? 0.5; // Default height to sit on terrain surface
-  const z = options.z ?? Math.random() * terrainSize - terrainSize / 2;
+  const z = options.z ?? Math.random() * TERRAIN_SIZE - TERRAIN_SIZE / 2;
 
   return createAnimal(world, x, y, z);
 };

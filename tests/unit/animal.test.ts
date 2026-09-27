@@ -7,6 +7,7 @@ import { setOrganicMatterDepositor } from "src/scene/resources/organicMatterDepo
 import { setSurfaceMaterialTexture } from "src/scene/resources/surfaceMaterialTexture";
 import { createSurfaceMaterialTexture } from "src/scene/resources/textures/surfaceMaterial";
 import { animalSystem } from "src/scene/systems/animal";
+import { TERRAIN_SIZE } from "src/terrain/constants";
 import { addAnimal } from "src/world/factories/addAnimal";
 import { createAnimal } from "src/world/factories/animal";
 import * as THREE from "three";
@@ -45,11 +46,11 @@ test.describe("Animal", () => {
 
     const animal$ = addAnimal(world);
 
-    // Animal should be created within terrain bounds (-6 to 6)
-    expect(Position.x[animal$]).toBeGreaterThanOrEqual(-6);
-    expect(Position.x[animal$]).toBeLessThanOrEqual(6);
-    expect(Position.z[animal$]).toBeGreaterThanOrEqual(-6);
-    expect(Position.z[animal$]).toBeLessThanOrEqual(6);
+    // Animal should be created within terrain bounds (-20 to 20)
+    expect(Position.x[animal$]).toBeGreaterThanOrEqual(-20);
+    expect(Position.x[animal$]).toBeLessThanOrEqual(20);
+    expect(Position.z[animal$]).toBeGreaterThanOrEqual(-20);
+    expect(Position.z[animal$]).toBeLessThanOrEqual(20);
   });
 
   test("should add animal with custom position options", () => {
@@ -101,10 +102,9 @@ test.describe("Animal", () => {
   });
 });
 
-// The animal system reads the terrain in world space (-6..+6) and paints on a
+// The animal system reads the terrain in world space (-20..+20) and paints on a
 // 128px surface material texture, so tests use the same resolution.
 test.describe("Animal movement", () => {
-  const TERRAIN_SIZE = 12;
   const TEXTURE_SIZE = 128;
 
   const distanceTraveled = (entity$: number, x: number, z: number): number =>
@@ -181,7 +181,6 @@ test.describe("Animal movement", () => {
 // simulation does - see src/scene/resources/organicMatterDeposition.ts), so these tests publish a recording one and
 // read back what the system declared.
 test.describe("Organic matter deposition", () => {
-  const TERRAIN_SIZE = 12;
   const TEXTURE_SIZE = 128;
   const FRAME_SECONDS = 0.5; // deliberately chunky: it stands for game time, so pats come due quickly
 

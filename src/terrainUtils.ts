@@ -1,3 +1,4 @@
+import { TERRAIN_HALF_SIZE } from "@/terrain/constants";
 import { wissahickon } from "@/terrain/wissahickonHeightField";
 
 /**
@@ -10,10 +11,12 @@ import { wissahickon } from "@/terrain/wissahickonHeightField";
  * headwaters down to the confluence with the Schuylkill - so the relief is a
  * genuine single-channel valley, not a synthetic bowl.
  *
- * `calculateHeight` keeps the same local-plane contract as before: it is
- * called with coordinates on the terrain mesh (the plane spans -6..+6 in both
- * axes), so both the mesh builder (`createTerrainGeometry`) and the
- * displacement texture builder keep sampling the identical field.
+ * `calculateHeight` maps the enlarged terrain: the mesh now spans -20..+20
+ * in both axes while the DEM bounding box still covers the central -6..+6,
+ * so positions beyond the box clamp to the nearest DEM edge and the world
+ * stays filled with terrain. Both the mesh builder
+ * (`createTerrainGeometry`) and the displacement texture builder keep
+ * sampling the identical field.
  *
  * Real elevation is measured in metres (about 2.6 m at the creek bed up to
  * about 135 m on the surrounding ridges). That is mapped into the scene's
@@ -21,9 +24,6 @@ import { wissahickon } from "@/terrain/wissahickonHeightField";
  * datum and p95 sits at the ridge datum, so a handful of outlier cliffs or a
  * deep channel never crushes the rest of the landscape into flatness.
  */
-
-/** Terrain half-size in world units: the plane spans -6..+6 on each axis. */
-const TERRAIN_HALF_SIZE = 6;
 
 /** Vertical envelope that the scene was framed and lit around. */
 const VALLEY_DATUM = -0.5;
@@ -123,7 +123,7 @@ const sampler = createHeightSampler(decodeHeightMeters());
 
 /**
  * Calculate terrain height (world Y) at a local-plane position, sampled from
- * the real Wissahickon DEM. Coordinates are on the terrain mesh (-6..+6 on
+ * the real Wissahickon DEM. Coordinates are on the terrain mesh (-20..+20 on
  * each axis); out-of-range positions clamp to the nearest edge.
  */
 export const calculateHeight = (x: number, y: number): number => sampler(x, y);
