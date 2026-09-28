@@ -1,4 +1,5 @@
 import type { GameWorldContext } from "@/context";
+import type { SurfaceMaterialType } from "@/scene/resources/textures/surfaceMaterial";
 
 type TerrainPaintingControlsProps = {
   world: GameWorldContext;
@@ -20,7 +21,7 @@ export const TerrainPaintingControls = ({
   const handleMaterialChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
-    const value = event.target.value as "bareDirt" | "grass" | "rocks";
+    const value = event.target.value as SurfaceMaterialType;
     world.terrainBrushMaterial = value;
   };
 
@@ -63,6 +64,20 @@ export const TerrainPaintingControls = ({
             <li>Friction: 0.8 (faster flow)</li>
           </>
         );
+      case "cultivated":
+        return (
+          <>
+            <li>Infiltration: 0.65 (tilled seedbed soaks, not like a sward)</li>
+            <li>Friction: 1.15 (rows slow the flow a little)</li>
+          </>
+        );
+      case "fallow":
+        return (
+          <>
+            <li>Infiltration: 0.55 (crusted ground, close to bare dirt)</li>
+            <li>Friction: 1.05 (sparse stubble barely slows the flow)</li>
+          </>
+        );
       default:
         return (
           <>
@@ -94,6 +109,8 @@ export const TerrainPaintingControls = ({
           <option value="bareDirt">Bare Dirt</option>
           <option value="grass">Grass</option>
           <option value="rocks">Rocks</option>
+          <option value="cultivated">Cultivated</option>
+          <option value="fallow">Fallow</option>
         </select>
       </div>
 

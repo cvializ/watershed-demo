@@ -6,15 +6,21 @@ uniform sampler2D uWaterHeightmap;
 uniform sampler2D surfaceMaterialMap; // Surface material texture
 uniform sampler2D terrainEditMap; // User-painted height offset, added on top of every terrain sample
 
-// Material types
+// Material types (ids from MATERIAL_TYPE_IDS in src/scene/resources/textures/surfaceMaterial.ts)
 const float MATERIAL_BARE_DIRT = 0.0;
 const float MATERIAL_GRASS = 1.0;
 const float MATERIAL_ROCKS = 2.0;
+const float MATERIAL_CULTIVATED = 3.0;
+const float MATERIAL_FALLOW = 4.0;
 
 // Material friction coefficients (higher = slower flow)
 const float FRICTION_BARE_DIRT = 1.0;
 const float FRICTION_GRASS = 1.3; // Grass slows water flow
 const float FRICTION_ROCKS = 0.8; // Smooth rocks allow faster flow
+// A crop field stands between a sward and bare ground: rows and stubble still get in the water's way, just not
+// as a closed mat of grass does. Fallow is closer to bare ground again - sparse, flattened stubble.
+const float FRICTION_CULTIVATED = 1.15;
+const float FRICTION_FALLOW = 1.05;
 
 // Get friction based on material
 float getMaterialFriction(vec2 uv) {
@@ -25,8 +31,12 @@ float getMaterialFriction(vec2 uv) {
         return FRICTION_BARE_DIRT;
     } else if (materialType < 1.5) {
         return FRICTION_GRASS;
-    } else {
+    } else if (materialType < 2.5) {
         return FRICTION_ROCKS;
+    } else if (materialType < 3.5) {
+        return FRICTION_CULTIVATED;
+    } else {
+        return FRICTION_FALLOW;
     }
 }
 

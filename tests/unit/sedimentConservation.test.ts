@@ -7,16 +7,22 @@ import {
   capacityOf,
   DEFAULT_SEDIMENT_PARAMS,
   DEPOSITION_FACTOR_BARE_DIRT,
+  DEPOSITION_FACTOR_CULTIVATED,
+  DEPOSITION_FACTOR_FALLOW,
   DEPOSITION_FACTOR_GRASS,
   DEPOSITION_FACTOR_ROCKS,
   depositionFactorOf,
   DIRECTION_STEPS,
   EPS,
   ERODIBILITY_BARE_DIRT,
+  ERODIBILITY_CULTIVATED,
+  ERODIBILITY_FALLOW,
   ERODIBILITY_GRASS,
   ERODIBILITY_ROCKS,
   erodibilityOf,
   MATERIAL_BARE_DIRT,
+  MATERIAL_CULTIVATED,
+  MATERIAL_FALLOW,
   MATERIAL_GRASS,
   MATERIAL_ROCKS,
   SLOPE_GAIN,
@@ -170,6 +176,8 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
     expect(glslConstant("ERODIBILITY_BARE_DIRT")).toBe(ERODIBILITY_BARE_DIRT);
     expect(glslConstant("ERODIBILITY_GRASS")).toBe(ERODIBILITY_GRASS);
     expect(glslConstant("ERODIBILITY_ROCKS")).toBe(ERODIBILITY_ROCKS);
+    expect(glslConstant("ERODIBILITY_CULTIVATED")).toBe(ERODIBILITY_CULTIVATED);
+    expect(glslConstant("ERODIBILITY_FALLOW")).toBe(ERODIBILITY_FALLOW);
     expect(glslConstant("DEPOSITION_FACTOR_BARE_DIRT")).toBe(
       DEPOSITION_FACTOR_BARE_DIRT,
     );
@@ -179,10 +187,18 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
     expect(glslConstant("DEPOSITION_FACTOR_ROCKS")).toBe(
       DEPOSITION_FACTOR_ROCKS,
     );
+    expect(glslConstant("DEPOSITION_FACTOR_CULTIVATED")).toBe(
+      DEPOSITION_FACTOR_CULTIVATED,
+    );
+    expect(glslConstant("DEPOSITION_FACTOR_FALLOW")).toBe(
+      DEPOSITION_FACTOR_FALLOW,
+    );
 
     // Thresholds are what make the ids and the tables agree; a reworked comparison is a material change.
     expect(shaderSource).toContain("materialId < 0.5");
     expect(shaderSource).toContain("materialId < 1.5");
+    expect(shaderSource).toContain("materialId < 2.5");
+    expect(shaderSource).toContain("materialId < 3.5");
 
     // And the ids themselves come from the texture encoder, not from this file.
     const surfaceMaterialSource = readFileSync(
@@ -193,9 +209,43 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
       [MATERIAL_BARE_DIRT, "bareDirt"],
       [MATERIAL_GRASS, "grass"],
       [MATERIAL_ROCKS, "rocks"],
+      [MATERIAL_CULTIVATED, "cultivated"],
+      [MATERIAL_FALLOW, "fallow"],
     ] as const) {
       expect(surfaceMaterialSource).toContain(`${name}: ${id.toFixed(1)}`);
     }
+  });
+
+  test("the farmed materials sit just off the two anchors they were defined against", () => {
+    // Cultivated erodes a little MORE than grass, fallow a little LESS than bare dirt - and both stay between
+    // the anchor materials rather than jumping past them, so a painted field can never erode like rock or like
+    // a sward. The thresholds in the shader route the ids onto exactly these table rows.
+    expect(erodibilityOf(MATERIAL_CULTIVATED)).toBeGreaterThan(
+      erodibilityOf(MATERIAL_GRASS),
+    );
+    expect(erodibilityOf(MATERIAL_CULTIVATED)).toBeLessThan(
+      erodibilityOf(MATERIAL_BARE_DIRT),
+    );
+    expect(erodibilityOf(MATERIAL_FALLOW)).toBeLessThan(
+      erodibilityOf(MATERIAL_BARE_DIRT),
+    );
+    expect(erodibilityOf(MATERIAL_FALLOW)).toBeGreaterThan(
+      erodibilityOf(MATERIAL_GRASS),
+    );
+
+    // Same ordering for the deposition table: both fields trap something, neither as well as a sward.
+    expect(depositionFactorOf(MATERIAL_CULTIVATED)).toBeLessThan(
+      DEPOSITION_FACTOR_GRASS,
+    );
+    expect(depositionFactorOf(MATERIAL_FALLOW)).toBeLessThan(
+      DEPOSITION_FACTOR_GRASS,
+    );
+    expect(depositionFactorOf(MATERIAL_CULTIVATED)).toBeGreaterThan(
+      DEPOSITION_FACTOR_BARE_DIRT,
+    );
+    expect(depositionFactorOf(MATERIAL_FALLOW)).toBeGreaterThan(
+      DEPOSITION_FACTOR_BARE_DIRT,
+    );
   });
 
   test("mirrors the eight-direction table and its order", () => {
