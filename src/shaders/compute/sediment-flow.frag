@@ -47,17 +47,28 @@ const float ADVECT_HALF_SPEED = 0.1; // phi reaches half its cap at this speed
 const float SLOPE_GAIN = 20.0; // how strongly a downhill drop amplifies bed shear (A5)
 const float WET_THRESHOLD = 0.01; // depth below which settling stops being boosted
 
-// Surface material factors (A9), keyed off surfaceMaterialMap.r with the same < 0.5 / < 1.5 thresholds
-// water-velocity.frag uses, so one painted map drives friction, infiltration and erodibility coherently.
+// Surface material factors (A9), keyed off surfaceMaterialMap.r with the same thresholds water-velocity.frag
+// uses, so one painted map drives friction, infiltration and erodibility coherently. Each threshold sits halfway
+// between two ids from MATERIAL_TYPE_IDS in src/scene/resources/textures/surfaceMaterial.ts, and the last case is
+// the highest id, so a painted id always lands on the material that was painted.
 // The two tables stay separate multipliers rather than one: only erosion carries erodibility (A3), which
 // is what lets a lake bed resist being cut while remaining a good place to drop sediment.
 const float ERODIBILITY_BARE_DIRT = 1.0; // baseline: nothing is holding this soil together
 const float ERODIBILITY_GRASS = 0.3; // roots bind soil, so vegetated banks survive (A9)
 const float ERODIBILITY_ROCKS = 0.1; // rock resists being cut almost entirely
+// A crop field gives up soil a tenth more readily than a sward holds it: the seedbed was turned over, and nothing
+// has had a season to mat together. Fallow is the other side of the same comparison - stubble and weed regrowth
+// over undisturbed soil, so it still holds a little better than bare dirt, just not by much.
+const float ERODIBILITY_CULTIVATED = 0.4;
+const float ERODIBILITY_FALLOW = 0.85;
 
 const float DEPOSITION_FACTOR_BARE_DIRT = 1.0; // baseline settling
 const float DEPOSITION_FACTOR_GRASS = 1.5; // stems trap sediment (A9)
 const float DEPOSITION_FACTOR_ROCKS = 0.8; // smooth rock lets it keep moving
+// Same ordering as erodibility, and for the same reason: rows of crop, then sparse stubble, catch a fraction of
+// what a sward would, so a field that gives up soil easily also keeps a little of what washes back in.
+const float DEPOSITION_FACTOR_CULTIVATED = 1.2;
+const float DEPOSITION_FACTOR_FALLOW = 1.1;
 
 const float CAPACITY_CEILING = 0.25; // depth * speed is unbounded: capacity has to saturate (A6)
 const float STILL_WATER_BOOST = 8.0; // settling multiplier in still water (A7, section 4.5)
@@ -80,8 +91,12 @@ float erodibilityOf(float materialId) {
         return ERODIBILITY_BARE_DIRT;
     } else if (materialId < 1.5) {
         return ERODIBILITY_GRASS;
-    } else {
+    } else if (materialId < 2.5) {
         return ERODIBILITY_ROCKS;
+    } else if (materialId < 3.5) {
+        return ERODIBILITY_CULTIVATED;
+    } else {
+        return ERODIBILITY_FALLOW;
     }
 }
 
@@ -94,8 +109,12 @@ float depositionFactorOf(float materialId) {
         return DEPOSITION_FACTOR_BARE_DIRT;
     } else if (materialId < 1.5) {
         return DEPOSITION_FACTOR_GRASS;
-    } else {
+    } else if (materialId < 2.5) {
         return DEPOSITION_FACTOR_ROCKS;
+    } else if (materialId < 3.5) {
+        return DEPOSITION_FACTOR_CULTIVATED;
+    } else {
+        return DEPOSITION_FACTOR_FALLOW;
     }
 }
 
@@ -344,7 +363,8 @@ void main() {
 
     // A9 puts erodibility on the detach term (not on capacity): material resistance and transport
     // capacity are different physical things, sourced from different tables. Grass at 0.3 is what keeps a
-    // vegetated bank standing while the same flow guts bare soil next to it.
+    // vegetated bank standing while the same flow guts bare soil next to it, and the two farmed materials sit
+    // just off those two anchors (see the tables above).
     // detachRate is the plan's rate limit - 1 means no limit, smaller values only slow the detachment
     // down, so it cannot change where mass ends up, just how quickly it gets there.
     float detachLimit = erosionCoefficient *

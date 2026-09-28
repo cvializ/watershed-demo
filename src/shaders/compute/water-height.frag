@@ -23,16 +23,22 @@ const vec2 directions[8] = vec2[](
     vec2(-1.0, 1.0)    // Northwest
 );
 
-// Material types
+// Material types (ids from MATERIAL_TYPE_IDS in src/scene/resources/textures/surfaceMaterial.ts)
 const float MATERIAL_BARE_DIRT = 0.0;
 const float MATERIAL_GRASS = 1.0;
 const float MATERIAL_ROCKS = 2.0;
+const float MATERIAL_CULTIVATED = 3.0;
+const float MATERIAL_FALLOW = 4.0;
 
 // Material infiltration rates (how quickly water soaks into ground)
 // Higher = more absorption, less surface flow
 const float INFILTRATION_BARE_DIRT = 0.5;
 const float INFILTRATION_GRASS = 0.8;
 const float INFILTRATION_ROCKS = 0.2;
+// Both farmed materials soak a little better than bare dirt and a good deal worse than a sward: a turned seedbed
+// takes water faster than compacted ground does, and neither holds it like rooted grass.
+const float INFILTRATION_CULTIVATED = 0.65;
+const float INFILTRATION_FALLOW = 0.55;
 
 // Get infiltration rate based on material
 float getInfiltrationRate(vec2 uv) {
@@ -43,8 +49,12 @@ float getInfiltrationRate(vec2 uv) {
         return INFILTRATION_BARE_DIRT;
     } else if (materialType < 1.5) {
         return INFILTRATION_GRASS;
-    } else {
+    } else if (materialType < 2.5) {
         return INFILTRATION_ROCKS;
+    } else if (materialType < 3.5) {
+        return INFILTRATION_CULTIVATED;
+    } else {
+        return INFILTRATION_FALLOW;
     }
 }
 

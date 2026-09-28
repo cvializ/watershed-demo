@@ -9,6 +9,10 @@ The terrain painting system allows you to paint different surface materials on t
 - **Bare Dirt**: Moderate absorption, normal flow speed
 - **Grass**: High absorption (soaks up water), higher friction (slows water down)
 - **Rocks**: Low absorption (water runs off), lower friction (faster flow on smooth surfaces)
+- **Cultivated**: Tilled crop ground - a standing crop still gets in the water's way, but a turned seedbed gives
+  up soil a little more readily than a sward holds it
+- **Fallow**: Rested ground - stubble and weed regrowth, so it sits close to bare dirt: it erodes slightly less
+  than bare dirt and soaks slightly more
 
 ## Quick Start
 
@@ -88,7 +92,7 @@ function gameLoop(deltaTime: number) {
 ```typescript
 type TerrainPaintingConfig = {
   enabled: boolean; // Enable/disable painting
-  brushMaterial: "bareDirt" | "grass" | "rocks"; // Current brush material
+  brushMaterial: "bareDirt" | "grass" | "rocks" | "cultivated" | "fallow"; // Current brush material
   brushRadius: number; // Brush radius in world units (default: 2.0)
   brushStrength: number; // Painting strength 0-1 (default: 1.0)
   paintKey: string; // Key to hold for painting (default: "Shift")
@@ -119,11 +123,18 @@ paintingSystem.enable();
 
 Each material type has specific properties that affect water flow:
 
-| Material  | Infiltration Rate | Friction Coefficient | Visual Color    |
-| --------- | ----------------- | -------------------- | --------------- |
-| Bare Dirt | 0.5 (moderate)    | 1.0 (normal)         | Brown (#664C33) |
-| Grass     | 0.8 (high)        | 1.3 (slower flow)    | Green (#339933) |
-| Rocks     | 0.2 (low)         | 0.8 (faster flow)    | Gray (#808099)  |
+| Material   | Infiltration Rate | Friction Coefficient | Visual Color           |
+| ---------- | ----------------- | -------------------- | ---------------------- |
+| Bare Dirt  | 0.5 (moderate)    | 1.0 (normal)         | Brown (#664C33)        |
+| Grass      | 0.8 (high)        | 1.3 (slower flow)    | Green (#339933)        |
+| Rocks      | 0.2 (low)         | 0.8 (faster flow)    | Gray (#808099)         |
+| Cultivated | 0.65 (fair)       | 1.15 (somewhat slow) | Light yellow (#DBCC66) |
+| Fallow     | 0.55 (near dirt)  | 1.05 (near normal)   | Dark yellow (#8C6B1F)  |
+
+Erosion is a separate table (`sediment-flow.frag`): erodibility is 1.0 for bare dirt, 0.3 for grass, 0.1 for
+rocks, 0.4 for cultivated (a crop field gives up soil a touch more readily than a sward) and 0.85 for fallow
+(stubble over rested ground, so a touch less readily than bare dirt). The matching deposition factors - how
+readily quiescent water drops its load onto that surface - are 1.0, 1.5, 0.8, 1.2 and 1.1 in the same order.
 
 ### How Materials Affect Water Flow
 
@@ -136,6 +147,12 @@ Each material type has specific properties that affect water flow:
    - Higher values = slower water flow
    - Grass creates more friction (1.3), slowing water down
    - Rocks are smooth (0.8), allowing faster flow
+   - Cultivated (1.15) and fallow (1.05) are between the two, nearer bare dirt
+
+3. **Erodibility and deposition (sediment)**: Controls how much the bed gives up to flowing water, and how
+   readily still water drops its load back onto it
+   - Cultivated erodes a little MORE than grass (0.4 against 0.3)
+   - Fallow erodes a little LESS than bare dirt (0.85 against 1.0)
 
 ## Example: Creating Material Patterns
 
@@ -198,7 +215,8 @@ The surface material texture is automatically integrated into the water flow sim
 
 1. **Water Height Shader** (`water-height.frag`): Samples the surface material map to determine infiltration rate
 2. **Water Velocity Shader** (`water-velocity.frag`): Samples the surface material map to apply friction
-3. **Terrain Visualization** (`water-visualization.frag`): Displays different colors for each material type
+3. **Sediment Shader** (`sediment-flow.frag`): Samples the surface material map for erodibility and deposition
+4. **Terrain Visualization** (`water-visualization.frag`): Displays different colors for each material type
 
 No additional setup is required - just pass the surface material texture to the water simulation.
 
@@ -211,6 +229,8 @@ The terrain visualization will show different colors for each material:
 - **Brown**: Bare dirt areas
 - **Green**: Grass areas
 - **Gray**: Rock areas
+- **Light yellow**: Cultivated (crop) areas
+- **Dark yellow**: Fallow areas
 
 ### Check Texture Updates
 

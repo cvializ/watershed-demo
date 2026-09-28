@@ -180,18 +180,25 @@ vec3 getTerrainMaterialColor(vec2 uv) {
     vec4 materialData = texture2D(uSurfaceMaterialMap, uv);
     float materialType = materialData.r;
     
-    // Base colors for each material type
+    // Base colors for each material type (kept in step with MATERIAL_PROPERTIES in
+    // src/scene/resources/textures/surfaceMaterial.ts)
     vec3 colorBareDirt = vec3(0.4, 0.3, 0.2);   // Brownish
     vec3 colorGrass = vec3(0.2, 0.6, 0.2);      // Green
     vec3 colorRocks = vec3(0.5, 0.5, 0.6);      // Grayish
+    vec3 colorCultivated = vec3(0.86, 0.8, 0.4); // Light yellow (crop field)
+    vec3 colorFallow = vec3(0.55, 0.42, 0.12);  // Dark yellow (stubble on rested ground)
     
     // Return color based on material type
     if (materialType < 0.5) {
         return colorBareDirt;
     } else if (materialType < 1.5) {
         return colorGrass;
-    } else {
+    } else if (materialType < 2.5) {
         return colorRocks;
+    } else if (materialType < 3.5) {
+        return colorCultivated;
+    } else {
+        return colorFallow;
     }
 }
 

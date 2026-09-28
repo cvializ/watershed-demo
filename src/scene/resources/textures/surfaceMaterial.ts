@@ -1,10 +1,20 @@
 import * as THREE from "three";
 
 /**
- * Surface material types for terrain painting.
- * Each material has different properties that affect water flow.
+ * Every paintable surface material, in the order of the ids below.
+ *
+ * The type is derived from this list, so adding an entry here forces every `Record<SurfaceMaterialType, …>` below
+ * to gain a matching row - instead of a new material silently being answered with whatever the last case returned.
  */
-export type SurfaceMaterialType = "bareDirt" | "grass" | "rocks";
+const SURFACE_MATERIAL_TYPES = [
+  "bareDirt",
+  "grass",
+  "rocks",
+  "cultivated",
+  "fallow",
+] as const;
+
+export type SurfaceMaterialType = (typeof SURFACE_MATERIAL_TYPES)[number];
 
 // Material properties that affect water flow simulation.
 type MaterialProperties = {
@@ -35,14 +45,47 @@ const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties> = {
     frictionCoefficient: 0.8, // Lower friction (faster flow on smooth rocks)
     color: [0.5, 0.5, 0.6], // Grayish
   },
+  cultivated: {
+    // Drilled crop over tilled ground: a standing crop still gets in the water's way and a loosened seedbed
+    // still drinks, but neither is as effective as an unbroken sward.
+    infiltrationRate: 0.65,
+    frictionCoefficient: 1.15,
+    color: [0.86, 0.8, 0.4], // Light yellow (a crop field seen from above)
+  },
+  fallow: {
+    // Rested ground: stubble and weed regrowth over soil nobody is turning over any more, so it sits
+    // between a sward and bare earth - closer to bare earth.
+    infiltrationRate: 0.55,
+    frictionCoefficient: 1.05,
+    color: [0.55, 0.42, 0.12], // Dark yellow (stubble on dry, rested soil)
+  },
 };
 
 // Material type to numeric ID mapping for shader usage.
+// The infiltration, friction and erodibility tables key off these ids with thresholds halfway between
+// them, so a new id needs a new threshold in each of those tables.
 const MATERIAL_TYPE_IDS: Record<SurfaceMaterialType, number> = {
   bareDirt: 0.0,
   grass: 1.0,
   rocks: 2.0,
+  cultivated: 3.0,
+  fallow: 4.0,
 };
+
+/**
+ * The material a stored id resolves to.
+ *
+ * Ids are discrete, so an exact hit is the normal case; taking the nearest known id rather than the last case in
+ * an if-chain means a hand-edited save file holding, say, 2.7 gets the nearest real material instead of whatever
+ * the fallback happened to be.
+ */
+const materialTypeForId = (materialId: number): SurfaceMaterialType =>
+  SURFACE_MATERIAL_TYPES.reduce((closest, candidate) =>
+    Math.abs(MATERIAL_TYPE_IDS[candidate] - materialId) <
+    Math.abs(MATERIAL_TYPE_IDS[closest] - materialId)
+      ? candidate
+      : closest,
+  );
 
 /**
  * Surface material texture manager.
@@ -121,7 +164,8 @@ export type SurfaceMaterialTexture = {
  * The texture stores material type information that affects water flow simulation.
  *
  * Texture format:
- * - R channel: Material type ID (0.0 = bareDirt, 1.0 = grass, 2.0 = rocks)
+ * - R channel: Material type ID (0.0 = bareDirt, 1.0 = grass, 2.0 = rocks, 3.0 = cultivated,
+ *   4.0 = fallow)
  * - G channel: Reserved for future use
  * - B channel: Reserved for future use
  * - A channel: Alpha (always 1.0)
@@ -230,14 +274,8 @@ export const createSurfaceMaterialTexture = (
       const index = pixelY * size + pixelX;
       const materialId = data[index * 4 + 0];
 
-      // Convert material ID to type using exact thresholds for discrete values
-      if (materialId === MATERIAL_TYPE_IDS.bareDirt) {
-        return "bareDirt";
-      } else if (materialId === MATERIAL_TYPE_IDS.grass) {
-        return "grass";
-      } else {
-        return "rocks";
-      }
+      // Resolve it against the id table: exact for anything painted, nearest for anything else
+      return materialTypeForId(materialId);
     },
 
     save: (key: string = "terrainSurfaceMaterials"): boolean => {

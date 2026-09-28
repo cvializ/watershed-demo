@@ -41,12 +41,14 @@ const CONSERVATION_TOLERANCE = 1e-6;
 type ScalarField = (column: number, row: number) => number;
 
 // Material ids exactly as src/scene/resources/textures/surfaceMaterial.ts encodes them in
-// surfaceMaterialMap.r. sediment-flow.frag keys its erodibility and deposition tables off these values with
-// the same < 0.5 / < 1.5 thresholds water-velocity.frag uses (plan A9), so this is the only encoding a
-// painted bank can reach the shader as.
+// surfaceMaterialMap.r. sediment-flow.frag keys its erodibility and deposition tables off these values with the
+// same threshold chain (< 0.5 / < 1.5 / < 2.5 / < 3.5 / else) that water-velocity.frag uses (plan A9), so this
+// is the only encoding a painted bank can reach the shader as.
 const MATERIAL_BARE_DIRT = 0.0;
 const MATERIAL_GRASS = 1.0;
 const MATERIAL_ROCKS = 2.0;
+const MATERIAL_CULTIVATED = 3.0;
+const MATERIAL_FALLOW = 4.0;
 
 type FixtureFields = {
   baseHeight: ScalarField;
@@ -471,7 +473,7 @@ const runAndAudit = (
 // Scenarios below. The completion marker carries this count, so it can only be reached by actually running
 // every scenario rather than by a flag assignment that happens to sit after the assertions.
 let completedScenarios = 0;
-const SCENARIO_COUNT = 14;
+const SCENARIO_COUNT = 15;
 
 const channelBedAt = (column: number): number =>
   Math.max(BEDROCK, 0.95 - 0.02 * column);
@@ -775,6 +777,81 @@ await test("rock resists more than grass, in the same flume and the same flow", 
 });
 completedScenarios += 1;
 
+await test("a crop field gives up soil a little more readily than grass, a fallow field a little less than dirt", async () => {
+  // Both farmed materials are defined by how far they sit from an anchor the suite already measures, so each
+  // comparison is against its own anchor: crop against grass (erodibility 0.4 against 0.3) and fallow against
+  // bare dirt (0.85 against 1.0). One first pass with detach wide open, so what is measured is the
+  // erodibility table (A9), and the runs differ only in the material painted into the bank band.
+  const grassyBank = createSedimentGraph({
+    ...bankBase,
+    material: (column) =>
+      inBand(column, BANK_BAND) ? MATERIAL_GRASS : MATERIAL_BARE_DIRT,
+  });
+  const croppedField = createSedimentGraph({
+    ...bankBase,
+    material: (column) =>
+      inBand(column, BANK_BAND) ? MATERIAL_CULTIVATED : MATERIAL_BARE_DIRT,
+  });
+  const fallowField = createSedimentGraph({
+    ...bankBase,
+    material: (column) =>
+      inBand(column, BANK_BAND) ? MATERIAL_FALLOW : MATERIAL_BARE_DIRT,
+  });
+  const bareBank = createSedimentGraph({
+    ...bankBase,
+    material: () => MATERIAL_BARE_DIRT,
+  });
+
+  withFastExchange(grassyBank);
+  withFastExchange(croppedField);
+  withFastExchange(fallowField);
+  withFastExchange(bareBank);
+
+  computeOnce(grassyBank);
+  computeOnce(croppedField);
+  computeOnce(fallowField);
+  computeOnce(bareBank);
+
+  const grassBandErosion = bandExchange(
+    readPixels(grassyBank, grassyBank.sedimentFlowVariable),
+    BANK_BAND,
+    -1,
+  );
+  assertRatio(
+    bandExchange(
+      readPixels(croppedField, croppedField.sedimentFlowVariable),
+      BANK_BAND,
+      -1,
+    ),
+    grassBandErosion,
+    0.4 / 0.3, // A9: cultivated erodibility / grass erodibility - slightly MORE than grass
+    0.02,
+    "cultivated vs grass erosion in the bank band",
+  );
+
+  const dirtBandErosion = bandExchange(
+    readPixels(bareBank, bareBank.sedimentFlowVariable),
+    BANK_BAND,
+    -1,
+  );
+  assertRatio(
+    bandExchange(
+      readPixels(fallowField, fallowField.sedimentFlowVariable),
+      BANK_BAND,
+      -1,
+    ),
+    dirtBandErosion,
+    0.85, // A9: fallow erodibility / dirt erodibility - slightly LESS than bare dirt
+    0.02,
+    "fallow vs bare dirt erosion in the bank band",
+  );
+
+  // Neither field may buy its erosion behaviour with mass: both keep conserving over a long run.
+  runAndAudit(croppedField, 150);
+  runAndAudit(fallowField, 150);
+});
+completedScenarios += 1;
+
 await test("vegetation traps sediment that bare soil and rock let travel on", async () => {
   // Deposition factor only: with no flow at all nothing can be exported or eroded, so whatever the bed gains
   // in the band settled out of the seeded load, and its rate carries depositionFactor (A9).
@@ -815,6 +892,20 @@ await test("vegetation traps sediment that bare soil and rock let travel on", as
     0.8, // A9: smooth rock keeps sediment moving
     0.02,
     "rock vs dirt settling in one pass",
+  );
+  assertRatio(
+    settledIn(MATERIAL_CULTIVATED),
+    dirtDeposited,
+    1.2, // A9: rows catch a fraction of what a sward would
+    0.02,
+    "cultivated vs dirt settling in one pass",
+  );
+  assertRatio(
+    settledIn(MATERIAL_FALLOW),
+    dirtDeposited,
+    1.1, // A9: stubble on rested ground catches less again
+    0.02,
+    "fallow vs dirt settling in one pass",
   );
 });
 completedScenarios += 1;
@@ -1480,7 +1571,13 @@ const parityFields: FixtureFields = {
   load: (column, row) =>
     row === 2 && column >= 1 && column <= 3 ? HOP_LOAD : 0.0, // a seeded plume, so transport is live from pass 1
   material: (column) =>
-    inBand(column, { from: 6, to: 8 }) ? MATERIAL_GRASS : MATERIAL_BARE_DIRT,
+    inBand(column, { from: 3, to: 5 })
+      ? MATERIAL_CULTIVATED
+      : inBand(column, { from: 6, to: 8 })
+        ? MATERIAL_GRASS
+        : inBand(column, { from: 9, to: 11 })
+          ? MATERIAL_FALLOW
+          : MATERIAL_BARE_DIRT,
 };
 
 await test("the CPU reference model reproduces the GPU texel for texel", async () => {
