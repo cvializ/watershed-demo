@@ -6,6 +6,13 @@ uniform sampler2D uSurfaceMaterialMap; // Surface material texture
 uniform float uTime;                   // Game time, used to animate surface ripples
 uniform vec3 uLightPosition;           // Sun position (treated as a point light, like water-visualization.frag)
 
+// Altitude of the cloud plane above the terrain datum, and the terrain side
+// length the cloud/terrain textures span. Kept in step with CLOUD_ALTITUDE in
+// src/gpu/waterFlowSimulation/createCloudSphereSystem.ts and TERRAIN_SIZE in
+// src/terrain/constants.ts.
+const float CLOUD_ALTITUDE = 3.5;
+const float TERRAIN_SIZE = 40.0;
+
 varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vWorldPosition;
@@ -140,8 +147,13 @@ void main() {
         finalColor = getTerrainMaterialColor(vUv) * shading;
     }
 
-    // Clouds passing overhead darken both the reflection and the terrain.
-    float cloudShadow = texture2D(uCloudShadowMap, vUv).r;
+    // Clouds passing overhead darken both the reflection and the terrain. Sample
+    // the cloud field up-sun: the cloud that hides the sun from this point sits
+    // between this point and the sun, so as the sun sinks the shadow it throws
+    // is displaced farther across the terrain (sunDir.xz maps into the shared
+    // terrain/cloud uv frame; reach is clamped so it stays on the field).
+    float shadowUv = min((CLOUD_ALTITUDE / max(sunDir.y, 0.1)) / TERRAIN_SIZE, 0.2);
+    float cloudShadow = texture2D(uCloudShadowMap, vUv + vec2(sunDir.x, sunDir.z) * shadowUv).r;
     if (sunIsUp && cloudShadow > 0.01) {
         float shadowDarkening = clamp(cloudShadow * 0.8, 0.0, 0.7);
         finalColor *= (1.0 - shadowDarkening);
