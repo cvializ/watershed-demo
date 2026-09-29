@@ -587,6 +587,26 @@ const updateVisualizationUniformsAfterLoad = (
       >(testingMaterial);
     const testingTexture = waterSimulation.getTestingTexture();
     uniform.uTestingTexture.value = testingTexture;
+  } else if (world.visualizationMode === 8) {
+    // Reflections owns its material, so point it at the rebuilt simulation
+    // textures the same way the water flow view does after a load.
+    const reflectionsMaterial = getMaterial(
+      MaterialEnum.Reflections,
+    ) as THREE.ShaderMaterial;
+    const uniforms =
+      getUniforms<
+        import("@/scene/resources/material").ReflectionVisualizationUniforms
+      >(reflectionsMaterial);
+    uniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
+    uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+    uniforms.uLightPosition.value.x = world.sunPosition.x;
+    uniforms.uLightPosition.value.y = world.sunPosition.y;
+    uniforms.uLightPosition.value.z = world.sunPosition.z;
+
+    const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
+    if (surfaceMaterialTexture) {
+      uniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
+    }
   } else {
     // Update water visualization uniforms
     const usesWaterVisualization =

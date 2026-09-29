@@ -51,14 +51,15 @@ export const togglePause = (world: GameWorldContext): void => {
  * Mode 4 (Water Flow) - Shows velocity by default
  * Mode 5 (Water height) - Hides velocity, shows blue water
  * Mode 7 (Water Quality) - Hides velocity, shows blue water with substance overlay
+ * Mode 8 (Reflections) - Shows water with a mirror-like surface, velocity irrelevant
  */
 export const setVisualizationMode = (
   world: GameWorldContext,
   mode: number,
 ): void => {
   world.visualizationMode = mode;
-  // Modes 5 and 7 hide velocity; all other modes show it
-  world.showVelocity = mode !== 5 && mode !== 7;
+  // Modes 5, 7 and 8 have no velocity overlay to show
+  world.showVelocity = mode !== 5 && mode !== 7 && mode !== 8;
 };
 
 export type GameWorldContext = ReturnType<typeof createGameWorldContext>;

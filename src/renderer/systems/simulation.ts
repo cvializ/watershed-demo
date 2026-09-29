@@ -12,6 +12,7 @@ import {
 import {
   getMaterial,
   MaterialEnum,
+  type ReflectionVisualizationUniforms,
   type TestingVisualizationUniforms,
   type WaterVisualizationUniforms,
 } from "@/scene/resources/material";
@@ -59,6 +60,10 @@ export const simulationSystem: RendererSystem = (
 
   // Check if this is a testing simulation material
   const isTestingMaterial = world.visualizationMode === 6;
+
+  // Reflections shows the same bodies of water with a mirror-like surface,
+  // but on its own material so the water flow view stays untouched.
+  const isReflectionsMaterial = world.visualizationMode === 8;
 
   if (isTestingMaterial) {
     logger.debug("[simulation:testing] Using TestingSimulation material");
@@ -132,6 +137,26 @@ export const simulationSystem: RendererSystem = (
     const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
     if (surfaceMaterialTexture) {
       waterUniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
+    }
+  }
+
+  // Bind the same simulation textures on the Reflections material while that
+  // view is active; the material is only ever displayed in mode 8.
+  if (isReflectionsMaterial) {
+    const reflectionsMaterial = getMaterial(
+      MaterialEnum.Reflections,
+    ) as ShaderMaterial;
+    const uniforms =
+      getUniforms<ReflectionVisualizationUniforms>(reflectionsMaterial);
+    uniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
+    uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
+    uniforms.uTime.value = gameTime;
+    uniforms.uLightPosition.value.x = world.sunPosition.x;
+    uniforms.uLightPosition.value.y = world.sunPosition.y;
+    uniforms.uLightPosition.value.z = world.sunPosition.z;
+    const surfaceMaterialTexture = getTexture(TextureEnum.SurfaceMaterialMap);
+    if (surfaceMaterialTexture) {
+      uniforms.uSurfaceMaterialMap.value = surfaceMaterialTexture;
     }
   }
 

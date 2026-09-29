@@ -84,6 +84,10 @@ export const visualizationSystem: SceneSystem = (world, _scene, _dt) => {
         // Testing simulation
         MaterialRef.ref[terrain$] = MaterialEnum.TestingSimulation;
         break;
+      case 8:
+        // Reflections: water rendered with a mirror-like surface
+        MaterialRef.ref[terrain$] = MaterialEnum.Reflections;
+        break;
     }
   }
 };
@@ -107,6 +111,8 @@ function getCurrentMaterial(mode: number): MaterialEnum {
       return MaterialEnum.WaterFlow;
     case 6:
       return MaterialEnum.TestingSimulation;
+    case 8:
+      return MaterialEnum.Reflections;
     default:
       // Default to WaterFlow for unknown modes
       return MaterialEnum.WaterFlow;
