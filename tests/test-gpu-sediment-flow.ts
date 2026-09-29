@@ -42,13 +42,14 @@ type ScalarField = (column: number, row: number) => number;
 
 // Material ids exactly as src/scene/resources/textures/surfaceMaterial.ts encodes them in
 // surfaceMaterialMap.r. sediment-flow.frag keys its erodibility and deposition tables off these values with the
-// same threshold chain (< 0.5 / < 1.5 / < 2.5 / < 3.5 / else) that water-velocity.frag uses (plan A9), so this
-// is the only encoding a painted bank can reach the shader as.
+// same threshold chain (< 0.5 / < 1.5 / < 2.5 / < 3.5 / < 4.5 / else) that water-velocity.frag uses (plan A9),
+// so this is the only encoding a painted bank can reach the shader as.
 const MATERIAL_BARE_DIRT = 0.0;
 const MATERIAL_GRASS = 1.0;
 const MATERIAL_ROCKS = 2.0;
 const MATERIAL_CULTIVATED = 3.0;
 const MATERIAL_FALLOW = 4.0;
+const MATERIAL_FOREST = 5.0;
 
 type FixtureFields = {
   baseHeight: ScalarField;
@@ -473,7 +474,7 @@ const runAndAudit = (
 // Scenarios below. The completion marker carries this count, so it can only be reached by actually running
 // every scenario rather than by a flag assignment that happens to sit after the assertions.
 let completedScenarios = 0;
-const SCENARIO_COUNT = 15;
+const SCENARIO_COUNT = 16;
 
 const channelBedAt = (column: number): number =>
   Math.max(BEDROCK, 0.95 - 0.02 * column);
@@ -852,6 +853,57 @@ await test("a crop field gives up soil a little more readily than grass, a fallo
 });
 completedScenarios += 1;
 
+await test("a wood holds its bank better than the sward next to it, and by more than half", async () => {
+  // Forest is the one material defined by beating an anchor rather than sitting between two, so the only
+  // comparison worth measuring is wood against grass: a duff layer over deeply rooted, unturned ground holds
+  // a bank together harder than a sward does (erodibility 0.15 against grass's 0.3, A9). One first pass with
+  // detach wide open, and the runs differ only in the material painted into the bank band, so what is measured
+  // is the erodibility table.
+  const grassyBank = createSedimentGraph({
+    ...bankBase,
+    material: (column) =>
+      inBand(column, BANK_BAND) ? MATERIAL_GRASS : MATERIAL_BARE_DIRT,
+  });
+  const woodedBank = createSedimentGraph({
+    ...bankBase,
+    material: (column) =>
+      inBand(column, BANK_BAND) ? MATERIAL_FOREST : MATERIAL_BARE_DIRT,
+  });
+
+  withFastExchange(grassyBank);
+  withFastExchange(woodedBank);
+
+  computeOnce(grassyBank);
+  computeOnce(woodedBank);
+
+  const grassBandErosion = bandExchange(
+    readPixels(grassyBank, grassyBank.sedimentFlowVariable),
+    BANK_BAND,
+    -1,
+  );
+  assertRatio(
+    bandExchange(
+      readPixels(woodedBank, woodedBank.sedimentFlowVariable),
+      BANK_BAND,
+      -1,
+    ),
+    grassBandErosion,
+    0.15 / 0.3, // A9: forest erodibility / grass erodibility - HALF as much soil given up
+    0.02,
+    "forest vs grass erosion in the bank band",
+  );
+  // ...and the difference is real, not a pair of runs that simply ran out of loose sediment in one pass.
+  assert(
+    grassBandErosion > 0.0,
+    `grassy bank band eroded nothing: ${String(grassBandErosion)}`,
+  );
+
+  // Neither bank may buy that resistance with mass: both keep conserving over a long run.
+  runAndAudit(grassyBank, 150);
+  runAndAudit(woodedBank, 150);
+});
+completedScenarios += 1;
+
 await test("vegetation traps sediment that bare soil and rock let travel on", async () => {
   // Deposition factor only: with no flow at all nothing can be exported or eroded, so whatever the bed gains
   // in the band settled out of the seeded load, and its rate carries depositionFactor (A9).
@@ -863,8 +915,9 @@ await test("vegetation traps sediment that bare soil and rock let travel on", as
 
     // Pinned rather than inherited, because this scenario reads a ratio out of one pass and that only works while
     // no cell saturates against `carried`: settling is bounded by dtScale * settleRate * factor * 8 (dry cells get
-    // the still-water boost), so the measured table stays honest only below settleRate = 1 / (8 * 1.5). Inheriting
-    // the module default would mean a later retune of A8's rates silently turns this assertion into 1.0 == 1.0.
+    // the still-water boost), so the measured table stays honest only below settleRate = 1 / (8 * 1.8) - and 1.8
+    // is forest, the largest factor in the table. Inheriting the module default would mean a later retune of
+    // A8's rates silently turns this assertion into 1.0 == 1.0.
     graph.sedimentUniforms.settleRate.value = 0.06;
 
     computeOnce(graph);
@@ -906,6 +959,16 @@ await test("vegetation traps sediment that bare soil and rock let travel on", as
     1.1, // A9: stubble on rested ground catches less again
     0.02,
     "fallow vs dirt settling in one pass",
+  );
+
+  // Woodland is the one surface that out-traps a sward: litter, bramble and trunk bases make a deeper filter
+  // than grass stems, so quiescent water over a wood drops its load sooner than over any bank beside it.
+  assertRatio(
+    settledIn(MATERIAL_FOREST),
+    dirtDeposited,
+    1.8, // A9: forest deposition factor - the strongest trap in the table
+    0.02,
+    "forest vs dirt settling in one pass",
   );
 });
 completedScenarios += 1;
@@ -1558,7 +1621,8 @@ const PARITY_PARAMS = paramsWith({ detachRate: 0.2, settleRate: 0.3 });
  * Rows matter here, and they matter differently per channel - the bed ramps across rows as well as along the
  * flow, a load plume is seeded on one row only, and the outlet sits on the far row - so if either side read the
  * grid in the other's orientation this fixture would notice instead of agreeing by symmetry (S5/A14). A material
- * band adds the A9 factors to the comparison.
+ * band adds the A9 factors to the comparison, with wood over the shallow outlet reach so the strongest trap in
+ * the table is checked for parity too.
  */
 const parityFields: FixtureFields = {
   baseHeight: () => BASE_HEIGHT,
@@ -1577,7 +1641,9 @@ const parityFields: FixtureFields = {
         ? MATERIAL_GRASS
         : inBand(column, { from: 9, to: 11 })
           ? MATERIAL_FALLOW
-          : MATERIAL_BARE_DIRT,
+          : inBand(column, { from: 12, to: 13 })
+            ? MATERIAL_FOREST
+            : MATERIAL_BARE_DIRT,
 };
 
 await test("the CPU reference model reproduces the GPU texel for texel", async () => {

@@ -55,24 +55,27 @@ const RELAX_COEFFICIENT_CEILING = 1.0; // relaxRate * dtScale saturates against 
 
 // Surface material ids, as src/scene/resources/textures/surfaceMaterial.ts encodes them in
 // surfaceMaterialMap.r, and the A9 factors keyed off them with the shader's threshold chain
-// (< 0.5, < 1.5, < 2.5, < 3.5, else), which always lands a painted id on the material that was painted.
+// (< 0.5, < 1.5, < 2.5, < 3.5, < 4.5, else), which always lands a painted id on the material that was painted.
 export const MATERIAL_BARE_DIRT = 0.0;
 export const MATERIAL_GRASS = 1.0;
 export const MATERIAL_ROCKS = 2.0;
 export const MATERIAL_CULTIVATED = 3.0;
 export const MATERIAL_FALLOW = 4.0;
+export const MATERIAL_FOREST = 5.0;
 
 export const ERODIBILITY_BARE_DIRT = 1.0;
 export const ERODIBILITY_GRASS = 0.3; // roots bind soil (A9)
 export const ERODIBILITY_ROCKS = 0.1; // rock resists being cut (A9)
 export const ERODIBILITY_CULTIVATED = 0.4; // tilled seedbed gives up soil a touch more readily than a sward
 export const ERODIBILITY_FALLOW = 0.85; // stubble over rested ground, i.e. nearly bare dirt
+export const ERODIBILITY_FOREST = 0.15; // duff and deep roots hold better than a sward, worse than rock (A9)
 
 export const DEPOSITION_FACTOR_BARE_DIRT = 1.0;
 export const DEPOSITION_FACTOR_GRASS = 1.5; // vegetation traps sediment (A9)
 export const DEPOSITION_FACTOR_ROCKS = 0.8; // smooth rock keeps it moving (A9)
 export const DEPOSITION_FACTOR_CULTIVATED = 1.2; // rows catch a fraction of what a sward would
 export const DEPOSITION_FACTOR_FALLOW = 1.1; // sparse stubble catches less again
+export const DEPOSITION_FACTOR_FOREST = 1.8; // litter and trunk bases out-trap a sward (A9)
 
 /** A8 defaults, i.e. what createGpuSedimentFlow seeds its uniforms with. */
 export type SedimentParams = {
@@ -277,7 +280,9 @@ export const erodibilityOf = (materialId: number): number =>
         ? ERODIBILITY_ROCKS
         : materialId < 3.5
           ? ERODIBILITY_CULTIVATED
-          : ERODIBILITY_FALLOW;
+          : materialId < 4.5
+            ? ERODIBILITY_FALLOW
+            : ERODIBILITY_FOREST;
 
 /** sediment-flow.frag depositionFactorOf (A9). */
 export const depositionFactorOf = (materialId: number): number =>
@@ -289,7 +294,9 @@ export const depositionFactorOf = (materialId: number): number =>
         ? DEPOSITION_FACTOR_ROCKS
         : materialId < 3.5
           ? DEPOSITION_FACTOR_CULTIVATED
-          : DEPOSITION_FACTOR_FALLOW;
+          : materialId < 4.5
+            ? DEPOSITION_FACTOR_FALLOW
+            : DEPOSITION_FACTOR_FOREST;
 
 /** GLSL smoothstep(0.0, edge, x), which the shader uses for its wet mask. */
 const smoothStep = (edge: number, value: number): number => {

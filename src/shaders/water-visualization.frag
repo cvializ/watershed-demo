@@ -187,6 +187,7 @@ vec3 getTerrainMaterialColor(vec2 uv) {
     vec3 colorRocks = vec3(0.5, 0.5, 0.6);      // Grayish
     vec3 colorCultivated = vec3(0.86, 0.8, 0.4); // Light yellow (crop field)
     vec3 colorFallow = vec3(0.55, 0.42, 0.12);  // Dark yellow (stubble on rested ground)
+    vec3 colorForest = vec3(0.04, 0.18, 0.06);  // Dark green (closed canopy, seen from above)
     
     // Return color based on material type
     if (materialType < 0.5) {
@@ -197,8 +198,10 @@ vec3 getTerrainMaterialColor(vec2 uv) {
         return colorRocks;
     } else if (materialType < 3.5) {
         return colorCultivated;
-    } else {
+    } else if (materialType < 4.5) {
         return colorFallow;
+    } else {
+        return colorForest;
     }
 }
 

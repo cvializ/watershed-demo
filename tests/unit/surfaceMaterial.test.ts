@@ -23,6 +23,7 @@ const SURFACE_MATERIAL_TYPES: SurfaceMaterialType[] = [
   "rocks",
   "cultivated",
   "fallow",
+  "forest",
 ];
 
 /** A brush stroke big enough to cover a whole texel of this grid. */
@@ -81,6 +82,7 @@ test.describe("cultivated and fallow ground", () => {
       ["rocks", 2.0],
       ["cultivated", 3.0],
       ["fallow", 4.0],
+      ["forest", 5.0],
     ]);
   });
 
@@ -158,5 +160,77 @@ test.describe("cultivated and fallow ground", () => {
     }
 
     expect(surface.getMaterialAtPosition(20, 20)).toBe("cultivated");
+  });
+});
+
+test.describe("woodland", () => {
+  test("paints forest, reads it back, and keeps it through a save round trip", () => {
+    const surface = createSurfaceMaterialTexture(SIZE, TERRAIN_SIZE);
+
+    surface.paint(20, 20, "forest", BRUSH_RADIUS);
+    expect(surface.getMaterialAtPosition(20, 20)).toBe("forest");
+
+    // Export/import is the save path: a painted stand has to come back as forest, or a reloaded scene would
+    // quietly turn every wood into something else.
+    const saved = surface.exportToJson();
+    expect(surface.importFromJson(saved)).toBe(true);
+    expect(surface.getMaterialAtPosition(20, 20)).toBe("forest");
+
+    surface.clear();
+    expect(surface.getMaterialAtPosition(20, 20)).toBe("grass");
+  });
+
+  test("is dark green - the same hue as grass, only deeper", () => {
+    const surface = createSurfaceMaterialTexture(SIZE, TERRAIN_SIZE);
+    const forest = surface.getMaterialProperties("forest");
+    const grass = surface.getMaterialProperties("grass");
+    const [red, green, blue] = forest.color;
+
+    // Green leads both other channels, so a stand reads as vegetation rather than as soil or stone, and every
+    // channel sits under grass's, so a forest is visibly darker from above than the sward next to it.
+    expect(green).toBeGreaterThan(red);
+    expect(green).toBeGreaterThan(blue);
+    expect(red).toBeLessThan(grass.color[0]);
+    expect(green).toBeLessThan(grass.color[1]);
+    expect(blue).toBeLessThan(grass.color[2]);
+
+    // ...but not so dark that a painted wood is indistinguishable from a cloud shadow.
+    expect(green).toBeGreaterThan(0.1);
+    expect(green).toBeLessThan(0.4);
+  });
+
+  test("is the thirstiest and slowest ground in the table", () => {
+    const surface = createSurfaceMaterialTexture(SIZE, TERRAIN_SIZE);
+    const forest = surface.getMaterialProperties("forest");
+
+    // A closed canopy over unturned, deeply rooted ground: nothing else in the table soaks or slows a sheet
+    // flow better, so every other substance sits below forest on both counts.
+    for (const materialType of SURFACE_MATERIAL_TYPES) {
+      if (materialType === "forest") {
+        continue;
+      }
+
+      const properties = surface.getMaterialProperties(materialType);
+      expect(forest.infiltrationRate).toBeGreaterThan(
+        properties.infiltrationRate,
+      );
+      expect(forest.frictionCoefficient).toBeGreaterThan(
+        properties.frictionCoefficient,
+      );
+    }
+  });
+
+  test("an id past the end of the table resolves to forest, the nearest real substance", () => {
+    const surface = createSurfaceMaterialTexture(SIZE, TERRAIN_SIZE);
+    const data = (surface.getTexture().image as { data: Float32Array }).data;
+
+    // 4.7 is nobody's id, but it is closer to forest's 5.0 than to fallow's 4.0, so a hand-edited save file
+    // holding it should read as woodland rather than as whatever a fallthrough case returned.
+    surface.clear();
+    for (let index = 0; index < SIZE * SIZE; index++) {
+      data[index * 4] = 4.7;
+    }
+
+    expect(surface.getMaterialAtPosition(20, 20)).toBe("forest");
   });
 });
