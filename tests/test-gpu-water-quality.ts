@@ -12,6 +12,7 @@ import {
 import {
   BACTERIA_GROWTH,
   DISSOLVED_OXYGEN,
+  NITROGEN_SUPPLY,
   ORGANIC_DEPOSIT_THRESHOLD,
   SUBSTANCE_EXCHANGE_RATES,
 } from "@/gpu/waterFlowSimulation/variables/substanceExchange.ts";
@@ -23,6 +24,7 @@ import {
   simulateWaterQualityReference,
   totalBacteria,
   totalBacteriaAndOrganic,
+  totalNitrogen,
   totalOrganicMatter,
   WET_DEPTH,
   type OrganicDepositSource,
@@ -78,7 +80,7 @@ const assert = (condition: boolean, message: string): void => {
 // Scenarios that actually finished. A throw inside a scenario skips its increment, so the final check is
 // evidence of work rather than just a statement having executed.
 let completedScenarios = 0;
-const SCENARIO_COUNT = 32;
+const SCENARIO_COUNT = 35;
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(256, 256);
@@ -137,6 +139,7 @@ type Coefficients = {
   organicDepositThreshold: number;
   washOffRate: number;
   organicWashOffRate: number;
+  nitrogenAbsorptionRate: number;
   soilDecayRate: number;
   organicDecayRate: number;
   organicConversionRate: number;
@@ -144,6 +147,8 @@ type Coefficients = {
   oxygenSaturation: number;
   reaerationRate: number;
   deoxygenationRate: number;
+  cultivationSupplyRate: number;
+  cultivationNitrogenTarget: number;
 };
 
 // Pure transport: no fade, no exchange, no growth and one pass per step, so totals are exact and any movement came
@@ -156,6 +161,7 @@ const TRANSPORT_ONLY: Coefficients = {
   organicDepositThreshold: ORGANIC_DEPOSIT_THRESHOLD,
   washOffRate: 0.0,
   organicWashOffRate: 0.0,
+  nitrogenAbsorptionRate: 0.0,
   soilDecayRate: 0.0,
   organicDecayRate: 0.0,
   organicConversionRate: 0.0,
@@ -165,6 +171,9 @@ const TRANSPORT_ONLY: Coefficients = {
   oxygenSaturation: DISSOLVED_OXYGEN.saturationConcentration,
   reaerationRate: 0.0,
   deoxygenationRate: 0.0,
+  // ...and the cultivation source is off too: a transport-only run sees no nitrogen appear on any cell.
+  cultivationSupplyRate: 0.0,
+  cultivationNitrogenTarget: 0.0,
 };
 
 const coefficientsFor = (overrides: Partial<Coefficients>): Coefficients => ({
@@ -198,6 +207,14 @@ const OXYGEN = {
   deoxygenationRate: DISSOLVED_OXYGEN.deoxygenationRate,
 };
 
+// And the nitrogen law: production's absorption rate and cultivation supply, so a scenario about "cultivated ground
+// fertilises the soil and a film over it drinks the nitrogen back" runs the rates a player sees, not invented ones.
+const NITROGEN = {
+  nitrogenAbsorptionRate: SUBSTANCE_EXCHANGE_RATES.nitrogenAbsorptionRate,
+  cultivationSupplyRate: NITROGEN_SUPPLY.cultivationSupplyRate,
+  cultivationNitrogenTarget: NITROGEN_SUPPLY.cultivationNitrogenTarget,
+};
+
 /**
  * Build one scenario's graph: faked flow underneath, both real substance variables on top.
  *
@@ -214,7 +231,11 @@ const createGraph = (
   velocityY: ScalarField,
   seedMass: readonly ScalarField[],
   coefficients: Coefficients = TRANSPORT_ONLY,
-  options: { depth?: ScalarField; seedGround?: readonly ScalarField[] } = {},
+  options: {
+    depth?: ScalarField;
+    seedGround?: readonly ScalarField[];
+    material?: ScalarField;
+  } = {},
 ) => {
   const gpuCompute = new GPUComputationRenderer(WIDTH, WIDTH, renderer);
 
@@ -238,6 +259,10 @@ const createGraph = (
     channelData([depth, zero, zero, () => 1.0]),
   );
 
+  // Surface material per cell: only cells whose R reads as `cultivated` (id 3) keep laying nitrogen down, so the
+  // default of all-grass (id 1) means nothing is fertilised and the source stays off.
+  const material = options.material ?? (() => 1.0);
+
   const quality = createGpuWaterQuality(
     gpuCompute,
     WIDTH,
@@ -254,6 +279,7 @@ const createGraph = (
     waterHeightVariable,
     quality,
     groundSeed,
+    material,
   );
 
   // Override after init and before the first pass: these uniforms are what a scenario's coefficients mean.
@@ -266,6 +292,8 @@ const createGraph = (
   uniforms.organicWashOffRate.value = coefficients.organicWashOffRate;
   uniforms.organicConversionRate.value = coefficients.organicConversionRate;
   uniforms.growthGain.value = coefficients.growthGain;
+  // The one-way nitrogen absorption is a shared transfer, so the film and the ground are handed the same rate.
+  uniforms.nitrogenAbsorptionRate.value = coefficients.nitrogenAbsorptionRate;
   // Dissolved oxygen belongs to the water column alone, so only the water variable carries these three.
   uniforms.oxygenSaturation.value = coefficients.oxygenSaturation;
   uniforms.reaerationRate.value = coefficients.reaerationRate;
@@ -282,6 +310,14 @@ const createGraph = (
   terrainUniforms.organicConversionRate.value =
     coefficients.organicConversionRate;
   terrainUniforms.growthGain.value = coefficients.growthGain;
+  // ...and the same absorption on the ground side of the transfer, plus the cultivation source - which only the
+  // ground owns (nothing in a stream fertilises the soil back), so the water variable carries no supply.
+  terrainUniforms.nitrogenAbsorptionRate.value =
+    coefficients.nitrogenAbsorptionRate;
+  terrainUniforms.cultivationSupplyRate.value =
+    coefficients.cultivationSupplyRate;
+  terrainUniforms.cultivationNitrogenTarget.value =
+    coefficients.cultivationNitrogenTarget;
 
   const initError = gpuCompute.init();
   assert(initError === null, `gpuCompute.init() failed: ${String(initError)}`);
@@ -299,6 +335,7 @@ const createTerrainGraph = (
   waterHeightVariable: Variable,
   quality: ReturnType<typeof createGpuWaterQuality>,
   seedGround: readonly ScalarField[],
+  material: ScalarField,
 ) => {
   const terrain = createGpuTerrainQuality(
     gpuCompute,
@@ -306,6 +343,8 @@ const createTerrainGraph = (
     TERRAIN_SIZE, // world edge: what an organic deposit is placed against, so both sides need the same one
     waterHeightVariable,
     quality.waterQualityVariable,
+    // Surface material feeds the cultivation source: R carries the material id, the rest of the texel is unused.
+    createTexture(channelData([material, zero, zero, () => 1.0])),
     createTexture(channelData(seedGround)),
   );
   terrain.initTerrainQuality();
@@ -441,10 +480,10 @@ await test("four substance channels declare their compartments", () => {
     `POLLUTANT_SPECIES holds ${String(POLLUTANT_SPECIES.length)} species; water-quality.frag packs four`,
   );
 
-  // Nitrogen and dissolved oxygen belong to the water alone; organic matter and bacteria are the two species with a
-  // home on the land as well. The order of this list is the channel layout, so it doubles as the guard on that.
+  // Nitrogen, organic matter and bacteria each have a home on the land as well as in the water; dissolved oxygen
+  // belongs to the water alone. The order of this list is the channel layout, so it doubles as the guard on that.
   const expectedCompartments = [
-    "water",
+    "terrain,water",
     "terrain,water",
     "water",
     "terrain,water",
@@ -458,7 +497,7 @@ await test("four substance channels declare their compartments", () => {
   }
 
   // The two rules the rest of this file tests: oxygen cannot live in the ground, and the species that do live in both
-  // have a terrain channel each - R for bacteria, G for organic matter.
+  // have a terrain channel each - R for bacteria, G for organic matter, B for nitrogen.
   assert(
     compartmentsOf(2).join() === "water",
     "dissolved oxygen claims a ground compartment; water-quality.frag lets it dry out with the film",
@@ -1945,6 +1984,168 @@ await test("the oxygen cycle matches the CPU reference", async () => {
   assert(
     wetOxygen > 0.1,
     `no dissolved oxygen anywhere in the flooded grid: ${String(wetOxygen)}`,
+  );
+
+  completedScenarios += 1;
+});
+
+// ---------------------------------------------------------------------------
+// Cultivated ground fertilises the soil, and a film over it absorbs the nitrogen
+// ---------------------------------------------------------------------------
+
+// One fertilised cell, and the matching per-texel flag the reference model needs to run the same source there.
+const CULTIVATED_CELL = { column: 4, row: 8 };
+const cultivatedAtCell =
+  (column: number, row: number): ScalarField =>
+  (testColumn, testRow) =>
+    testColumn === column && testRow === row ? 3.0 : 1.0;
+const cultivatedFlagAtCell = (column: number, row: number): boolean[] =>
+  Array.from(
+    { length: WIDTH * WIDTH },
+    (_value, index) =>
+      index % WIDTH === column && Math.floor(index / WIDTH) === row,
+  );
+
+await test("a cultivated cell under standing water feeds nitrogen into the soil and the film over it", async () => {
+  // A still film over a single fertilised cell, run with the production absorption + supply. With no flow, every
+  // cell is independent, so the source and the absorption both stay easy to pin - and whole-texture parity against
+  // the reference (which runs the same saturating source and the same one-way absorption) is what proves the two
+  // copies of `exchangeAt` and the cultivation law agree.
+  const graph = createGraph(
+    zero,
+    zero,
+    nothing,
+    coefficientsFor(NITROGEN),
+    { material: cultivatedAtCell(CULTIVATED_CELL.column, CULTIVATED_CELL.row) },
+  );
+  computePasses(graph, 30);
+  const fields = readFields(graph);
+  const cell = texelIndex(CULTIVATED_CELL.column, CULTIVATED_CELL.row);
+
+  // The soil climbs toward the target and the film over it drinks some of that back.
+  assert(
+    fields.groundMass[cell * 4 + 2] > 0.1,
+    `cultivated soil never accumulated nitrogen: ${String(fields.groundMass[cell * 4 + 2])}`,
+  );
+  assert(
+    fields.waterMass[cell * 4 + 0] > 0.05,
+    `the film over cultivated soil absorbed no nitrogen: ${String(fields.waterMass[cell * 4 + 0])}`,
+  );
+  // ...and nothing out of place shows up on the clean neighbours: an uncultivated cell gains no nitrogen.
+  const cleanCell = texelIndex(0, 0);
+  assert(
+    Math.abs(fields.groundMass[cleanCell * 4 + 2]) <= PARITY_TOLERANCE &&
+      Math.abs(fields.waterMass[cleanCell * 4 + 0]) <= PARITY_TOLERANCE,
+    "nitrogen appeared on a cell that was never cultivated",
+  );
+
+  // Whole-texture parity in both compartments, over thirty standing-water passes, against the reference running
+  // the same source and absorption.
+  const cpuFields = simulateWaterQualityReference(
+    {
+      waterMass: channelData(nothing),
+      groundMass: channelData([zero, zero, zero, zero]),
+    },
+    depthField(() => STANDING_WATER),
+    velocityField(zero, zero),
+    WIDTH,
+    TERRAIN_SIZE,
+    30,
+    coefficientsFor(NITROGEN),
+    [],
+    [],
+    cultivatedFlagAtCell(CULTIVATED_CELL.column, CULTIVATED_CELL.row),
+  );
+  assert(
+    worstDifference(fields.waterMass, cpuFields.waterMass) <=
+      PARITY_TOLERANCE,
+    `the fertilised cell disagrees with the reference in the water by ${String(worstDifference(fields.waterMass, cpuFields.waterMass))} - one copy of the nitrogen law has drifted`,
+  );
+  assert(
+    worstDifference(fields.groundMass, cpuFields.groundMass) <=
+      PARITY_TOLERANCE,
+    `the fertilised cell disagrees with the reference on the ground by ${String(worstDifference(fields.groundMass, cpuFields.groundMass))} - one copy of the nitrogen law has drifted`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("cultivated soil keeps its nitrogen even under no water, and none of it runs off dry land", async () => {
+  // The source is not gated by wetness: dry crop ground still holds its fertiliser, it just has nothing to absorb
+  // it. So the soil fills toward the target while the dry cell contributes nothing to a film it does not have.
+  const graph = createGraph(zero, zero, nothing, coefficientsFor(NITROGEN), {
+    material: cultivatedAtCell(CULTIVATED_CELL.column, CULTIVATED_CELL.row),
+    depth: (column, row) =>
+      column === CULTIVATED_CELL.column && row === CULTIVATED_CELL.row
+        ? DRY_GROUND
+        : STANDING_WATER,
+  });
+  computePasses(graph, 30);
+  const fields = readFields(graph);
+  const cell = texelIndex(CULTIVATED_CELL.column, CULTIVATED_CELL.row);
+
+  assert(
+    fields.groundMass[cell * 4 + 2] > 0.2,
+    `dry cultivated soil accumulated little nitrogen: ${String(fields.groundMass[cell * 4 + 2])}`,
+  );
+  // A dry cell has no film to carry the nitrogen away, so its water column stays empty.
+  assert(
+    Math.abs(fields.waterMass[cell * 4 + 0]) <= PARITY_TOLERANCE,
+    `nitrogen appeared in the water of a dry cell: ${String(fields.waterMass[cell * 4 + 0])}`,
+  );
+
+  // And the whole grid agrees with the model over thirty passes, dry cell included.
+  const cpuFields = simulateWaterQualityReference(
+    {
+      waterMass: channelData(nothing),
+      groundMass: channelData([zero, zero, zero, zero]),
+    },
+    depthField((column, row) =>
+      column === CULTIVATED_CELL.column && row === CULTIVATED_CELL.row
+        ? DRY_GROUND
+        : STANDING_WATER,
+    ),
+    velocityField(zero, zero),
+    WIDTH,
+    TERRAIN_SIZE,
+    30,
+    coefficientsFor(NITROGEN),
+    [],
+    [],
+    cultivatedFlagAtCell(CULTIVATED_CELL.column, CULTIVATED_CELL.row),
+  );
+  assert(
+    worstDifference(fields.groundMass, cpuFields.groundMass) <=
+      PARITY_TOLERANCE,
+    `the dry cultivated cell disagrees with the reference on the ground by ${String(worstDifference(fields.groundMass, cpuFields.groundMass))}`,
+  );
+
+  completedScenarios += 1;
+});
+
+await test("the soil's nitrogen only ever moves into the film - a transfer, not a mint", async () => {
+  // No cultivation: seed nitrogen directly in the ground under a still film and confirm the absorption is a
+  // conservation - the total across both compartments stays put while nitrogen crosses from the soil into the water.
+  const seedNitrogen = atCell(CULTIVATED_CELL.column, CULTIVATED_CELL.row, 1.0);
+  const graph = createGraph(zero, zero, nothing, coefficientsFor(NITROGEN), {
+    seedGround: [zero, zero, seedNitrogen, zero],
+  });
+  computePasses(graph, 12);
+  const fields = readFields(graph);
+  const cell = texelIndex(CULTIVATED_CELL.column, CULTIVATED_CELL.row);
+
+  assert(
+    Math.abs(totalNitrogen(fields) - 1.0) <= CONSERVATION_TOLERANCE,
+    `nitrogen was not conserved by the transfer: total ${String(totalNitrogen(fields))}`,
+  );
+  assert(
+    fields.waterMass[cell * 4 + 0] > 0.05,
+    `the film absorbed too little of the soil's nitrogen: ${String(fields.waterMass[cell * 4 + 0])}`,
+  );
+  // ...and with the source off there is nothing to keep, so after enough passes the soil has given up most of it.
+  assert(
+    fields.groundMass[cell * 4 + 2] < 0.7,
+    `the soil kept too much of its nitrogen: ${String(fields.groundMass[cell * 4 + 2])}`,
   );
 
   completedScenarios += 1;

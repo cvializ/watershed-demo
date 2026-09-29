@@ -376,6 +376,7 @@ export const createGpuWaterFlowSimulation = (
     terrainSize, // world units per texel edge: what lets a depositor speak in animal coordinates
     waterHeightVariable,
     waterQualityVariable,
+    surfaceMaterialMap ?? null, // where to lay nitrogen down: only cells painted `cultivated` are fertilised
     savedTextures && savedTextures.terrainQualityTexture,
   );
 

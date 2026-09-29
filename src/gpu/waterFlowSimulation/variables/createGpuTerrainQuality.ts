@@ -11,7 +11,9 @@ import { getUniforms } from "@/utils/uniformUtils";
 
 import {
   BACTERIA_GROWTH,
+  NITROGEN_SUPPLY,
   ORGANIC_DEPOSIT_THRESHOLD,
+  type NitrogenSupplyUniforms,
   SUBSTANCE_EXCHANGE_RATES,
   type SubstanceExchangeUniforms,
   type SubstanceGrowthUniforms,
@@ -19,6 +21,8 @@ import {
 
 /**
  * Uniforms for the terrain-side substance computation; dependency samplers are deliberately absent (README s1).
+ * `surfaceMaterialMap` is a custom texture (a CPU-painted field), so it is declared here like the other custom
+ * uniforms - the same pattern water-velocity.frag and sediment-flow.frag use for it.
  */
 export type TerrainQualityUniforms = {
   dtScale: THREE.IUniform<number>;
@@ -27,8 +31,10 @@ export type TerrainQualityUniforms = {
   uTerrainSize: THREE.IUniform<number>;
   uDepositCount: THREE.IUniform<number>;
   uDepositPoints: THREE.IUniform<THREE.Vector4[]>;
+  surfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
 } & SubstanceExchangeUniforms &
-  SubstanceGrowthUniforms;
+  SubstanceGrowthUniforms &
+  NitrogenSupplyUniforms;
 
 // Die-off of the ground population, first order like the water column's fade. Slower is pointless and faster would
 // erase the thing this variable exists to remember: bacteria in the bed are what a catchment still carries after
@@ -50,7 +56,7 @@ const MAX_DT_SCALE = 2.0;
 const createInitialTerrainQualityTexture = (
   size: number,
 ): THREE.DataTexture => {
-  const data = new Float32Array(size * size * 4); // RGBA: R bacteria in the ground, G organic matter on it, BA unused
+  const data = new Float32Array(size * size * 4); // RGBA: R bacteria, G organic matter, B nitrogen in/on it; A stays unused
 
   for (let index = 0; index < size * size; index++) {
     data[index * 4 + 3] = 0.0; // A is a substance channel elsewhere; here it stays empty rather than opaque
@@ -70,11 +76,14 @@ const createInitialTerrainQualityTexture = (
 /**
  * Creates the terrain-side substance computation: what the ground is holding.
  *
- * Two fields so far, each a companion of the water column's channel of the same name rather than a copy of it - hence
+ * Three fields now, each a companion of the water column's channel of the same name rather than a copy of it - hence
  * two variables per species. Bacterial content settles onto the bed only where this cell's organic matter is around to
  * catch it, and trades back with the film above it whether or not that food is still there; organic matter lies on the
  * ground (animals drop it there - see `addOrganicDeposit`) and only ever leaves,
- * scoured off by whatever water covers the cell. This compartment does not advect: transport belongs to whatever water
+ * scoured off by whatever water covers the cell; and nitrogen is laid down by cultivation - wherever this cell's
+ * surface material reads as `cultivated`, the soil keeps being topped back up toward `NITROGEN_SUPPLY`'s target, and a
+ * film flowing over it absorbs some of that back (see the `nitrogenAbsorptionRate` leg of the exchange). This
+ * compartment does not advect: transport belongs to whatever water
  * covers the cell (see `createGpuWaterQuality`) and mineral movement belongs to sediment-flow.frag, which currently moves
  * grains and neither of these populations.
  *
@@ -89,7 +98,8 @@ const createInitialTerrainQualityTexture = (
  * conserved across a pass except where decay removes some and the growth law converts organic into more of it - the
  * invariant to hold is bacteria plus organic, which is what tests/test-gpu-water-quality.ts does hold.
  *
- * A dry cell neither gains nor loses - except from a deposit, which is the one way mass enters a dry cell: no film means
+ * A dry cell neither gains nor loses from the exchange - except from a deposit or from cultivation, which are the two
+ * ways mass enters a dry cell: no film means
  * nothing to carry bacteria down and nothing to lift anything back up, which is what lets contamination, and a grazed
  * field, persist on the landscape after water has gone. Sediment burial is not modeled; eroding or depositing the bed
  * leaves these fields where they were (README).
@@ -113,12 +123,36 @@ export type OrganicDeposit = {
   amount: number;
 };
 
+/**
+ * Module-private 1x1 all-grass texture, used when no surface material map is supplied so the sampler is never null
+ * and - since grass is not cultivated - so no cell is fertilised by default. Same idea as the all-dirt fallback
+ * sediment-flow.frag's factory keeps: an unpainted catchment simply has no cultivated ground to lay nitrogen down.
+ */
+const createUncultivatedTextureSource = () => {
+  let cached: THREE.DataTexture | null = null;
+  return (): THREE.DataTexture => {
+    if (!cached) {
+      cached = new THREE.DataTexture(
+        new Float32Array([1.0, 0.0, 0.0, 1.0]), // r = grass material id: not cultivated, so no nitrogen supply
+        1,
+        1,
+        THREE.RGBAFormat,
+        THREE.FloatType,
+      );
+      cached.needsUpdate = true;
+    }
+    return cached;
+  };
+};
+const getUncultivatedTexture = createUncultivatedTextureSource();
+
 export const createGpuTerrainQuality = (
   gpuCompute: GPUComputationRenderer,
   width: number,
   terrainSize: number,
   waterHeightVariable: Variable,
   waterQualityVariable: Variable,
+  surfaceMaterialMap: THREE.Texture | null,
   savedTexture?: THREE.DataTexture,
 ) => {
   logger.info("[gpu:terrain-quality:create]");
@@ -142,6 +176,9 @@ export const createGpuTerrainQuality = (
   const uniforms = getUniforms<TerrainQualityUniforms>(
     terrainQualityVariable.material,
   );
+  // Bind the painted material before init, like water-velocity and sediment-flow do: only cells whose material
+  // reads as cultivated lay nitrogen down, so an unpainted field (or a missing map, answered with grass) has none.
+  uniforms.surfaceMaterialMap = { value: surfaceMaterialMap ?? getUncultivatedTexture() };
 
   return {
     terrainQualityVariable,
@@ -165,6 +202,19 @@ export const createGpuTerrainQuality = (
       uniforms.washOffRate = { value: SUBSTANCE_EXCHANGE_RATES.washOffRate };
       uniforms.organicWashOffRate = {
         value: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
+      };
+      // ...and the same absorption coefficient as the film above, so soil nitrogen cannot be taken up at one rate
+      // by the water over it and another by the ground under it - one transfer, two ledgers.
+      uniforms.nitrogenAbsorptionRate = {
+        value: SUBSTANCE_EXCHANGE_RATES.nitrogenAbsorptionRate,
+      };
+      // Cultivation is a source, not a transfer, so it belongs only to the ground - the supply that keeps a
+      // fertilised field topped up toward its target, and the ceiling the shader clamps that approach against.
+      uniforms.cultivationSupplyRate = {
+        value: NITROGEN_SUPPLY.cultivationSupplyRate,
+      };
+      uniforms.cultivationNitrogenTarget = {
+        value: NITROGEN_SUPPLY.cultivationNitrogenTarget,
       };
       // ...and the same growth coefficients as the film above, so a pat cannot be eaten at one rate by the water
       // over it and another by the soil under it.

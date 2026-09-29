@@ -46,11 +46,14 @@ export type PollutantSpecies = {
  *
  * `compartments` is the model's own answer to "whose property is this?". Dissolved oxygen belongs to the water
  * alone: it thins out with the film around it and cannot be banked in dry ground (see water-quality.frag).
- * Two species have two homes - nitrogen stays dissolved, organic matter does not but still only leaves the ground
- * with water. For each of them the channel here is its share of the water column, while `terrain-quality.frag` holds
- * the share on or in the ground (bacteria in R, organic matter in G). Bacteria trade both ways, and they settle out
- * of a film only where the ground holds organic matter for them to live on; organic matter only ever crosses from
- * the ground into a film, which is why animals are the only way it gets there.
+ * Three species have two homes - nitrogen stays dissolved but is laid down on the ground by cultivation
+ * (see `NITROGEN_SUPPLY`) and picked back out of it by a film; organic matter does not dissolve but still only
+ * leaves the ground with water, via the animals that drop it there; and bacteria live in both compartments and trade
+ * either way between them. For each of them the channel here is its share of the water column, while
+ * `terrain-quality.frag` holds the share on or in the ground (bacteria in R, organic matter in G, nitrogen in B).
+ * Bacteria settle out of a film only where the ground holds organic matter for them to live
+ * on; organic matter and nitrogen only ever cross from the ground into a film, which is why animals and cultivation
+ * are the only ways they get there.
  *
  * Bacteria also grow rather than only move: whatever organic matter a compartment is holding, it converts some of it
  * into more bacteria (BACTERIA_GROWTH), each compartment spending its own carbon. That is the only way this model
@@ -61,7 +64,11 @@ export type PollutantSpecies = {
  * cannot import TypeScript - keep them in step by hand for now.
  */
 export const POLLUTANT_SPECIES: readonly PollutantSpecies[] = [
-  { id: 0, label: "Nitrogen", compartments: ["water"] },
+  {
+    id: 0,
+    label: "Nitrogen (water & soil)",
+    compartments: ["terrain", "water"],
+  },
   {
     id: 1,
     label: "Organic matter (water & soil)",
@@ -147,7 +154,7 @@ const createInitialWaterQualityTexture = (size: number): THREE.DataTexture => {
  * substances that belong to the ground at all. Dissolved oxygen is the deliberate exception: it is a property of
  * the water alone, so it thins out with the film around it rather than being left behind as a deposit.
  *
- * Two species have two compartments rather than one. This variable holds the share dissolved or suspended in the
+ * Three species have two compartments rather than one. This variable holds the share dissolved or suspended in the
  * flow; `createGpuTerrainQuality` holds the share on or in the ground. Both shaders evaluate the same exchange helper
  * on the same committed texel, so mass crosses between them exactly - which is why this variable's dependency list is
  * completed by linkWaterQualityToTerrain() once the terrain variable exists (README s1). Bacteria cross both ways,
@@ -215,6 +222,11 @@ export const createGpuWaterQuality = (
       uniforms.washOffRate = { value: SUBSTANCE_EXCHANGE_RATES.washOffRate };
       uniforms.organicWashOffRate = {
         value: SUBSTANCE_EXCHANGE_RATES.organicWashOffRate,
+      };
+      // ...and the one-way nitrogen absorption, so a film over fertilised ground drinks its nitrogen at the same
+      // rate the ground hands it over - one transfer, two ledgers, same number on each side.
+      uniforms.nitrogenAbsorptionRate = {
+        value: SUBSTANCE_EXCHANGE_RATES.nitrogenAbsorptionRate,
       };
       // ...and the same for the growth law, so a film and the ground under it cannot disagree about how fast
       // organic turns into bacteria. Both are applied to this cell's own channels, so neither side has to

@@ -2,7 +2,10 @@
 
 // Dependency samplers waterHeight / waterQuality / terrainQuality are injected by GPUComputationRenderer from
 // this variable's declared dependencies, so re-declaring them here would be a compile error (src/gpu/README.md,
-// section 1). Only the custom uniforms below belong to this shader.
+// section 1). surfaceMaterialMap is a custom texture (a CPU-painted field, not a compute variable), so it is
+// declared below like any other custom uniform. Only the custom uniforms below belong to this shader.
+
+uniform sampler2D surfaceMaterialMap; // Surface material id per cell (R channel), like water-velocity.frag
 
 uniform float dtScale; // Frame-rate coupling, same convention and clamps as water-quality.frag (plan S6)
 uniform float soilDecayRate; // Die-off of the ground population, first order like the water column's fade
@@ -11,11 +14,18 @@ uniform float soilDepositRate; // Shares its value with water-quality.frag via S
 uniform float organicDepositThreshold; // ...and so does this, the soil organic that saturates that deposit
 uniform float washOffRate;    // ...and so does this one, which is what balances the ledger
 uniform float organicWashOffRate; // ...and this fourth, which only ever runs ground -> water
+uniform float nitrogenAbsorptionRate; // ...and this fifth, likewise one-way: soil nitrogen absorbed by a film
+uniform float cultivationSupplyRate; // Gap to the fertiliser target a cultivated cell refills per pass, same source
+uniform float cultivationNitrogenTarget; // ...as water-quality's oxygen: a saturating source, here in the soil
 uniform float organicConversionRate; // Growth of the ground population on the organic lying on it, same source as
 uniform float growthGain; // ...the water column's: BACTERIA_GROWTH, so a pat and a plume agree on the law
 uniform float uTerrainSize; // World size of the terrain: how deposit points map to texels, as in water-quality.frag
 uniform int uDepositCount;
 uniform vec4 uDepositPoints[8]; // (x, y, radius, amount) in world units; amount is mass per pass at 60 fps
+
+// Material ids from src/scene/resources/textures/surfaceMaterial.ts, same thresholds as the friction/erodibility
+// tables: only cultivated ground keeps laying down nitrogen, so only `cultivated` and its neighbours matter here.
+const float MATERIAL_CULTIVATED = 3.0;
 
 // A film at least this deep counts as standing water. Same threshold water-visualization.frag uses to decide
 // whether a cell reads as wet, and the same one water-quality.frag applies to dissolved oxygen, so "there is
@@ -39,6 +49,11 @@ const float DECAY_CEILING = 0.25;
 // (<= 0.25) and run-off (<= 0.15) draw on it too and 0.25 + 0.25 + 0.15 = 0.65 < 1. See BACTERIA_GROWTH.
 const float GROWTH_CEILING = 0.25;
 
+// Most of the gap to the fertiliser target a cultivated cell refills in one pass - same reasoning as the ceilings
+// above and the same value on both sides (see NITROGEN_SUPPLY), so a two-frame pass cannot fill a whole cell's
+// nitrogen in one step and the source stays inside the reservoir relaxation it describes.
+const float SUPPLY_CEILING = 0.25;
+
 /**
  * The hand-over between this cell's water film and its ground, as the sides of one ledger.
  *
@@ -48,17 +63,19 @@ const float GROWTH_CEILING = 0.25;
  * sediment-flow.frag's outfluxAt, and for the same reason - transport authority stays with one owner and mass moves
  * rather than being minted (plan A4). Keep the two copies in step by hand; GLSL cannot import.
  *
- * Two species cross this boundary and they do not travel the same way. Bacteria go both directions, but only one of
+ * Two species cross this boundary for free and a third only leaves the ground - the flow has no mechanism for
+ * scraping material (or precipitating nitrogen) out of itself and burying it, so `toWaterOrganic` and
+ * `toWaterNitrogen` are each the only term on their leg, and a cell that holds either one either keeps waiting or
+ * hands some to the water above it. Bacteria go both directions, but only one of
  * those directions is conditional: they settle out of a film wherever the soil holds organic matter to live on, and a
- * film can pick them back up from the ground whether that food is still there or not. Organic matter only leaves the
- * ground - the flow has no mechanism for scraping material out of itself and burying it, so `toWaterOrganic` is the
- * organic leg's only term, and a cell that holds manure either keeps waiting or hands some to the water above it.
+ * film can pick them back up from the ground whether that food is still there or not.
  */
 void exchangeAt(
     vec2 uv,
     out float toTerrainBacteria,
     out float toWaterBacteria,
-    out float toWaterOrganic
+    out float toWaterOrganic,
+    out float toWaterNitrogen
 ) {
     float depth = texture2D(waterHeight, uv).r;
 
@@ -79,10 +96,12 @@ void exchangeAt(
     float deposit = min(soilDepositRate * dtScale, EXCHANGE_CEILING) * wetness * carbon;
     float washOff = min(washOffRate * dtScale, EXCHANGE_CEILING) * wetness;
     float organicRunoff = min(organicWashOffRate * dtScale, EXCHANGE_CEILING) * wetness;
+    float nitrogenRunoff = min(nitrogenAbsorptionRate * dtScale, EXCHANGE_CEILING) * wetness;
 
     toTerrainBacteria = max(texture2D(waterQuality, uv).a, 0.0) * deposit;
     toWaterBacteria = max(texture2D(terrainQuality, uv).r, 0.0) * washOff;
     toWaterOrganic = max(texture2D(terrainQuality, uv).g, 0.0) * organicRunoff;
+    toWaterNitrogen = max(texture2D(terrainQuality, uv).b, 0.0) * nitrogenRunoff;
 }
 
 /**
@@ -143,23 +162,36 @@ void main() {
     vec2 cellSize = 1.0 / resolution.xy;
     vec2 uv = gl_FragCoord.xy * cellSize;
 
-    // R is bacterial content bound to the ground and G is organic matter on it: mass per unit area in the same units
-    // as the water column's channels, so the two compartments of one species can be added and compared without a
-    // rescaling. B and A are unused and stay zero - append future terrain compartments rather than renumbering these
-    // two, since texels are saved data as soon as save/load learns about this variable (and it has).
+    // R is bacterial content bound to the ground, G is organic matter on it, and B is nitrogen banked in it (the
+    // third compartment: cultivated ground keeps laying nitrogen down, see cultivationSupplyRate below). Mass per
+    // unit area in the same units as the water column's channels, so the two compartments of one species can be
+    // added and compared without a rescaling. A is unused and stays zero - append future terrain compartments
+    // rather than renumbering these three, since texels are saved data as soon as save/load learns about this
+    // variable (and it has).
     float soilBacteria = texture2D(terrainQuality, uv).r;
     float soilOrganic = texture2D(terrainQuality, uv).g;
+    float soilNitrogen = texture2D(terrainQuality, uv).b;
 
     float toTerrainBacteria;
     float toWaterBacteria;
     float toWaterOrganic;
-    exchangeAt(uv, toTerrainBacteria, toWaterBacteria, toWaterOrganic);
+    float toWaterNitrogen;
+    exchangeAt(uv, toTerrainBacteria, toWaterBacteria, toWaterOrganic, toWaterNitrogen);
 
-    // Growth is read off the committed soil, exactly like the two exchange legs above - nothing an animal dropped
+    // Growth is read off the committed soil, exactly like the three exchange legs above - nothing an animal dropped
     // this pass can feed the population in the same pass it landed (plan A3) - and it converts the soil's own
     // organic into its own bacteria, so no cross-shader agreement is needed for the arithmetic to balance.
     float wetness = clamp(texture2D(waterHeight, uv).r / WET_DEPTH, 0.0, 1.0);
     float converted = growthAt(soilOrganic, soilBacteria, wetness);
+
+    // Cultivation: a fertilised field keeps topping its soil back up toward the nitrogen target, gated only by
+    // whether this cell's material reads as cultivated (not by wetness - dry crop ground still holds its
+    // fertiliser). It is a saturating source, so a never-fertilised cell gains nothing and a fertilised cell
+    // climbs to the target and stops there.
+    float materialId = texture2D(surfaceMaterialMap, uv).r;
+    bool cultivated = materialId > 2.5 && materialId < 3.5;
+    float nitrogenSupply =
+        cultivated ? (cultivationNitrogenTarget - soilNitrogen) * min(cultivationSupplyRate * dtScale, SUPPLY_CEILING) : 0.0;
 
     // Neither compartment flows: it is in the ground, so advection belongs to the water column and erosion belongs
     // to sediment-flow.frag (which currently moves mineral grains, not either of these - see README). Bacteria reach
@@ -174,14 +206,17 @@ void main() {
     float organicLoss = clamp(organicDecayRate * dtScale, 0.0, DECAY_CEILING);
 
     // Deposits land last, after decay, exchange and growth, so what an animal dropped this pass cannot be washed
-    // away or eaten by the same pass - the one-step lag sediment-flow.frag uses for eroded material (plan A3).
-    // Alpha zero rather than the conventional one: this texture is a data field that is only ever sampled by hand.
+    // away or eaten by the same pass - the one-step lag sediment-flow.frag uses for eroded material (plan A3). The
+    // nitrogen leg runs one way only, which is why the soil only ever loses to a film above it; the cultivation
+    // supply is the mirror of that - it refills the soil toward its target, so a fertilised field keeps feeding the
+    // water that crosses it. Alpha zero rather than the conventional one: this texture is a data field only ever
+    // sampled by hand.
     vec2 worldPos = vec2(uv.x * uTerrainSize, (1.0 - uv.y) * uTerrainSize);
 
     gl_FragColor = vec4(
         soilBacteria * (1.0 - bacteriaDecay) + toTerrainBacteria - toWaterBacteria + converted,
         soilOrganic * (1.0 - organicLoss) - toWaterOrganic - converted + depositAt(worldPos),
-        0.0,
+        max(soilNitrogen - toWaterNitrogen + nitrogenSupply, 0.0),
         0.0
     );
 }

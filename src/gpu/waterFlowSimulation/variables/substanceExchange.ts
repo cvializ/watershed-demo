@@ -38,6 +38,14 @@ export const SUBSTANCE_EXCHANGE_RATES = {
    * wash-off rate because manure is loose material rather than something sticking to soil grains.
    */
   organicWashOffRate: 0.06,
+  /**
+   * Fraction of a wet cell's soil nitrogen its film absorbs per pass. One-way like organic wash-off: the ground
+   * holds nitrogen (laid down by cultivation - see NITROGEN_SUPPLY) and a film flowing over it drinks it up,
+   * but nothing precipitates dissolved nitrogen back out of a stream onto the soil, so there is no deposit leg
+   * for it. Set above the organic wash-off rate because nitrogen leaches readily - it is what a fertilised
+   * field gives up to the first rain that runs across it. Not calibrated to anything.
+   */
+  nitrogenAbsorptionRate: 0.08,
 } as const;
 
 /**
@@ -57,6 +65,42 @@ export type SubstanceExchangeUniforms = {
   organicDepositThreshold: THREE.IUniform<number>;
   washOffRate: THREE.IUniform<number>;
   organicWashOffRate: THREE.IUniform<number>;
+  nitrogenAbsorptionRate: THREE.IUniform<number>;
+};
+
+/**
+ * The single source of truth for how cultivated ground keeps feeding nitrogen into the soil it sits on, as
+ * distinct from the exchange above (a transfer) and from bacterial growth (a conversion).
+ *
+ * This is neither a transfer across the water/ground boundary nor a conversion between channels: it is a source.
+ * A cultivated field is a fertilised field, so wherever the surface material reads as `cultivated` the soil keeps
+ * being topped back up toward `cultivationNitrogenTarget` - a reservoir relaxation, exactly like the film relaxing
+ * toward atmospheric saturation, only aimed at the ground. Nothing flows back out of a cell that is not cultivated,
+ * and a cell that was never cultivated never sees this law at all, so an untouched catchment gains no nitrogen.
+ *
+ * It is bounded rather than open-ended on purpose: the supply is a relaxation toward the target, so a field that
+ * starts at zero climbs to it and a field whose nitrogen a storm has since washed away climbs back, but neither
+ * ever exceeds the target. What crosses to the water is the one-way `nitrogenAbsorptionRate` in the exchange above,
+ * which can pull the soil back below the target while water flows - and the supply then refills it - which is
+ * precisely "cultivated ground adds nitrogen to the terrain and the water flowing over it absorbs it."
+ */
+export const NITROGEN_SUPPLY = {
+  /** Fraction of the gap to the target that a cultivated cell refills per pass, ceilinged in the shader */
+  cultivationSupplyRate: 0.06,
+  /** Concentration of nitrogen a cultivated field keeps its soil against, as column-integrated mass */
+  cultivationNitrogenTarget: 0.6,
+  /** Ceiling on that per-pass approach, so a long frame cannot refill a whole deficit in one step */
+  supplyCeiling: 0.25,
+} as const;
+
+/**
+ * The cultivation-supply uniforms only the terrain shader declares. Only the ground can be fertilised, so - unlike
+ * the exchange uniforms - there is no water-side copy to keep in step; the shader still clamps the ceiling itself,
+ * since GLSL cannot import `NITROGEN_SUPPLY`.
+ */
+export type NitrogenSupplyUniforms = {
+  cultivationSupplyRate: THREE.IUniform<number>;
+  cultivationNitrogenTarget: THREE.IUniform<number>;
 };
 
 /**
