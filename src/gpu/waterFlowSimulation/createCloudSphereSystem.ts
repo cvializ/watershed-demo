@@ -4,7 +4,11 @@ import * as THREE from "three";
 
 import cloudFragmentShader from "@/shaders/visualizer/clouds.frag?raw";
 import cloudVertexShader from "@/shaders/visualizer/clouds.vert?raw";
+import { TERRAIN_SIZE } from "@/terrain/constants";
 import { logger } from "@/utils/logger";
+
+/** Altitude of the cloud plane above the terrain datum (terrain tops out at 1.3). */
+const CLOUD_ALTITUDE = 3.5;
 
 /**
  * Uniform structure for cloud sphere shader.
@@ -41,6 +45,10 @@ export type CloudSphereSystem = {
  * by sampling from a cloud density texture. The clouds appear puffy and round
  * with translucent edges that become more opaque as cloud density increases.
  *
+ * Coordinates are shared with the terrain: the plane spans the full
+ * `TERRAIN_SIZE` extent centred on the origin, so the cloud texture lines up
+ * with the ground below it.
+ *
  * @param renderer - WebGLRenderer instance (kept for API compatibility)
  * @param cloudTexture - Texture containing cloud density data from drifting-cloud.frag
  */
@@ -50,8 +58,16 @@ export const createCloudSphereSystem = (
 ): CloudSphereSystem => {
   logger.info("[gpu:cloud-sphere:create]");
 
-  // Create a plane that covers the terrain area
-  const cloudPlaneGeometry = new THREE.PlaneGeometry(12, 12, 64, 64);
+  // Create a plane that spans the whole terrain (-20..+20 on each axis), so the
+  // cloud layer covers the ground instead of floating over a small patch of it.
+  // The plane is centred on the origin like the terrain mesh, and its 0..1 uv
+  // range lines up with the cloud texture's terrain-space mapping.
+  const cloudPlaneGeometry = new THREE.PlaneGeometry(
+    TERRAIN_SIZE,
+    TERRAIN_SIZE,
+    64,
+    64,
+  );
 
   // Create shader material for volumetric clouds using typed uniform pattern
   const uniforms: CloudSphereUniforms = {
@@ -72,7 +88,7 @@ export const createCloudSphereSystem = (
 
   // Create mesh
   const cloudMesh = new THREE.Mesh(cloudPlaneGeometry, cloudMaterial);
-  cloudMesh.position.y = 3.5; // Position clouds above terrain
+  cloudMesh.position.set(0, CLOUD_ALTITUDE, 0); // centred above the terrain
   cloudMesh.rotation.x = -Math.PI / 2;
   cloudMesh.renderOrder = 10; // Render after terrain (higher render order)
 
