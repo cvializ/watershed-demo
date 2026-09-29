@@ -78,6 +78,18 @@ export const TerrainPaintingControls = ({
             <li>Friction: 1.05 (sparse stubble barely slows the flow)</li>
           </>
         );
+      case "forest":
+        return (
+          <>
+            <li>
+              Infiltration: 0.9 (litter and root channels drink better than a
+              sward)
+            </li>
+            <li>
+              Friction: 1.6 (canopy, undergrowth and duff make the flow crawl)
+            </li>
+          </>
+        );
       default:
         return (
           <>
@@ -111,6 +123,7 @@ export const TerrainPaintingControls = ({
           <option value="rocks">Rocks</option>
           <option value="cultivated">Cultivated</option>
           <option value="fallow">Fallow</option>
+          <option value="forest">Forest</option>
         </select>
       </div>
 

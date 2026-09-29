@@ -12,6 +12,7 @@ const SURFACE_MATERIAL_TYPES = [
   "rocks",
   "cultivated",
   "fallow",
+  "forest",
 ] as const;
 
 export type SurfaceMaterialType = (typeof SURFACE_MATERIAL_TYPES)[number];
@@ -59,6 +60,15 @@ const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties> = {
     frictionCoefficient: 1.05,
     color: [0.55, 0.42, 0.12], // Dark yellow (stubble on dry, rested soil)
   },
+  forest: {
+    // Woodland: a canopy, an understorey and a duff layer over rooted ground nobody has turned over. Nothing
+    // here is compacted, and nothing here is smooth, so rain finds root channels to soak down through while
+    // overland flow has to push through litter, bramble and trunks to get anywhere - the slowest, thirstiest
+    // surface in the table, and the one a storm has the least chance of cutting into.
+    infiltrationRate: 0.9, // Best absorption in the table: deeper roots and a litter mat beat a sward
+    frictionCoefficient: 1.6, // Slowest flow: canopy, undergrowth and rough duff all get in the water's way
+    color: [0.04, 0.18, 0.06], // Dark green (a stand of trees seen from above)
+  },
 };
 
 // Material type to numeric ID mapping for shader usage.
@@ -70,6 +80,7 @@ const MATERIAL_TYPE_IDS: Record<SurfaceMaterialType, number> = {
   rocks: 2.0,
   cultivated: 3.0,
   fallow: 4.0,
+  forest: 5.0,
 };
 
 /**
@@ -165,7 +176,7 @@ export type SurfaceMaterialTexture = {
  *
  * Texture format:
  * - R channel: Material type ID (0.0 = bareDirt, 1.0 = grass, 2.0 = rocks, 3.0 = cultivated,
- *   4.0 = fallow)
+ *   4.0 = fallow, 5.0 = forest)
  * - G channel: Reserved for future use
  * - B channel: Reserved for future use
  * - A channel: Alpha (always 1.0)

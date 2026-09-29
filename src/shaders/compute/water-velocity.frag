@@ -12,6 +12,7 @@ const float MATERIAL_GRASS = 1.0;
 const float MATERIAL_ROCKS = 2.0;
 const float MATERIAL_CULTIVATED = 3.0;
 const float MATERIAL_FALLOW = 4.0;
+const float MATERIAL_FOREST = 5.0;
 
 // Material friction coefficients (higher = slower flow)
 const float FRICTION_BARE_DIRT = 1.0;
@@ -21,6 +22,10 @@ const float FRICTION_ROCKS = 0.8; // Smooth rocks allow faster flow
 // as a closed mat of grass does. Fallow is closer to bare ground again - sparse, flattened stubble.
 const float FRICTION_CULTIVATED = 1.15;
 const float FRICTION_FALLOW = 1.05;
+// Woodland is the opposite end of the table from smooth rock: rain lands on a canopy instead of on the ground,
+// and whatever reaches the bed then crosses leaf litter, undergrowth and trunk bases. Nothing here is worn
+// smooth, so a sheet over forest crawls compared with one over a sward.
+const float FRICTION_FOREST = 1.6;
 
 // Get friction based on material
 float getMaterialFriction(vec2 uv) {
@@ -35,8 +40,10 @@ float getMaterialFriction(vec2 uv) {
         return FRICTION_ROCKS;
     } else if (materialType < 3.5) {
         return FRICTION_CULTIVATED;
-    } else {
+    } else if (materialType < 4.5) {
         return FRICTION_FALLOW;
+    } else {
+        return FRICTION_FOREST;
     }
 }
 

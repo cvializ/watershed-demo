@@ -61,6 +61,10 @@ const float ERODIBILITY_ROCKS = 0.1; // rock resists being cut almost entirely
 // over undisturbed soil, so it still holds a little better than bare dirt, just not by much.
 const float ERODIBILITY_CULTIVATED = 0.4;
 const float ERODIBILITY_FALLOW = 0.85;
+// Woodland is the best a soil can do short of being stone: unturned ground, a duff layer knitting the surface
+// together, and roots deep enough to anchor it against a channel's shear. It still gives up soil twice as readily
+// as rock does, since it is still soil - but half as readily as a sward.
+const float ERODIBILITY_FOREST = 0.15;
 
 const float DEPOSITION_FACTOR_BARE_DIRT = 1.0; // baseline settling
 const float DEPOSITION_FACTOR_GRASS = 1.5; // stems trap sediment (A9)
@@ -69,6 +73,9 @@ const float DEPOSITION_FACTOR_ROCKS = 0.8; // smooth rock lets it keep moving
 // what a sward would, so a field that gives up soil easily also keeps a little of what washes back in.
 const float DEPOSITION_FACTOR_CULTIVATED = 1.2;
 const float DEPOSITION_FACTOR_FALLOW = 1.1;
+// And the same catch as a sward's, only better: litter, bramble and trunk bases make a rougher, deeper filter
+// than grass stems, so quiescent water over woodland drops its load sooner.
+const float DEPOSITION_FACTOR_FOREST = 1.8;
 
 const float CAPACITY_CEILING = 0.25; // depth * speed is unbounded: capacity has to saturate (A6)
 const float STILL_WATER_BOOST = 8.0; // settling multiplier in still water (A7, section 4.5)
@@ -95,8 +102,10 @@ float erodibilityOf(float materialId) {
         return ERODIBILITY_ROCKS;
     } else if (materialId < 3.5) {
         return ERODIBILITY_CULTIVATED;
-    } else {
+    } else if (materialId < 4.5) {
         return ERODIBILITY_FALLOW;
+    } else {
+        return ERODIBILITY_FOREST;
     }
 }
 
@@ -113,8 +122,10 @@ float depositionFactorOf(float materialId) {
         return DEPOSITION_FACTOR_ROCKS;
     } else if (materialId < 3.5) {
         return DEPOSITION_FACTOR_CULTIVATED;
-    } else {
+    } else if (materialId < 4.5) {
         return DEPOSITION_FACTOR_FALLOW;
+    } else {
+        return DEPOSITION_FACTOR_FOREST;
     }
 }
 

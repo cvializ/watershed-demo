@@ -9,6 +9,7 @@ import {
   DEPOSITION_FACTOR_BARE_DIRT,
   DEPOSITION_FACTOR_CULTIVATED,
   DEPOSITION_FACTOR_FALLOW,
+  DEPOSITION_FACTOR_FOREST,
   DEPOSITION_FACTOR_GRASS,
   DEPOSITION_FACTOR_ROCKS,
   depositionFactorOf,
@@ -17,12 +18,14 @@ import {
   ERODIBILITY_BARE_DIRT,
   ERODIBILITY_CULTIVATED,
   ERODIBILITY_FALLOW,
+  ERODIBILITY_FOREST,
   ERODIBILITY_GRASS,
   ERODIBILITY_ROCKS,
   erodibilityOf,
   MATERIAL_BARE_DIRT,
   MATERIAL_CULTIVATED,
   MATERIAL_FALLOW,
+  MATERIAL_FOREST,
   MATERIAL_GRASS,
   MATERIAL_ROCKS,
   SLOPE_GAIN,
@@ -178,6 +181,7 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
     expect(glslConstant("ERODIBILITY_ROCKS")).toBe(ERODIBILITY_ROCKS);
     expect(glslConstant("ERODIBILITY_CULTIVATED")).toBe(ERODIBILITY_CULTIVATED);
     expect(glslConstant("ERODIBILITY_FALLOW")).toBe(ERODIBILITY_FALLOW);
+    expect(glslConstant("ERODIBILITY_FOREST")).toBe(ERODIBILITY_FOREST);
     expect(glslConstant("DEPOSITION_FACTOR_BARE_DIRT")).toBe(
       DEPOSITION_FACTOR_BARE_DIRT,
     );
@@ -193,12 +197,16 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
     expect(glslConstant("DEPOSITION_FACTOR_FALLOW")).toBe(
       DEPOSITION_FACTOR_FALLOW,
     );
+    expect(glslConstant("DEPOSITION_FACTOR_FOREST")).toBe(
+      DEPOSITION_FACTOR_FOREST,
+    );
 
     // Thresholds are what make the ids and the tables agree; a reworked comparison is a material change.
     expect(shaderSource).toContain("materialId < 0.5");
     expect(shaderSource).toContain("materialId < 1.5");
     expect(shaderSource).toContain("materialId < 2.5");
     expect(shaderSource).toContain("materialId < 3.5");
+    expect(shaderSource).toContain("materialId < 4.5");
 
     // And the ids themselves come from the texture encoder, not from this file.
     const surfaceMaterialSource = readFileSync(
@@ -211,6 +219,7 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
       [MATERIAL_ROCKS, "rocks"],
       [MATERIAL_CULTIVATED, "cultivated"],
       [MATERIAL_FALLOW, "fallow"],
+      [MATERIAL_FOREST, "forest"],
     ] as const) {
       expect(surfaceMaterialSource).toContain(`${name}: ${id.toFixed(1)}`);
     }
@@ -245,6 +254,20 @@ test.describe("the reference model mirrors sediment-flow.frag", () => {
     );
     expect(depositionFactorOf(MATERIAL_FALLOW)).toBeGreaterThan(
       DEPOSITION_FACTOR_BARE_DIRT,
+    );
+
+    // Woodland is the exception to that pattern: it is not defined as "between two neighbours" but as better
+    // than a sward at both jobs - a duff layer and deep roots hold a bank together harder than grass does and
+    // out-trap one when sediment washes back in - while still being soil, so it cannot resist cutting as rock
+    // does.
+    expect(erodibilityOf(MATERIAL_FOREST)).toBeLessThan(
+      erodibilityOf(MATERIAL_GRASS),
+    );
+    expect(erodibilityOf(MATERIAL_FOREST)).toBeGreaterThan(
+      erodibilityOf(MATERIAL_ROCKS),
+    );
+    expect(depositionFactorOf(MATERIAL_FOREST)).toBeGreaterThan(
+      DEPOSITION_FACTOR_GRASS,
     );
   });
 
@@ -884,6 +907,54 @@ test.describe("material factors (A9)", () => {
       const index = row * SIZE;
       expect(mixedTerms.deposition[index]).toBe(dirtTerms.deposition[index]);
     }
+  });
+
+  test("woodland both holds its soil and traps sediment better than the sward it is measured against", () => {
+    // Same two measurements as the tests above, now for the forest row of each table: one pass from a zero load
+    // with detachment wide open (so the erosion ratio IS the erodibility table, A9), and one pass with a load
+    // sitting above capacity and no flow to entrain more (so the settling ratio IS the deposition table).
+    const eroded = (materialId: number): number =>
+      totalOf(
+        advanceSedimentStep(
+          restingGrid({
+            depth: () => 0.5,
+            velocityX: (column) => (column < SIZE - 1 ? CHANNEL_SPEED : 0.0),
+            material: () => materialId,
+          }),
+          paramsWith({ detachRate: 1.0, settleRate: 0.0 }),
+        ).terms.erosion,
+      );
+
+    const grassEroded = eroded(MATERIAL_GRASS);
+    expect(grassEroded).toBeGreaterThan(0.0);
+
+    // A forest bank gives up half what a sward does to the same flow over the same bed.
+    expectRatio(
+      eroded(MATERIAL_FOREST) / grassEroded,
+      ERODIBILITY_FOREST / ERODIBILITY_GRASS,
+    );
+
+    const settled = (materialId: number): number =>
+      totalOf(
+        advanceSedimentStep(
+          restingGrid({
+            depth: () => 0.5,
+            velocityX: () => CHANNEL_SPEED,
+            load: () => 0.12,
+            material: () => materialId,
+          }),
+          paramsWith({ detachRate: 0.0, settleRate: 0.06, dtScale: 1.0 }),
+        ).terms.deposition,
+      );
+
+    // ...and a forest floor keeps more of what washes back over it than bare dirt or grass would.
+    const dirtSettled = settled(MATERIAL_BARE_DIRT);
+    expect(dirtSettled).toBeGreaterThan(0.0);
+    expectRatio(
+      settled(MATERIAL_FOREST) / dirtSettled,
+      DEPOSITION_FACTOR_FOREST / DEPOSITION_FACTOR_BARE_DIRT,
+    );
+    expect(settled(MATERIAL_FOREST)).toBeGreaterThan(settled(MATERIAL_GRASS));
   });
 
   test("measures how fast real terrain cuts, which is where tuning happens cheaply", () => {
