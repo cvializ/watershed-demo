@@ -15,6 +15,7 @@ uniform float soilDepositRate; // Ground exchange: shares its value with terrain
 uniform float organicDepositThreshold; // ...and this is what conditions it: soil organic that saturates that deposit
 uniform float washOffRate;    // ...and so does this one, which is what balances the ledger between compartments
 uniform float organicWashOffRate; // ...and this third, the ground's organic matter running off into this film
+uniform float nitrogenAbsorptionRate; // ...and this fourth, likewise one-way: soil nitrogen a film absorbs
 uniform float organicConversionRate; // Growth, not exchange: shares its value with terrain-quality.frag via BACTERIA_GROWTH
 uniform float growthGain; // ...and this is the extra fraction an already-established colony converts with
 uniform float oxygenSaturation; // Concentration a wet film equilibrates to with the air, per DISSOLVED_OXYGEN
@@ -121,17 +122,19 @@ float exportFractionAt(vec2 p, vec2 cellSize, out vec2 routeStep) {
  * so what leaves one compartment arrives in the other, exactly as sediment-flow.frag's outfluxAt makes erosion and
  * deposition agree without either side minting mass (plan A4). Keep the two copies in step by hand; GLSL cannot import.
  *
- * Two species cross this boundary and they do not travel the same way. Bacteria go both directions, but only one of
+ * Two species cross this boundary for free and a third only leaves the ground - the flow has no mechanism for
+ * scraping material (or precipitating nitrogen) out of itself and burying it, so `toWaterOrganic` and
+ * `toWaterNitrogen` are each the only term on their leg, and a cell that holds either one either keeps waiting or
+ * hands some to the water above it. Bacteria go both directions, but only one of
  * those directions is conditional: they settle out of a film wherever the soil holds organic matter to live on, and a
- * film can pick them back up from the ground whether that food is still there or not. Organic matter only leaves the
- * ground - the flow has no mechanism for scraping material out of itself and burying it, so `toWaterOrganic` is the
- * organic leg's only term, and a cell that holds manure either keeps waiting or hands some to the water above it.
+ * film can pick them back up from the ground whether that food is still there or not.
  */
 void exchangeAt(
     vec2 uv,
     out float toTerrainBacteria,
     out float toWaterBacteria,
-    out float toWaterOrganic
+    out float toWaterOrganic,
+    out float toWaterNitrogen
 ) {
     float depth = texture2D(waterHeight, uv).r;
 
@@ -152,10 +155,12 @@ void exchangeAt(
     float deposit = min(soilDepositRate * dtScale, EXCHANGE_CEILING) * wetness * carbon;
     float washOff = min(washOffRate * dtScale, EXCHANGE_CEILING) * wetness;
     float organicRunoff = min(organicWashOffRate * dtScale, EXCHANGE_CEILING) * wetness;
+    float nitrogenRunoff = min(nitrogenAbsorptionRate * dtScale, EXCHANGE_CEILING) * wetness;
 
     toTerrainBacteria = max(texture2D(waterQuality, uv).a, 0.0) * deposit;
     toWaterBacteria = max(texture2D(terrainQuality, uv).r, 0.0) * washOff;
     toWaterOrganic = max(texture2D(terrainQuality, uv).g, 0.0) * organicRunoff;
+    toWaterNitrogen = max(texture2D(terrainQuality, uv).b, 0.0) * nitrogenRunoff;
 }
 
 /**
@@ -225,14 +230,15 @@ void main() {
     // makes water-height.frag's drainage harmless for the ones that can dry out: the water leaves and the
     // substance stays behind, so a puddle concentrates instead of quietly deleting what was dissolved in it.
     //
-    // Two channels are treated differently below, because they are not properties of the ground:
+    // Three channels are treated differently below, because they are not properties of the ground in the same way:
     // - B dissolved oxygen belongs to the water alone. It cannot be banked in dry soil, so it thins out with the
     //   film it was dissolved in and an emitter aimed at dry ground releases nothing.
     // - A bacteria belongs to both compartments: what is here flows with the water, and what settles out of it does
     //   so only over ground with organic matter in it, which is then held until the next flood washes some back.
-    // - G organic matter belongs to both compartments too, but it only ever arrives in this column from above: animals
-    //   drop it on the ground and a film picks some of that up. Nothing settles out of a stream and becomes manure in
-    //   the soil, so this shader is a receiver for organic matter and never a donor.
+    // - G organic matter and R nitrogen both belong to both compartments too, but each only ever arrives in this
+    //   column from above: animals drop organic matter on the ground and cultivated ground keeps laying down
+    //   nitrogen, and a film picks some of each up. Nothing settles out of a stream and becomes manure or fertiliser
+    //   in the soil, so this shader is a receiver for both and never a donor.
     vec4 ownMass = texture2D(waterQuality, uv);
     float depth = texture2D(waterHeight, uv).r;
     float wetness = clamp(depth / WET_DEPTH, 0.0, 1.0);
@@ -306,7 +312,8 @@ void main() {
     float toTerrainBacteria;
     float toWaterBacteria;
     float toWaterOrganic;
-    exchangeAt(uv, toTerrainBacteria, toWaterBacteria, toWaterOrganic);
+    float toWaterNitrogen;
+    exchangeAt(uv, toTerrainBacteria, toWaterBacteria, toWaterOrganic, toWaterNitrogen);
 
     // Growth, on the other hand, is read off the amount this cell actually has left after transport and fade - it
     // is a conversion within the compartment rather than a transfer across the boundary, so there is no other side
@@ -314,10 +321,12 @@ void main() {
     float converted = growthAt(faded.g, faded.a, wetness);
     faded.a += toWaterBacteria - toTerrainBacteria + converted;
 
-    // The organic leg runs one way only, which is why this reads as an addition rather than as a difference: the
-    // ground's manure comes from animals and leaves with water, and never the other way round. `converted` then
+    // The organic leg and the nitrogen leg each run one way only, which is why they read as additions rather than as
+    // differences: the ground's manure and its fertiliser come from the land (animals, cultivation) and leave with
+    // water, and never the other way round - nothing in a stream precipitates back onto the soil. `converted` then
     // comes straight out of the film, so a plume that grows is only spending the carbon it is carrying.
     faded.g += toWaterOrganic - converted;
+    faded.r += toWaterNitrogen;
 
     // Emission lands after transport, so substance a source adds this pass cannot be exported by the same pass:
     // the one-step lag sediment-flow.frag uses for eroded material (plan A3). Sources are persistent emitters -

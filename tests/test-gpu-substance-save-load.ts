@@ -298,6 +298,9 @@ const createGraph = (restored?: RestoredSeed) => {
     TERRAIN_SIZE, // same world edge the water quality variable was given: deposits and sources share one scale
     waterHeightVariable,
     quality.waterQualityVariable,
+    // No painted surface material here: with nothing cultivated the soil lays down no nitrogen, so the source
+    // stays off and the two compartments trade only bacteria and organic matter, as these scenarios assume.
+    null,
     restored === undefined
       ? createTexture(channelData(seedGroundMass))
       : restored.terrainQualityTexture,

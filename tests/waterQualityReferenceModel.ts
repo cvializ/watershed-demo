@@ -11,8 +11,14 @@
  *
  * Two compartments:
  * - waterMass:  index 0 nitrogen, 1 organic matter, 2 dissolved oxygen, 3 bacteria (column-integrated mass)
- * - groundMass: index 0 bacterial content bound to the ground, index 1 organic matter on it; 2..3 unused, matching
- *   terrain-quality.frag
+ * - groundMass: index 0 bacterial content bound to the ground, index 1 organic matter on it, index 2 nitrogen banked
+ *   in it (laid down by cultivation, see the note below); index 3 stays unused, matching terrain-quality.frag
+ *
+ * Nitrogen, like organic matter, lives on the land and in the water at once: cultivated ground keeps laying it down
+ * (`cultivationSupplyRate`, a saturating source) and a film flowing over it drinks some back
+ * (`nitrogenAbsorptionRate`, a one-way transfer) - so `totalNitrogen`, like `totalOrganicMatter`, sums the two
+ * compartments, and with the source off and decay off it is conserved across a pass. With the source on it only ever
+ * grows on cultivated cells, so the invariant to hold there is "bounded by the target", not "constant".
  *
  * Growth is modelled as a conversion, not a transfer: whichever compartment holds organic matter spends some of it
  * on bacteria of its own (`growthFor` mirrors `growthAt` in both shaders), so the pair to keep an eye on across a
@@ -58,6 +64,11 @@ const EXCHANGE_CEILING = 0.15;
 // at its ceiling has to be measured against the same number the shaders clamp to.
 const GROWTH_CEILING = BACTERIA_GROWTH.growthCeiling;
 
+// Ceiling on the cultivation supply's per-pass approach to the target, matching SUPPLY_CEILING in
+// terrain-quality.frag (see NITROGEN_SUPPLY): a scenario that runs the source at its ceiling has to be measured
+// against the same cap the shader clamps to.
+const SUPPLY_CEILING = 0.25;
+
 // Likewise the two ceilings on the oxygen law: a scenario that runs reaeration or respiration at its ceiling has to
 // be measured against the same per-pass cap the shader clamps to.
 const REAERATION_CEILING = DISSOLVED_OXYGEN.reaerationCeiling;
@@ -68,6 +79,7 @@ const DEOXYGENATION_CEILING = DISSOLVED_OXYGEN.deoxygenationCeiling;
 export const WET_DEPTH = 0.01;
 
 /** Water channel indices, spelled out because their meaning differs per channel (oxygen dries, both others trade). */
+const CHANNEL_NITROGEN = 0;
 const CHANNEL_ORGANIC = 1;
 const CHANNEL_OXYGEN = 2;
 const CHANNEL_BACTERIA = 3;
@@ -75,6 +87,7 @@ const CHANNEL_BACTERIA = 3;
 /** Ground channel indices, in the same order as the water channels they are the other half of. */
 const GROUND_CHANNEL_BACTERIA = 0;
 const GROUND_CHANNEL_ORGANIC = 1;
+const GROUND_CHANNEL_NITROGEN = 2;
 
 /** Per-pass coefficients, matching the uniforms createGpuWaterQuality and createGpuTerrainQuality write. */
 export type WaterQualityOptions = {
@@ -85,6 +98,7 @@ export type WaterQualityOptions = {
   organicDepositThreshold: number;
   washOffRate: number;
   organicWashOffRate: number;
+  nitrogenAbsorptionRate: number;
   soilDecayRate: number;
   organicDecayRate: number;
   organicConversionRate: number;
@@ -92,6 +106,8 @@ export type WaterQualityOptions = {
   oxygenSaturation: number;
   reaerationRate: number;
   deoxygenationRate: number;
+  cultivationSupplyRate: number;
+  cultivationNitrogenTarget: number;
 };
 
 // The conservation harness wants a pure transport step, so fade, die-off, the bacterial exchange and the growth law
@@ -106,10 +122,15 @@ export const WATER_QUALITY_TEST_DEFAULTS: WaterQualityOptions = {
   organicDepositThreshold: ORGANIC_DEPOSIT_THRESHOLD,
   washOffRate: 0.0,
   organicWashOffRate: 0.0,
+  nitrogenAbsorptionRate: 0.0,
   soilDecayRate: 0.0,
   organicDecayRate: 0.0,
   organicConversionRate: 0.0,
   growthGain: 0.0,
+  // The cultivation supply starts off: transport stays purely conservative and a cell that was never fertilised
+  // gains no nitrogen, until a scenario turns the source on (and hands the model a cultivated-by-cell field).
+  cultivationSupplyRate: 0.0,
+  cultivationNitrogenTarget: 0.0,
   // Oxygen is a saturating source/sink, not a conservation law, so the scenario defaults leave it off: transport
   // stays purely conservative and any appearance of oxygen came from an emitter, until a scenario turns the law on.
   // The saturation concentration is still taken from production so a scenario that switches the law on starts from
@@ -228,11 +249,13 @@ const exchangeFor = (
   waterBacteria: number,
   groundBacteria: number,
   groundOrganic: number,
+  groundNitrogen: number,
   options: WaterQualityOptions,
 ): {
   toGroundBacteria: number;
   toWaterBacteria: number;
   toWaterOrganic: number;
+  toWaterNitrogen: number;
 } => {
   const wetness = wetnessForDepth(depth);
 
@@ -257,6 +280,15 @@ const exchangeFor = (
     toWaterOrganic:
       Math.max(groundOrganic, 0) *
       Math.min(options.organicWashOffRate * options.dtScale, EXCHANGE_CEILING) *
+      wetness,
+    // Nitrogen only ever leaves the ground - a film over fertilised soil drinks it up, and nothing precipitates
+    // back onto the ground - so this is the nitrogen leg's only term, matching toWaterOrganic's one-way rule.
+    toWaterNitrogen:
+      Math.max(groundNitrogen, 0) *
+      Math.min(
+        options.nitrogenAbsorptionRate * options.dtScale,
+        EXCHANGE_CEILING,
+      ) *
       wetness,
   };
 };
@@ -414,6 +446,8 @@ const depositFor = (
  * @param options - Per-pass coefficients; see WATER_QUALITY_TEST_DEFAULTS
  * @param sources - Persistent emitters applied after transport each pass
  * @param deposits - Organic deposits the ground receives after its own decay and exchange each pass
+ * @param cultivatedByIndex - Per-texel flag mirroring the painted surface material: only cells that are cultivated
+ *   keep laying nitrogen down (see NITROGEN_SUPPLY). Absent means nothing is cultivated, so the source stays off.
  */
 export const simulateWaterQualityReference = (
   fields: SubstanceFields,
@@ -425,6 +459,7 @@ export const simulateWaterQualityReference = (
   options: WaterQualityOptions = WATER_QUALITY_TEST_DEFAULTS,
   sources: readonly QualityInjectSource[] = [],
   deposits: readonly OrganicDepositSource[] = [],
+  cultivatedByIndex?: ReadonlyArray<boolean>,
 ): SubstanceFields => {
   const decay = clampUnit(
     options.decayRate * options.dtScale,
@@ -521,8 +556,13 @@ export const simulateWaterQualityReference = (
           water[index + CHANNEL_BACTERIA],
           ground[index + GROUND_CHANNEL_BACTERIA],
           ground[index + GROUND_CHANNEL_ORGANIC],
+          ground[index + GROUND_CHANNEL_NITROGEN],
           options,
         );
+        const cellIndex = row * size + column;
+        const cultivated =
+          cultivatedByIndex !== undefined &&
+          cultivatedByIndex[cellIndex] === true;
 
         for (let channel = 0; channel < 4; channel++) {
           nextWater[index + channel] *= 1 - decay;
@@ -556,6 +596,10 @@ export const simulateWaterQualityReference = (
         // organic, which is what lets a plume grow without minting mass out of nothing.
         nextWater[index + CHANNEL_ORGANIC] +=
           exchange.toWaterOrganic - converted;
+
+        // Nitrogen crosses into the film and never back out of it, exactly like organic matter, so this leg is an
+        // addition here and the subtraction of the same committed amount on the ground below.
+        nextWater[index + CHANNEL_NITROGEN] += exchange.toWaterNitrogen;
 
         const emitted = emissionFor(
           column,
@@ -597,6 +641,23 @@ export const simulateWaterQualityReference = (
             options,
           ) +
           depositFor(column, row, size, terrainSize, deposits, options);
+
+        // The ground's nitrogen channel: the one-way absorption the film just received, plus - only on cultivated
+        // cells - a saturating refill toward the fertiliser target. Both are read off the committed soil, so a
+        // source added this pass cannot be absorbed by the same pass, exactly like a deposit (plan A3).
+        nextGround[index + GROUND_CHANNEL_NITROGEN] = Math.max(
+          ground[index + GROUND_CHANNEL_NITROGEN] -
+            exchange.toWaterNitrogen +
+            (cultivated
+              ? (options.cultivationNitrogenTarget -
+                  ground[index + GROUND_CHANNEL_NITROGEN]) *
+                  Math.min(
+                    options.cultivationSupplyRate * options.dtScale,
+                    SUPPLY_CEILING,
+                  )
+              : 0),
+          0,
+        );
       }
     }
 
@@ -641,6 +702,14 @@ export const totalBacteria = (fields: SubstanceFields): number =>
  */
 export const totalOrganicMatter = (fields: SubstanceFields): number =>
   totalAcrossCompartments(fields, CHANNEL_ORGANIC, GROUND_CHANNEL_ORGANIC);
+
+/**
+ * Total nitrogen across both compartments: what a fertilised field holds in its soil plus what a stream is carrying.
+ * Absorption moves it between those two (one-way, so the ground's share only ever falls), and the cultivation source
+ * refills the ground's share on cultivated cells - so with the source off this sum is conserved across a pass.
+ */
+export const totalNitrogen = (fields: SubstanceFields): number =>
+  totalAcrossCompartments(fields, CHANNEL_NITROGEN, GROUND_CHANNEL_NITROGEN);
 
 /**
  * Organic matter plus bacteria across both compartments: the quantity that only changes when decay removes some,

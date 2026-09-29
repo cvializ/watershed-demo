@@ -101,7 +101,9 @@ Sources ─────┘                     ↑              │             
                   WaterHeight, TerrainQuality
                         ↓        ↓
 WaterVelocity ──→ WaterQuality ⇄ TerrainQuality   (bacteria settle onto the soil's organic matter, wash back,
-                                                     and grow on the carbon in whichever compartment holds it)
+                                                     and grow on the carbon in whichever compartment holds it;
+                                                     nitrogen runs only ground → water, laid down by cultivation
+                                                     and absorbed by whatever film flows over it)
 
 Each arrow is a declared dependency, i.e. an injected sampler:
   waterHeight    → clouds, sources, self
@@ -253,20 +255,21 @@ simulation writes these uniforms directly.
 
 Two variables carry water quality, because two things own substances. Which substance lives where is a modelled
 fact about it, not an implementation detail - dissolved oxygen is a property of the water and nothing else, while
-bacterial content is a property of both the water and the ground.
+nitrogen, organic matter and bacterial content are each a property of both the water and the ground.
 
 `waterQuality` is an RGBA32F texture of column-integrated mass (concentration times depth). Channel A is a
 substance, not an alpha: the texture is only ever sampled by hand:
 
 | Channel | Meaning          | Compartments     | Dries with the water?                   |
 | ------- | ---------------- | ---------------- | --------------------------------------- |
-| R       | Nitrogen         | Water            | No - residue stays where the puddle was |
+| R       | Nitrogen         | Water and ground | No - residue stays where the puddle was |
 | G       | Organic matter   | Water and ground | No                                      |
 | B       | Dissolved oxygen | Water only       | **Yes**                                 |
 | A       | Bacteria         | Water and ground | Only onto organic matter, and it breeds |
 
 `terrainQuality` is an RGBA32F texture of mass per unit area in the same units, so the two compartments of one
-species can be added. R is bacterial content bound to the bed and G organic matter lying on it; B and A stay zero.
+species can be added. R is bacterial content bound to the bed, G organic matter lying on it and B nitrogen banked
+in it (cultivated ground keeps laying it down, see `NITROGEN_SUPPLY`); A stays zero.
 Append future terrain compartments rather than renumbering these, since texels are saved data.
 
 **Oxygen.** `water-quality.frag` scales channel B by a wetness `clamp(depth / WET_DEPTH, 0, 1)` after transport -
@@ -324,23 +327,33 @@ die-off or by a film lifting it back up:
 | `organicDepositThreshold` | 0.1     | Soil organic that saturates that rate; below it the deposit scales down      |
 | `washOffRate`             | 0.008   | Fraction of soil bacteria a film picks up per pass                           |
 | `organicWashOffRate`      | 0.06    | Fraction of the ground's organic matter a film scours off per pass           |
+| `nitrogenAbsorptionRate`  | 0.08    | Fraction of the soil's nitrogen a wet film absorbs per pass (ground → water only) |
 | `organicConversionRate`   | 0.08    | Fraction of a compartment's organic matter that colonises into bacteria      |
 | `growthGain`              | 0.06    | Extra fraction converted per unit of population already in that compartment  |
 | `soilDecayRate`           | 0.02    | Die-off of the ground population, first order like the water column's fade   |
 | `organicDecayRate`        | 0.004   | Mineralisation of ground organic matter, so pats weather away (terrain-only) |
 
-The four exchange and growth rates come from `SUBSTANCE_EXCHANGE_RATES` and `BACTERIA_GROWTH`, both in
+The exchange and growth rates come from `SUBSTANCE_EXCHANGE_RATES` and `BACTERIA_GROWTH`, both in
 `variables/substanceExchange.ts`, together with `ORGANIC_DEPOSIT_THRESHOLD`, which is what stops one side of a ledger
 being edited without the other; the two decay
 rates belong to whichever variable owns that
-compartment. Their shared ceiling `EXCHANGE_CEILING = 0.15` binds the organic leg exactly as it binds this one, and is arithmetic rather
-than taste: a wet cell may simultaneously export up to `FLUX_CEILING` (0.75) of its bacteria downslope and be faded
+compartment. Their shared ceiling `EXCHANGE_CEILING = 0.15` binds the organic and nitrogen legs exactly as it binds
+the bacterial one, and is arithmetic rather than
+taste: a wet cell may simultaneously export up to `FLUX_CEILING` (0.75) of its bacteria downslope and be faded
 by up to `DECAY_CEILING` (0.25), so handing over more than `(1 - 0.75) × (1 - 0.25) = 0.1875` of the committed
 population would drive the water column negative. Exchange is applied after decay, on the committed population.
 
+**Nitrogen.** Cultivated ground is the one way nitrogen reaches the soil: `NITROGEN_SUPPLY` (also in
+`substanceExchange.ts`) keeps a cell whose surface material reads as `cultivated` topped back up toward
+`cultivationNitrogenTarget`, and the one-way `nitrogenAbsorptionRate` carries some of that into any film above it.
+Unlike the organic and bacterial legs this is a *source* plus a one-way transfer, not a two-sided trade - nothing
+precipitates dissolved nitrogen back onto the ground - so `totalNitrogen` is conserved across a pass only when the
+supply is off; with the supply on a fertilised field keeps giving nitrogen to the water that crosses it.
+
 Neither ground compartment advects: transport belongs to whatever water covers the cell, and `sediment-flow.frag`
-moves mineral grains rather than either population. Burial and erosion-linked release are therefore not modelled -
-depositing or eroding the bed leaves soil bacteria, and any manure on top of it, exactly where they were.
+moves mineral grains rather than any of these substances. Burial and erosion-linked release are therefore not modelled -
+depositing or eroding the bed leaves soil bacteria, any manure on top of it, and any nitrogen banked in it, exactly
+where they were.
 
 `POLLUTANT_SPECIES` in `createGpuWaterQuality.ts` is the list of channels and their compartments; the shaders repeat
 those indices as literals because GLSL cannot import TypeScript. `tests/waterQualityReferenceModel.ts` mirrors both
