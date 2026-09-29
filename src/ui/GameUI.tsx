@@ -59,6 +59,7 @@ export const GameUI = ({ world }: GameUiProps) => {
     { id: 5, label: "Water height" },
     { id: 6, label: "Testing Simulation" },
     { id: 7, label: "Water Quality" },
+    { id: 8, label: "Reflections" },
   ];
 
   // Which substance the Water Quality view tints with. Same ids as the shader channels.

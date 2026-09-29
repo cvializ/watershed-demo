@@ -4,6 +4,7 @@ import { getObject } from "@/scene/resources/objectCache";
 
 export type { TestingVisualizationUniforms } from "@/scene/resources/materials/testingVisualization";
 export type { WaterVisualizationUniforms } from "@/scene/resources/materials/waterVisualization";
+export type { ReflectionVisualizationUniforms } from "@/scene/resources/materials/reflectionVisualization";
 
 export const MaterialEnum = {
   Default: "Default",
@@ -13,6 +14,7 @@ export const MaterialEnum = {
   Slope: "Slope",
   WaterFlow: "WaterFlow",
   TestingSimulation: "TestingSimulation",
+  Reflections: "Reflections",
 } as const;
 
 export type MaterialEnum = (typeof MaterialEnum)[keyof typeof MaterialEnum];

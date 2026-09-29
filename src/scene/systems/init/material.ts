@@ -7,6 +7,7 @@ import { createDefaultMaterialResource } from "@/scene/resources/materials/defau
 import { createDownslopeArrowsMaterialResource } from "@/scene/resources/materials/downslopeArrows";
 import { createHeightVisualizationMaterialResource } from "@/scene/resources/materials/heightVisualization";
 import { createNormalMaterialResource } from "@/scene/resources/materials/normal";
+import { createReflectionVisualizationMaterialResource } from "@/scene/resources/materials/reflectionVisualization";
 import { createSlopeVisualizationMaterialResource } from "@/scene/resources/materials/slopeVisualization";
 import { createTestingVisualizationMaterialResource } from "@/scene/resources/materials/testingVisualization";
 import { createWaterVisualizationMaterialResource } from "@/scene/resources/materials/waterVisualization";
@@ -60,6 +61,15 @@ export const initMaterials: SceneInitSystem = () => {
     MaterialEnum.TestingSimulation,
     createTestingVisualizationMaterialResource({
       testingTexture: getTextureOrDefault(TextureEnum.SedimentFlowMap),
+    }),
+  );
+  setObject(
+    MaterialEnum.Reflections,
+    createReflectionVisualizationMaterialResource({
+      waterHeightMap: getTextureOrDefault(TextureEnum.WaterHeightMap),
+      cloudShadowMap: getTextureOrDefault(TextureEnum.CloudShadowMap),
+      surfaceMaterialMap: getTextureOrDefault(TextureEnum.SurfaceMaterialMap),
+      sunLightPosition: new THREE.Vector3(0, 0, 0),
     }),
   );
 };
