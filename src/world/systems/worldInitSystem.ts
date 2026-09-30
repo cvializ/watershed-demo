@@ -4,6 +4,7 @@ import { logger } from "@/utils/logger";
 import { addAnimal } from "@/world/factories/addAnimal";
 import { createCamera } from "@/world/factories/camera";
 import { createDownslopeArrows } from "@/world/factories/downslopeArrows";
+import { createStarfield } from "@/world/factories/starfield";
 import { createSunLight } from "@/world/factories/sunLight";
 import { createSunSphere } from "@/world/factories/sunSphere";
 import { createTerrain } from "@/world/factories/terrain";
@@ -16,6 +17,7 @@ export const worldInitSystem: WorldInitSystem = (world) => {
   createSunLight(world);
   createSunSphere(world);
   createDownslopeArrows(world);
+  createStarfield(world);
 
   // Add an animal at a specific position
   addAnimal(world, { x: 2.0, y: 0.5, z: -3.0 });
