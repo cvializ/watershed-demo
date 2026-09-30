@@ -234,6 +234,95 @@ export const GameUI = ({ world }: GameUiProps) => {
             </button>
           </div>
         </div>
+        {/* Weather pane: always visible, sits outside the main row so it doesn't compete with controls. */}
+        <div style={styles.weatherPane}>
+          <div style={styles.weatherTitle}>Weather:</div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Wind X: </span>
+            <span style={styles.value}>{world.cloudWindX.toFixed(2)}</span>
+            <input
+              type="range"
+              min="-0.5"
+              max="0.5"
+              step="0.01"
+              value={world.cloudWindX}
+              onChange={(e) => (world.cloudWindX = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Cloud wind direction (horizontal)"
+            />
+          </div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Wind Y: </span>
+            <span style={styles.value}>{world.cloudWindY.toFixed(2)}</span>
+            <input
+              type="range"
+              min="-0.5"
+              max="0.5"
+              step="0.01"
+              value={world.cloudWindY}
+              onChange={(e) => (world.cloudWindY = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Cloud wind direction (vertical)"
+            />
+          </div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Speed: </span>
+            <span style={styles.value}>{world.cloudSpeed.toFixed(2)}</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={world.cloudSpeed}
+              onChange={(e) => (world.cloudSpeed = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Cloud animation speed"
+            />
+          </div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Scale: </span>
+            <span style={styles.value}>{world.cloudScale.toFixed(2)}</span>
+            <input
+              type="range"
+              min="0.5"
+              max="5"
+              step="0.1"
+              value={world.cloudScale}
+              onChange={(e) => (world.cloudScale = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Cloud feature size (lower = smaller clouds)"
+            />
+          </div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Density: </span>
+            <span style={styles.value}>{world.cloudDensity.toFixed(2)}</span>
+            <input
+              type="range"
+              min="0.2"
+              max="1"
+              step="0.01"
+              value={world.cloudDensity}
+              onChange={(e) => (world.cloudDensity = parseFloat(e.target.value))}
+              style={styles.slider}
+              title="Cloud coverage threshold (lower = more clouds)"
+            />
+          </div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Color: </span>
+            <input
+              type="color"
+              value={`rgb(${Math.round(world.cloudColorR * 255)}, ${Math.round(world.cloudColorG * 255)}, ${Math.round(world.cloudColorB * 255)})`}
+              onChange={(e) => {
+                const hex = e.target.value.replace(/^#/, "");
+                world.cloudColorR = parseInt(hex.substring(0, 2), 16) / 255;
+                world.cloudColorG = parseInt(hex.substring(2, 4), 16) / 255;
+                world.cloudColorB = parseInt(hex.substring(4, 6), 16) / 255;
+              }}
+              style={styles.colorPicker}
+              title="Cloud color"
+            />
+          </div>
+        </div>
         {/* Water Quality keeps its own box under the main row. Squeezing it into that single-row panel
             either pushed the trailing buttons off-screen or made the panel wrap into a sheet over the terrain,
             and only this mode reads world.pollutantSpecies, so it stays out of the way otherwise. */}
@@ -439,6 +528,38 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
+  } satisfies React.CSSProperties,
+  weatherPane: {
+    position: "absolute",
+    top: "96px",
+    left: "20px",
+    width: "236px",
+    padding: "12px",
+    borderRadius: "8px",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    color: "#fff",
+    pointerEvents: "auto" as const,
+  } satisfies React.CSSProperties,
+  weatherTitle: {
+    fontSize: "13px",
+    fontWeight: "bold",
+    color: "#87ceeb",
+    whiteSpace: "nowrap",
+    marginBottom: "4px",
+  } satisfies React.CSSProperties,
+  weatherRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  } satisfies React.CSSProperties,
+  colorPicker: {
+    width: "32px",
+    height: "20px",
+    border: "1px solid #555",
+    borderRadius: "4px",
+    cursor: "pointer",
+    backgroundColor: "transparent",
+    padding: "0",
   } satisfies React.CSSProperties,
   storageSection: {
     display: "flex",

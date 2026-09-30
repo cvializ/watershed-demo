@@ -181,6 +181,13 @@ export const simulationSystem: RendererSystem = (
     if (camera) {
       cloudSphereSystem.update(camera, dt);
 
+      // Push weather color into the visualization shader
+      cloudSphereSystem.setWeather({
+        cloudColorR: world.cloudColorR,
+        cloudColorG: world.cloudColorG,
+        cloudColorB: world.cloudColorB,
+      });
+
       // Add cloud sphere mesh to scene if not already added
       const cloudMesh = getMesh(MeshEnum.CloudMesh);
 
@@ -193,7 +200,16 @@ export const simulationSystem: RendererSystem = (
     } else {
       logger.warn("Camera not found for clouds");
     }
-  } else {
-    logger.warn("Cloud sphere system not initialized");
+  }
+
+  // Push weather parameters into the cloud compute shader
+  if (waterSimulation) {
+    waterSimulation.getClouds().setWeather({
+      cloudWindX: world.cloudWindX,
+      cloudWindY: world.cloudWindY,
+      cloudSpeed: world.cloudSpeed,
+      cloudScale: world.cloudScale,
+      cloudDensity: world.cloudDensity,
+    });
   }
 };

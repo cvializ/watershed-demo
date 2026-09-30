@@ -1,6 +1,7 @@
 uniform sampler2D uCloudTexture;
 uniform vec3 uCameraPosition;
 uniform float uTime;
+uniform vec3 uCloudColor;
 
 varying vec2 vUv;
 
@@ -62,8 +63,8 @@ void main() {
         // Apply smoothstep for better cloud definition
         scaledDensity = smoothstep(0.2, 0.8, scaledDensity);
         
-        // Cloud color - white/gray with slight blue tint
-        vec3 cloudColor = vec3(0.95, 0.98, 1.0);
+        // Use configurable cloud color instead of hardcoded
+        vec3 cloudColor = uCloudColor;
         
         // Translucent look - more transparent where density is low
         float alpha = smoothstep(0.1, 0.8, scaledDensity);
