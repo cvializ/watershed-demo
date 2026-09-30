@@ -19,8 +19,10 @@ export type StarfieldResource = THREE.Group;
  * that, from the camera's viewpoint, enough stars fall within the
  * orthographic frustum to form a convincing night sky. The sphere rotates
  * with the sun, so the visible patch sweeps across the star field over time.
+ *
+ * Exported so the sun can orbit on this same sphere (see `sunBackground`).
  */
-const STARFIELD_RADIUS = 75;
+export const STARFIELD_RADIUS = 75;
 
 /** Number of stars to scatter across the sphere surface. */
 const STAR_COUNT = 20000;
@@ -51,7 +53,11 @@ export const createStarfieldResource = (): StarfieldResource => {
   // Sun orbits: x = r·cos(θ), y = r·sin(θ)·sin(i), z = r·sin(θ)·cos(i)
   // Plane normal = (1,0,0) × (0, sin(i), cos(i)) = (0, -cos(i), sin(i))
   const inclination = Math.PI / 4;
-  const orbitAxis = new THREE.Vector3(0, -Math.cos(inclination), Math.sin(inclination)).normalize();
+  const orbitAxis = new THREE.Vector3(
+    0,
+    -Math.cos(inclination),
+    Math.sin(inclination),
+  ).normalize();
 
   const positions = new Float32Array(STAR_COUNT * 3);
   const colors = new Float32Array(STAR_COUNT * 3);
@@ -109,7 +115,10 @@ export const createStarfieldResource = (): StarfieldResource => {
 
   // Star points geometry
   const starGeometry = new THREE.BufferGeometry();
-  starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  starGeometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(positions, 3),
+  );
   starGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
   const starMaterial = new THREE.PointsMaterial({
@@ -147,8 +156,14 @@ export const createStarfieldResource = (): StarfieldResource => {
   }
 
   const streakGeometry = new THREE.BufferGeometry();
-  streakGeometry.setAttribute("position", new THREE.BufferAttribute(streakPositions, 3));
-  streakGeometry.setAttribute("color", new THREE.BufferAttribute(streakColors, 3));
+  streakGeometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(streakPositions, 3),
+  );
+  streakGeometry.setAttribute(
+    "color",
+    new THREE.BufferAttribute(streakColors, 3),
+  );
 
   const streakMaterial = new THREE.LineBasicMaterial({
     vertexColors: true,

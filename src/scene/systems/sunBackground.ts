@@ -4,6 +4,7 @@ import type { GameWorldContext } from "@/context";
 import type { SceneSystem } from "@/scene/types";
 
 import { MeshEnum, getMesh } from "@/scene/resources/mesh";
+import { STARFIELD_RADIUS } from "@/scene/resources/meshes/starfield";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 
@@ -18,7 +19,10 @@ const updateSunAngle = (world: GameWorldContext, dt: number): void => {
     world.sunAngle -= Math.PI * 2;
   }
 
-  const radius = 25; // Distance from origin
+  // Orbit on the star sphere itself, so the sun stays at the same radius as
+  // the stars and appears to travel across the star field rather than in
+  // front of it.
+  const radius = STARFIELD_RADIUS; // Distance from origin
   const inclination = Math.PI / 4; // 45 degrees - goes above and below terrain
   world.sunPosition.x = radius * Math.cos(world.sunAngle);
   world.sunPosition.y =
@@ -84,8 +88,10 @@ const updateBackground = (
   const nightAmbientLight = 0.1;
 
   const position = world.sunPosition;
-  // Interpolate colors based on sun height for smooth transition
-  const sunHeight = Math.max(0, position.y) / 25; // Normalize to 0-1 range
+  // Interpolate colors based on sun height for smooth transition. Normalise
+  // against the orbit radius (the sun now rides the star sphere), so the
+  // blend keeps the same timing as it ages through the sky.
+  const sunHeight = Math.max(0, position.y) / STARFIELD_RADIUS; // Normalize to 0-1 range
   const blend = Math.pow(sunHeight, 0.5); // Ease in for more dramatic transition
 
   // Interpolate between night and day colors
