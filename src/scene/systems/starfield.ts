@@ -39,6 +39,8 @@ export const starfieldSystem: SceneSystem = (world, _scene, _dt) => {
   }
 
   const starfield = getStarfieldResource();
+  const starPoints = starfield.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+  const streakLines = starfield.children[1] as THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
 
   // Orbit axis: the axis perpendicular to the sun's orbit plane.
   // The sun orbits in a plane tilted by inclination (π/4) around the X axis.
@@ -53,5 +55,6 @@ export const starfieldSystem: SceneSystem = (world, _scene, _dt) => {
   const opacity = computeStarfieldOpacity(world.sunPosition.y);
   starfield.visible = opacity > 0.02;
 
-  starfield.material.opacity = opacity;
+  (starPoints.material as THREE.PointsMaterial).opacity = opacity;
+  (streakLines.material as THREE.LineBasicMaterial).opacity = opacity;
 };
