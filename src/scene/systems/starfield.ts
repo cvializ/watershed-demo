@@ -42,10 +42,12 @@ export const starfieldSystem: SceneSystem = (world, _scene, _dt) => {
   const starPoints = starfield.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   const streakLines = starfield.children[1] as THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
 
-  // Orbit axis: the axis perpendicular to the sun's orbit plane.
+  // Orbit axis: the normal to the sun's orbit plane.
   // The sun orbits in a plane tilted by inclination (π/4) around the X axis.
+  // Sun position: x = r·cos(θ), y = r·sin(θ)·sin(i), z = r·sin(θ)·cos(i)
+  // Plane normal = (1,0,0) × (0, sin(i), cos(i)) = (0, -cos(i), sin(i))
   const inclination = Math.PI / 4;
-  const orbitAxis = new THREE.Vector3(0, Math.sin(inclination), Math.cos(inclination)).normalize();
+  const orbitAxis = new THREE.Vector3(0, -Math.cos(inclination), Math.sin(inclination)).normalize();
 
   // Rotate the starfield sphere around the orbit axis to match the sun's angle.
   // Since the sphere is uniformly distributed, rotating it changes which stars

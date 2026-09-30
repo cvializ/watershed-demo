@@ -47,9 +47,11 @@ const STAR_TINTS = [
  * motion-blur aesthetic.
  */
 export const createStarfieldResource = (): StarfieldResource => {
-  // Orbit axis used by the starfield system (must match).
+  // Orbit axis: the normal to the sun's orbit plane (must match starfieldSystem).
+  // Sun orbits: x = r·cos(θ), y = r·sin(θ)·sin(i), z = r·sin(θ)·cos(i)
+  // Plane normal = (1,0,0) × (0, sin(i), cos(i)) = (0, -cos(i), sin(i))
   const inclination = Math.PI / 4;
-  const orbitAxis = new THREE.Vector3(0, Math.sin(inclination), Math.cos(inclination)).normalize();
+  const orbitAxis = new THREE.Vector3(0, -Math.cos(inclination), Math.sin(inclination)).normalize();
 
   const positions = new Float32Array(STAR_COUNT * 3);
   const colors = new Float32Array(STAR_COUNT * 3);
