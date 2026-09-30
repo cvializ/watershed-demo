@@ -24,6 +24,21 @@ export type GpuClouds = {
   cloudVariable: Variable;
   updateClouds: (gameTime: number) => void;
   getCloudTexture: () => THREE.Texture;
+  /**
+   * Pushes weather parameters from the world context into the cloud shader uniforms.
+   * Call this every frame (or when a slider moves) so the GPU picks up UI changes.
+   */
+  setWeather: (world: {
+    cloudWindX: number;
+    cloudWindY: number;
+    cloudSpeed: number;
+    cloudScale: number;
+    cloudDensity: number;
+  }) => void;
+  /**
+   * Returns this object so callers can access setWeather after the fact.
+   */
+  getClouds: () => GpuClouds;
 };
 
 /**
@@ -106,7 +121,8 @@ export const createGpuClouds = (
   cloudUniforms.uScale = { value: config.scale };
   cloudUniforms.uDensity = { value: config.density };
 
-  return {
+  // Build the object, then attach getClouds as a self-reference
+  const clouds: GpuClouds = {
     cloudVariable,
     updateClouds: (gameTime: number): void => {
       // Use global gameTime directly for save/load support
@@ -115,5 +131,20 @@ export const createGpuClouds = (
     getCloudTexture: (): THREE.Texture => {
       return gpuCompute.getCurrentRenderTarget(cloudVariable).texture;
     },
+    setWeather: (world: {
+      cloudWindX: number;
+      cloudWindY: number;
+      cloudSpeed: number;
+      cloudScale: number;
+      cloudDensity: number;
+    }): void => {
+      cloudUniforms.uDriftSpeed.value.set(world.cloudWindX, world.cloudWindY);
+      cloudUniforms.uSpeed.value = world.cloudSpeed;
+      cloudUniforms.uScale.value = world.cloudScale;
+      cloudUniforms.uDensity.value = world.cloudDensity;
+    },
+    getClouds: (): GpuClouds => clouds,
   };
+
+  return clouds;
 };

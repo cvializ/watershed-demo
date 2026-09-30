@@ -1,0 +1,16 @@
+[transformers] You are using a model of type `qwen4_exp` to instantiate a model of type ``. This may be expected if you are loading a checkpoint that shares a subset of the architecture (e.g., loading a `sam2_video` checkpoint into `Sam2Model`), but is otherwise not supported and can yield errors. Please verify that the checkpoint is compatible with the model you are instantiating.
+[tokenizer] restored the pre-tokenizer regex from tokenizer.json: the loaded tokenizer split combining marks off their letters (Devanagari, Thai, vowelled Arabic tokenized 25-90% longer than the model was trained on)
+[qwen4_exp] sanitize fused gate+up: 96 modules
+[qwen4_exp] sanitize fused GDN in_proj: 36 layers
+[mtplx] n-gram table pre-read plan: mode=auto source=env table=29.8 GiB free=7.1 GiB reserved=0.0 GiB margin=6.0 GiB budget=1.1 GiB order=small_maps_first
+[mtplx] n-gram table pre-read 1.1 GiB in 0.1 s (12.1 GiB/s)
+[qwen4_exp] ngram table: streamed from SSD (file-backed pages, hot cache 1023M, prefetch on)
+[frspec] disabled (MTPLX_FRSPEC_DRAFT=None)
+[mtplx] dense-decode ceiling auto: 838860 tokens (15% RAM over 24576 B/token, from the model config)
+[qwen4-fixed-M4-verify] replay installed: aux=staged_sidecar inputs=host_ledger boundary=both donate=True kv_gather=stock positions=text
+[mtplx] verify SDPA head-chunked: q_len=4 heads_per_chunk=8 chunks=4
+[qwen4-fixed-M4-verify] replay installed: aux=staged_sidecar inputs=host_ledger boundary=both donate=True kv_gather=stock positions=text
+{
+  "candidate": "3",
+  "output": "/Users/carlos/workspace/demoviz5/outputs/cli/tune/tune-20260929-202814/d3.json"
+}

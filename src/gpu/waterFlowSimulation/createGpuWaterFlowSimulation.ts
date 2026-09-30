@@ -8,6 +8,7 @@ import type { TerrainHeightEditor } from "@/gpu/waterFlowSimulation/variables/cr
 import type { WaterHeightUniforms } from "@/gpu/waterFlowSimulation/variables/createGpuWaterHeight";
 import type { PollutantSpeciesId } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
 
+import type { GpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createTestingTexture } from "@/gpu/testingSimulation/createTestingTexture";
 import { createGpuClouds } from "@/gpu/waterFlowSimulation/variables/createGpuClouds";
 import { createGpuSedimentFlow } from "@/gpu/waterFlowSimulation/variables/createGpuSedimentFlow";
@@ -174,6 +175,11 @@ export type WaterFlowVisualization = {
   getCloudVariable: () => Variable;
 
   /**
+   * Get the GPU clouds system for weather uniform updates.
+   */
+  getClouds: () => GpuClouds;
+
+  /**
    * Get the GPU computation renderer instance.
    */
   getGpuCompute: () => GPUComputationRenderer;
@@ -277,11 +283,12 @@ export const createGpuWaterFlowSimulation = (
   const gpuCompute = new GPUComputationRenderer(width, width, renderer);
 
   // Create variables with saved textures if provided (for save/load recreation)
-  const { cloudVariable, updateClouds, getCloudTexture } = createGpuClouds(
-    gpuCompute,
-    width,
-    savedTextures && savedTextures.cloudsTexture, // Pass saved clouds texture
-  );
+  const { cloudVariable, updateClouds, getCloudTexture, getClouds: getCloudsSystem } =
+    createGpuClouds(
+      gpuCompute,
+      width,
+      savedTextures && savedTextures.cloudsTexture, // Pass saved clouds texture
+    );
 
   const { waterSourcesVariable, initWaterSources, addWater, clearWater } =
     createGpuWaterSources(gpuCompute, width, heightMapTexture, terrainSize);
@@ -455,6 +462,7 @@ export const createGpuWaterFlowSimulation = (
       };
     },
     getCloudShadowTexture: () => getCloudTexture(),
+    getClouds: () => getCloudsSystem(),
     getSimulationTexture: () =>
       gpuCompute.getCurrentRenderTarget(waterHeightVariable).texture,
     getVelocityTexture: () =>

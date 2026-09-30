@@ -38,6 +38,15 @@ export const createGameWorldContext = () => ({
   pollutantSpecies: 0 as PollutantSpeciesId,
   // Entity currently right-clicked and shown in the inspector pane, or -1 for none.
   selectedEntity$: -1,
+  // Weather state: cloud simulation parameters
+  cloudWindX: 0.1,
+  cloudWindY: 0.05,
+  cloudSpeed: 0.1,
+  cloudScale: 1.5,
+  cloudDensity: 0.7,
+  cloudColorR: 0.95,
+  cloudColorG: 0.98,
+  cloudColorB: 1.0,
 });
 
 export const togglePause = (world: GameWorldContext): void => {

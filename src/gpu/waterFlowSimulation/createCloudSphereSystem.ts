@@ -17,6 +17,7 @@ type CloudSphereUniforms = {
   uCloudTexture: THREE.IUniform<THREE.Texture>;
   uCameraPosition: THREE.IUniform<THREE.Vector3>;
   uTime: THREE.IUniform<number>;
+  uCloudColor: THREE.IUniform<THREE.Color>;
 };
 
 export type CloudSphereSystem = {
@@ -36,6 +37,15 @@ export type CloudSphereSystem = {
    * Get the cloud spheres material for rendering.
    */
   getMaterial: () => ShaderMaterial;
+
+  /**
+   * Pushes cloud color from the world context into the visualization shader uniform.
+   */
+  setWeather: (world: {
+    cloudColorR: number;
+    cloudColorG: number;
+    cloudColorB: number;
+  }) => void;
 };
 
 /**
@@ -74,6 +84,7 @@ export const createCloudSphereSystem = (
     uCloudTexture: { value: cloudTexture },
     uCameraPosition: { value: new THREE.Vector3(0, 2, 5) },
     uTime: { value: 0.0 },
+    uCloudColor: { value: new THREE.Color(0xf2fafc) }, // default: white/blue tint
   };
 
   const cloudMaterial = new THREE.ShaderMaterial({
@@ -108,9 +119,18 @@ export const createCloudSphereSystem = (
     return cloudMaterial;
   };
 
+  const setWeather = (world: {
+    cloudColorR: number;
+    cloudColorG: number;
+    cloudColorB: number;
+  }): void => {
+    uniforms.uCloudColor.value.setRGB(world.cloudColorR, world.cloudColorG, world.cloudColorB);
+  };
+
   return {
     update,
     getMesh,
     getMaterial,
+    setWeather,
   };
 };
