@@ -4,13 +4,13 @@ import { MeshEnum } from "@/scene/resources/mesh";
 import { getObject } from "@/scene/resources/objectCache";
 
 /**
- * A starfield point cloud. Each star is a fixed-pixel point, so this type is
- * narrowed to the single `PointsMaterial` the factory always builds.
+ * A starfield group containing point stars and streak lines.
+ *
+ * Stars are rendered as `Points` with fixed-pixel sizing. Streaks are
+ * rendered as `LineSegments` — one line per star, trailing behind in the
+ * direction opposite to the starfield's rotation.
  */
-export type StarfieldResource = THREE.Points<
-  THREE.BufferGeometry,
-  THREE.PointsMaterial
->;
+export type StarfieldResource = THREE.Group;
 
 /**
  * Radius of the star sphere, centered at the world origin.
@@ -25,6 +25,9 @@ const STARFIELD_RADIUS = 75;
 /** Number of stars to scatter across the sphere surface. */
 const STAR_COUNT = 20000;
 
+/** Streak length as a fraction of sphere radius (streak goes inward from star). */
+const STREAK_FRACTION = 0.015;
+
 /** Star tints, from white to blue-white and warm orange. */
 const STAR_TINTS = [
   new THREE.Color(0xffffff),
@@ -35,16 +38,25 @@ const STAR_TINTS = [
 ];
 
 /**
- * Build a starfield point cloud on a sphere centered at the world origin.
+ * Build a starfield with streaks on a sphere centered at the world origin.
  *
  * Stars are uniformly scattered over the sphere surface using the standard
  * spherical-coordinate method (with `acos` for the polar angle to ensure
- * uniform distribution). The sphere rotates around the sun's orbit axis so
- * the visible patch sweeps across the stars as the sun moves.
+ * uniform distribution). Each star has a streak line trailing behind it in
+ * the direction opposite to the starfield's rotation, creating a subtle
+ * motion-blur aesthetic.
  */
 export const createStarfieldResource = (): StarfieldResource => {
+  // Orbit axis used by the starfield system (must match).
+  const inclination = Math.PI / 4;
+  const orbitAxis = new THREE.Vector3(0, Math.sin(inclination), Math.cos(inclination)).normalize();
+
   const positions = new Float32Array(STAR_COUNT * 3);
   const colors = new Float32Array(STAR_COUNT * 3);
+  const streakEndPositions = new Float32Array(STAR_COUNT * 3);
+  const streakEndColors = new Float32Array(STAR_COUNT * 3);
+
+  const streakLength = STARFIELD_RADIUS * STREAK_FRACTION;
 
   for (let index = 0; index < STAR_COUNT; index++) {
     const offset = index * 3;
@@ -52,22 +64,53 @@ export const createStarfieldResource = (): StarfieldResource => {
     // Uniform distribution over a sphere surface
     const theta = Math.random() * 2 * Math.PI; // azimuth
     const phi = Math.acos(2 * Math.random() - 1); // polar
-    positions[offset] = STARFIELD_RADIUS * Math.sin(phi) * Math.cos(theta);
-    positions[offset + 1] = STARFIELD_RADIUS * Math.sin(phi) * Math.sin(theta);
-    positions[offset + 2] = STARFIELD_RADIUS * Math.cos(phi);
+    const sx = STARFIELD_RADIUS * Math.sin(phi) * Math.cos(theta);
+    const sy = STARFIELD_RADIUS * Math.sin(phi) * Math.sin(theta);
+    const sz = STARFIELD_RADIUS * Math.cos(phi);
+    positions[offset] = sx;
+    positions[offset + 1] = sy;
+    positions[offset + 2] = sz;
 
     const tint = STAR_TINTS[Math.floor(Math.random() * STAR_TINTS.length)];
     const brightness = 0.6 + Math.random() * 0.4;
     colors[offset] = tint.r * brightness;
     colors[offset + 1] = tint.g * brightness;
     colors[offset + 2] = tint.b * brightness;
+
+    // Streak direction: tangential to rotation, trailing behind motion.
+    // For rotation around orbitAxis, tangential velocity = cross(orbitAxis, position).
+    // Streak goes opposite to motion (inward along the streak direction).
+    const tx = orbitAxis.y * sz - orbitAxis.z * sy;
+    const ty = orbitAxis.z * sx - orbitAxis.x * sz;
+    const tz = orbitAxis.x * sy - orbitAxis.y * sx;
+    const tLen = Math.sqrt(tx * tx + ty * ty + tz * tz);
+
+    if (tLen > 0.001) {
+      // Streak endpoint: star position minus normalized tangential * streak length
+      streakEndPositions[offset] = sx - (tx / tLen) * streakLength;
+      streakEndPositions[offset + 1] = sy - (ty / tLen) * streakLength;
+      streakEndPositions[offset + 2] = sz - (tz / tLen) * streakLength;
+      // Fade the streak tail (0.15x brightness at tail)
+      const fadeFactor = 0.15;
+      streakEndColors[offset] = colors[offset] * fadeFactor;
+      streakEndColors[offset + 1] = colors[offset + 1] * fadeFactor;
+      streakEndColors[offset + 2] = colors[offset + 2] * fadeFactor;
+    } else {
+      streakEndPositions[offset] = sx;
+      streakEndPositions[offset + 1] = sy;
+      streakEndPositions[offset + 2] = sz;
+      streakEndColors[offset] = 0;
+      streakEndColors[offset + 1] = 0;
+      streakEndColors[offset + 2] = 0;
+    }
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  // Star points geometry
+  const starGeometry = new THREE.BufferGeometry();
+  starGeometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  starGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
-  const material = new THREE.PointsMaterial({
+  const starMaterial = new THREE.PointsMaterial({
     size: 2,
     sizeAttenuation: false,
     vertexColors: true,
@@ -76,7 +119,49 @@ export const createStarfieldResource = (): StarfieldResource => {
     depthWrite: false,
   });
 
-  const starfield = new THREE.Points(geometry, material);
+  const starPoints = new THREE.Points(starGeometry, starMaterial);
+
+  // Streak lines geometry: pairs of (starPos, streakEndPos)
+  const streakPositions = new Float32Array(STAR_COUNT * 6); // 2 vertices × 3 coords
+  const streakColors = new Float32Array(STAR_COUNT * 6);
+
+  for (let index = 0; index < STAR_COUNT; index++) {
+    const offset = index * 6;
+    // Start vertex: star position
+    streakPositions[offset] = positions[index * 3];
+    streakPositions[offset + 1] = positions[index * 3 + 1];
+    streakPositions[offset + 2] = positions[index * 3 + 2];
+    // End vertex: streak endpoint
+    streakPositions[offset + 3] = streakEndPositions[index * 3];
+    streakPositions[offset + 4] = streakEndPositions[index * 3 + 1];
+    streakPositions[offset + 5] = streakEndPositions[index * 3 + 2];
+    // Colors: bright at star, faded at tail
+    streakColors[offset] = colors[index * 3];
+    streakColors[offset + 1] = colors[index * 3 + 1];
+    streakColors[offset + 2] = colors[index * 3 + 2];
+    streakColors[offset + 3] = streakEndColors[index * 3];
+    streakColors[offset + 4] = streakEndColors[index * 3 + 1];
+    streakColors[offset + 5] = streakEndColors[index * 3 + 2];
+  }
+
+  const streakGeometry = new THREE.BufferGeometry();
+  streakGeometry.setAttribute("position", new THREE.BufferAttribute(streakPositions, 3));
+  streakGeometry.setAttribute("color", new THREE.BufferAttribute(streakColors, 3));
+
+  const streakMaterial = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+
+  const streakLines = new THREE.LineSegments(streakGeometry, streakMaterial);
+
+  // Group containing both stars and streaks
+  const starfield = new THREE.Group();
+  starfield.add(starPoints);
+  starfield.add(streakLines);
 
   // The star sphere is centered at the origin and never cull against the
   // frustum — the system rotates it to match the sun, so stars always appear

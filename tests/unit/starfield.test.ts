@@ -39,21 +39,26 @@ test.describe("computeStarfieldOpacity", () => {
 });
 
 test.describe("createStarfieldResource", () => {
-  test("returns a THREE.Points object", () => {
+  test("returns a THREE.Group with star points and streak lines", () => {
     const resource = createStarfieldResource();
-    expect(resource).toBeInstanceOf(THREE.Points);
+    expect(resource).toBeInstanceOf(THREE.Group);
+    expect(resource.children.length).toBe(2);
+    expect(resource.children[0]).toBeInstanceOf(THREE.Points);
+    expect(resource.children[1]).toBeInstanceOf(THREE.LineSegments);
   });
 
   test("creates a point cloud with 20000 vertices", () => {
     const resource = createStarfieldResource();
-    const geometry = resource.geometry as THREE.BufferGeometry;
+    const starPoints = resource.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    const geometry = starPoints.geometry as THREE.BufferGeometry;
     const positions = geometry.getAttribute("position");
     expect(positions.count).toBe(20000);
   });
 
   test("positions stars on a sphere of radius 75", () => {
     const resource = createStarfieldResource();
-    const geometry = resource.geometry as THREE.BufferGeometry;
+    const starPoints = resource.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    const geometry = starPoints.geometry as THREE.BufferGeometry;
     const positions = geometry.getAttribute("position");
     for (let index = 0; index < positions.count; index++) {
       const x = positions.getX(index);
@@ -63,6 +68,15 @@ test.describe("createStarfieldResource", () => {
       // Allow a small floating-point tolerance
       expect(distance).toBeCloseTo(75, 0);
     }
+  });
+
+  test("creates streak lines with 20000 segments", () => {
+    const resource = createStarfieldResource();
+    const streakLines = resource.children[1] as THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial>;
+    const geometry = streakLines.geometry as THREE.BufferGeometry;
+    const positions = geometry.getAttribute("position");
+    // 20000 stars × 2 vertices per segment = 40000 vertices
+    expect(positions.count).toBe(40000);
   });
 });
 
@@ -75,7 +89,8 @@ test.describe("starfieldSystem", () => {
     createStarfield(world);
     starfieldSystem(world, undefined as unknown as THREE.Scene, 0);
     const resource = getStarfieldResource();
-    expect(resource.material.opacity).toBe(1);
+    const starPoints = resource.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    expect((starPoints.material as THREE.PointsMaterial).opacity).toBe(1);
   });
 
   test("sets starfield opacity to 0 when sun is above the horizon", () => {
@@ -86,7 +101,8 @@ test.describe("starfieldSystem", () => {
     createStarfield(world);
     starfieldSystem(world, undefined as unknown as THREE.Scene, 0);
     const resource = getStarfieldResource();
-    expect(resource.material.opacity).toBe(0);
+    const starPoints = resource.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    expect((starPoints.material as THREE.PointsMaterial).opacity).toBe(0);
   });
 
   test("interpolates opacity linearly when sun is between horizon and fade threshold", () => {
@@ -97,7 +113,8 @@ test.describe("starfieldSystem", () => {
     createStarfield(world);
     starfieldSystem(world, undefined as unknown as THREE.Scene, 0);
     const resource = getStarfieldResource();
-    expect(resource.material.opacity).toBe(0.5);
+    const starPoints = resource.children[0] as THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
+    expect((starPoints.material as THREE.PointsMaterial).opacity).toBe(0.5);
   });
 
   test("does not create a Position component (fixed sphere, not world-space object)", () => {
