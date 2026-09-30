@@ -30,10 +30,11 @@ const float HALF_SATURATING_MASS = 0.35;
 // length the cloud/terrain textures span. Kept in step with CLOUD_ALTITUDE in
 // src/gpu/waterFlowSimulation/createCloudSphereSystem.ts and TERRAIN_SIZE in
 // src/terrain/constants.ts. One texture unit covers the whole world, so the
-// shadow a cloud at CLOUD_ALTITUDE throws is CLOUD_ALTITUDE * cot(elevation)
+// shadow a cloud throws is (CLOUD_ALTITUDE - terrainHeight) * cot(elevation)
 // divided by TERRAIN_SIZE in uv space.
 const float CLOUD_ALTITUDE = 3.5;
 const float TERRAIN_SIZE = 40.0;
+const float MAX_TERRAIN_HEIGHT = 1.3;
 
 varying vec2 vUv;
 varying vec3 vNormal;
@@ -230,9 +231,12 @@ void main() {
     // uv.x tracks world x and uv.y tracks world z, so the horizontal sun
     // direction maps straight into the shared terrain/cloud uv frame.
     vec2 toSunUv = vec2(toSun.x, toSun.z);
-    // Shadow reach in uv: 0 overhead, growing toward the horizon. Clamped so a
-    // near-horizon sun doesn't sample far off the edge of the cloud field.
-    float shadowUv = min((CLOUD_ALTITUDE / max(toSun.y, 0.1)) / TERRAIN_SIZE, 0.2);
+    // Account for terrain height: the cloud-to-ground distance varies with
+    // elevation, so the shadow offset must shrink on high ground where the
+    // cloud plane (fixed at CLOUD_ALTITUDE) is closer to the surface.
+    float terrainHeight = texture2D(uHeightMap, vUv).r * MAX_TERRAIN_HEIGHT;
+    float cloudToGround = CLOUD_ALTITUDE - terrainHeight;
+    float shadowUv = min((cloudToGround / max(toSun.y, 0.1)) / TERRAIN_SIZE, 0.2);
 
     // Sample cloud shadow intensity with blur and expansion
     float cloudShadow = getBlurredShadow(vUv + toSunUv * shadowUv, uCloudShadowMap);
