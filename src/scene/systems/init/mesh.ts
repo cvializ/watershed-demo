@@ -4,6 +4,7 @@ import { MeshEnum } from "@/scene/resources/mesh";
 import { createAnimalMeshResource } from "@/scene/resources/meshes/animal";
 import { createDownslopeArrowsMeshResource } from "@/scene/resources/meshes/downslopeArrows";
 import { createSunSphereResource } from "@/scene/resources/meshes/sunSphere";
+import { createStarfieldResource } from "@/scene/resources/meshes/starfield";
 import { createTerrainGeometry } from "@/scene/resources/meshes/terrain";
 import { createTerrainMeshResource } from "@/scene/resources/meshes/terrain";
 import { createTerrainWireframeOverlayMesh } from "@/scene/resources/meshes/terrainWireframeOverlay";
@@ -29,6 +30,10 @@ export const initMeshes: SceneInitSystem = (_world, scene) => {
 
   setObject(MeshEnum.DownslopeArrows, createDownslopeArrowsMeshResource());
   setObject(MeshEnum.SunSphere, createSunSphereResource());
+
+  // Starfield surrounds the scene and is kept pinned to the camera by the
+  // starfieldSystem, so it renders behind everything as a night sky.
+  setObject(MeshEnum.Starfield, createStarfieldResource());
 
   // Animals are many-to-one: each animal entity needs its own mesh instance
   // rather than a single shared object, so register a per-entity factory.
