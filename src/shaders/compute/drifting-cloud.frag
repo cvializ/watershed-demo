@@ -1,7 +1,9 @@
 #include <common>
 
 uniform float uTime;
-uniform vec2 uDriftSpeed;  // Horizontal and vertical drift speed
+uniform vec2 uDriftSpeed;  // Horizontal and vertical drift speed (current wind direction)
+uniform float uWindSetTime; // Simulation time when current wind direction was set
+uniform vec2 uAccumulatedDrift; // Total drift accumulated from previous wind settings
 uniform float uSpeed;      // Speed multiplier for animation
 uniform float uScale;
 uniform float uDensity;
@@ -91,10 +93,12 @@ void main() {
     vec2 cellSize = 1.0 / resolution.xy;
     vec2 uv = gl_FragCoord.xy * cellSize;
 
-    // Apply drift offset to UV coordinates
-    // uDriftSpeed.x controls horizontal drift (u coordinate)
-    // uDriftSpeed.y controls vertical drift (v coordinate)
-    vec2 driftedUv = uv + uDriftSpeed * uTime;
+    // Apply drift offset to UV coordinates.
+    // uAccumulatedDrift preserves the visual position from all previous wind settings.
+    // uDriftSpeed * (uTime - uWindSetTime) adds drift from the current wind direction.
+    // This combination prevents position jumps when wind direction changes.
+    float windElapsed = uTime - uWindSetTime;
+    vec2 driftedUv = uv + uAccumulatedDrift + uDriftSpeed * windElapsed;
     
     // Create animated cloud pattern using FBM with drifted coordinates
     vec3 noiseInput = vec3(driftedUv * uScale, uTime * 0.5 * uSpeed);

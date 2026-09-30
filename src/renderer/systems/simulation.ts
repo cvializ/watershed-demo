@@ -204,12 +204,15 @@ export const simulationSystem: RendererSystem = (
 
   // Push weather parameters into the cloud compute shader
   if (waterSimulation) {
-    waterSimulation.getClouds().setWeather({
-      cloudWindX: world.cloudWindX,
-      cloudWindY: world.cloudWindY,
-      cloudSpeed: world.cloudSpeed,
-      cloudScale: world.cloudScale,
-      cloudDensity: world.cloudDensity,
-    });
+    waterSimulation.getClouds().setWeather(
+      {
+        cloudWindX: world.cloudWindX,
+        cloudWindY: world.cloudWindY,
+        cloudSpeed: world.cloudSpeed,
+        cloudScale: world.cloudScale,
+        cloudDensity: world.cloudDensity,
+      },
+      gameTime,
+    );
   }
 };

@@ -15,6 +15,8 @@ import { getUniforms } from "@/utils/uniformUtils";
 type DriftingCloudUniforms = {
   uTime: THREE.IUniform<number>;
   uDriftSpeed: THREE.IUniform<THREE.Vector2>;
+  uWindSetTime: THREE.IUniform<number>;
+  uAccumulatedDrift: THREE.IUniform<THREE.Vector2>;
   uSpeed: THREE.IUniform<number>;
   uScale: THREE.IUniform<number>;
   uDensity: THREE.IUniform<number>;
@@ -28,13 +30,16 @@ export type GpuClouds = {
    * Pushes weather parameters from the world context into the cloud shader uniforms.
    * Call this every frame (or when a slider moves) so the GPU picks up UI changes.
    */
-  setWeather: (world: {
-    cloudWindX: number;
-    cloudWindY: number;
-    cloudSpeed: number;
-    cloudScale: number;
-    cloudDensity: number;
-  }) => void;
+  setWeather: (
+    world: {
+      cloudWindX: number;
+      cloudWindY: number;
+      cloudSpeed: number;
+      cloudScale: number;
+      cloudDensity: number;
+    },
+    gameTime: number,
+  ) => void;
   /**
    * Returns this object so callers can access setWeather after the fact.
    */
@@ -117,9 +122,18 @@ export const createGpuClouds = (
   );
   cloudUniforms.uTime = { value: 0.0 };
   cloudUniforms.uDriftSpeed = { value: config.driftSpeed.clone() };
+  cloudUniforms.uWindSetTime = { value: 0.0 };
+  cloudUniforms.uAccumulatedDrift = { value: new THREE.Vector2(0, 0) };
   cloudUniforms.uSpeed = { value: config.speed };
   cloudUniforms.uScale = { value: config.scale };
   cloudUniforms.uDensity = { value: config.density };
+
+  // Track when the current wind was set, the accumulated drift from all previous wind settings,
+  // and the current wind direction for continuous offset transitions.
+  let windSetTime = 0.0;
+  let accumulatedDrift = new THREE.Vector2(0, 0);
+  let previousWindX = config.driftSpeed.x;
+  let previousWindY = config.driftSpeed.y;
 
   // Build the object, then attach getClouds as a self-reference
   const clouds: GpuClouds = {
@@ -137,8 +151,20 @@ export const createGpuClouds = (
       cloudSpeed: number;
       cloudScale: number;
       cloudDensity: number;
-    }): void => {
+    }, gameTime: number): void => {
+      // When wind direction changes, add the old wind's remaining contribution to
+      // accumulatedDrift so the visual cloud position stays continuous (no jump).
+      // The new wind direction then starts accumulating from windSetTime = gameTime.
+      const windElapsed = gameTime - windSetTime;
+      accumulatedDrift.x += previousWindX * windElapsed;
+      accumulatedDrift.y += previousWindY * windElapsed;
+      previousWindX = world.cloudWindX;
+      previousWindY = world.cloudWindY;
+      windSetTime = gameTime;
+
       cloudUniforms.uDriftSpeed.value.set(world.cloudWindX, world.cloudWindY);
+      cloudUniforms.uWindSetTime.value = gameTime;
+      cloudUniforms.uAccumulatedDrift.value.copy(accumulatedDrift);
       cloudUniforms.uSpeed.value = world.cloudSpeed;
       cloudUniforms.uScale.value = world.cloudScale;
       cloudUniforms.uDensity.value = world.cloudDensity;
