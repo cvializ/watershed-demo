@@ -9,7 +9,8 @@ export const createSunSphereResource = () => {
   const sunSphere = new THREE.Mesh(geometry, material);
 
   // Always render the sun sphere regardless of frustum culling
-  // This is necessary because the sun orbits at distance ~25 and may be culled
+  // This is necessary because the sun orbits on the star sphere (distance 75)
+  // and its bounding volume can fall outside the orthographic frustum
   sunSphere.frustumCulled = false;
 
   return sunSphere;
