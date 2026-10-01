@@ -248,7 +248,7 @@ export const GameUI = ({ world }: GameUiProps) => {
               value={world.cloudWindX}
               onChange={(e) => (world.cloudWindX = parseFloat(e.target.value))}
               style={styles.slider}
-              title="Cloud wind direction (horizontal)"
+              title="Wind direction over the field and the clouds (horizontal)"
             />
           </div>
           <div style={styles.weatherRow}>
@@ -262,7 +262,7 @@ export const GameUI = ({ world }: GameUiProps) => {
               value={world.cloudWindY}
               onChange={(e) => (world.cloudWindY = parseFloat(e.target.value))}
               style={styles.slider}
-              title="Cloud wind direction (vertical)"
+              title="Wind direction over the field and the clouds (vertical)"
             />
           </div>
           <div style={styles.weatherRow}>
