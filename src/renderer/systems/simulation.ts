@@ -4,6 +4,7 @@ import * as THREE from "three";
 
 import type { RendererSystem } from "@/renderer/types";
 
+import { cropGustTracker } from "@/renderer/resources/cropGusts";
 import { getGameClock } from "@/renderer/resources/loop";
 import {
   cloudSphereSystem,
@@ -48,6 +49,17 @@ export const simulationSystem: RendererSystem = (
 
   const { showVelocity } = world;
 
+  // Where the gusts over the crop stand: the wind the weather pane sets, kept
+  // on the same three tracked values the clouds are kept on, so the crop blows
+  // along the bearing that wind actually drives the sky down instead of at an
+  // angle to it, and a change of wind carries a gust on from wherever the old
+  // wind left it. Sampled once per pass so the water flow view and the
+  // reflections view of a field wave in step.
+  const cropGusts = cropGustTracker.trail(
+    { cloudWindX: world.cloudWindX, cloudWindY: world.cloudWindY },
+    gameTime,
+  );
+
   // Only update water/simulation uniforms for modes that use them
   const showsPollutants = world.visualizationMode === 7; // Water Quality: same material, substance overlay on top
 
@@ -84,11 +96,18 @@ export const simulationSystem: RendererSystem = (
     // Advance the wind over the crop with the same logical clock the simulation runs on, so the
     // grain waves at the pace the game runs at rather than the wall clock's.
     uniforms.uTime.value = gameTime;
-    // The gusts ride the wind the weather pane sets: that wind is both the direction
-    // the gust train marches along and the strength it marches at, so turning the
-    // wind around sends the next gusts in from the other side of the field, and a
-    // wind of nothing leaves the stand upright and still.
-    uniforms.uWind.value.set(world.cloudWindX, world.cloudWindY);
+    // The gusts ride the wind the weather pane sets - turned into the field's
+    // frame and measured from the distance its previous winds covered - so that
+    // wind is both the direction the gust train marches along and the strength
+    // it marches at, the march carries on across a wind change rather than
+    // restarting from the clock, and a wind of nothing leaves the stand upright
+    // and still.
+    uniforms.uWind.value.set(cropGusts.wind.x, cropGusts.wind.y);
+    uniforms.uGustDrift.value.set(
+      cropGusts.bankedDrift.x,
+      cropGusts.bankedDrift.y,
+    );
+    uniforms.uGustSetTime.value = cropGusts.windSetTime;
     uniforms.uLightPosition.value.x = world.sunPosition.x;
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;
@@ -159,9 +178,14 @@ export const simulationSystem: RendererSystem = (
     uniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
     uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
     uniforms.uTime.value = gameTime;
-    // Same wind as the water flow view, so a crop field looks the same from the
-    // water it grew on as it does from above it.
-    uniforms.uWind.value.set(world.cloudWindX, world.cloudWindY);
+    // Same tracked wind as the water flow view, so a crop field looks the same from
+    // the water it grew on as it does from above it.
+    uniforms.uWind.value.set(cropGusts.wind.x, cropGusts.wind.y);
+    uniforms.uGustDrift.value.set(
+      cropGusts.bankedDrift.x,
+      cropGusts.bankedDrift.y,
+    );
+    uniforms.uGustSetTime.value = cropGusts.windSetTime;
     uniforms.uLightPosition.value.x = world.sunPosition.x;
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;
