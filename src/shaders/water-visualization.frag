@@ -12,6 +12,7 @@ uniform float uMinHeight;
 uniform float uMaxHeight;
 uniform int uShowVelocity; // 0 = show height, 1 = show velocity
 uniform sampler2D uSurfaceMaterialMap; // Surface material texture
+uniform float uTime; // Game time, drives the animated crop in the cultivated field
 
 // Wireframe overlay uniforms (not used with barycentric - kept for future use)
 uniform vec3 uWireframeColor;      // Color of wireframe lines
@@ -185,17 +186,121 @@ vec4 pollutantTint(vec2 uv) {
     );
 }
 
-// Visualize water based on height or velocity
-vec3 getTerrainMaterialColor(vec2 uv) {
+// ── Standing grain: the cultivated crop as a field the wind moves over ──
+// A crop field is not a flat colour, it is a stand of tall grain, so the
+// cultivated material is drawn rather than painted. Three scales of the same
+// weather are layered here:
+//
+// 1. a train of gusts marching along the wind - the pale band of flattened
+//    ears that arrives, passes, and is gone;
+// 2. patchiness, so gusts start and stop and whole strips of the field sit
+//    becalmed between passes;
+// 3. heads a fraction of a world unit apart, each catching the light a
+//    little differently, which is what makes the field shimmer instead of
+//    sliding rigidly.
+//
+// All three are sampled from world position, so the pattern stays pinned to
+// the ground: a gust that has crossed a cell keeps travelling downwind rather
+// than crawling with the camera.
+//
+// The wind itself is a standing assumption about this valley, not a
+// simulation output. The harness has no surface wind field to bind - only
+// cloud drift (cloudWindX/cloudWindY/cloudSpeed in the world), which is the
+// wind at cloud altitude and would make the crop wave in step with the sky.
+
+// Wind from the south-west, as a 3-4-5 triangle so the direction is exactly
+// normalised, and the widths and speed of the three scales above.
+const vec2 WIND_DIR = vec2(0.8, 0.6);
+const float GUST_WIDTH = 3.0;   // world units from one gust crest to the next
+const float GUST_SPEED = 2.5;   // world units a gust travels per second
+const float STALK_WIDTH = 0.75; // world units per head of grain
+const float TWO_PI = 6.2831853;
+
+// Cheap hash of a lattice point - enough to drive value noise without
+// needing a noise texture.
+float hash21(vec2 lattice) {
+    return fract(sin(dot(lattice, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+// Value noise in [0, 1] over that lattice. The quintic fade keeps it smooth
+// enough that gust edges read as soft rather than as printed stripes.
+float valueNoise(vec2 p) {
+    vec2 cell = floor(p);
+    vec2 within = fract(p);
+    vec2 fade = within * within * within * (within * (within * 6.0 - 15.0) + 10.0);
+    float corner00 = hash21(cell);
+    float corner10 = hash21(cell + vec2(1.0, 0.0));
+    float corner01 = hash21(cell + vec2(0.0, 1.0));
+    float corner11 = hash21(cell + vec2(1.0, 1.0));
+    return mix(
+        mix(corner00, corner10, fade.x),
+        mix(corner01, corner11, fade.x),
+        fade.y
+    );
+}
+
+// How far the crop is bent at a point in the field, roughly -1 (springing
+// back up through vertical) to +1 (laid flat by a gust).
+float windBend(vec2 field) {
+    // Everything is sampled in the wind's own frame, shifted downwind by
+    // however far the wind has travelled, so a pattern that starts at one
+    // edge of a field finishes at the other.
+    vec2 acrossWind = vec2(-WIND_DIR.y, WIND_DIR.x);
+    vec2 gustUv = (vec2(dot(field, WIND_DIR), dot(field, acrossWind))
+                   - vec2(uTime * GUST_SPEED, 0.0)) / GUST_WIDTH;
+
+    // The train itself, its strength (so gusts come and go), and a
+    // cross-wind term that staggers the crests into feathered wedges rather
+    // than straight lines right across the field.
+    float train = sin(gustUv.x * TWO_PI);
+    float strength = valueNoise(gustUv + vec2(0.0, 4.31));
+    float stagger = sin((gustUv.y * 0.8 + gustUv.x * 0.5) * TWO_PI);
+    return 0.7 * train * (0.35 + 0.65 * strength) + 0.3 * stagger;
+}
+
+// Colour of the crop at a point in the field.
+vec3 cropColor(vec2 field) {
+    float bend = windBend(field);
+
+    // Three tones of one crop: the shade between the stalks, the standing
+    // ears (the swatch colour in surfaceMaterial.ts), and the pale silver of
+    // a gust that has laid the field flat and shows the sun the backs of the
+    // heads.
+    vec3 stalkShade = vec3(0.45, 0.37, 0.2);
+    vec3 standingGrain = vec3(0.86, 0.8, 0.4);
+    vec3 windSilver = vec3(0.95, 0.9, 0.66);
+
+    // The swatch colour is the mid-tone between the other two, so a gust
+    // swings the field either side of the painted colour instead of replacing
+    // it: the range measured over a field works out to about 0.47 to 1.0 in
+    // the red channel, around a mean of 0.8, so the crop stays recognisably
+    // the crop that was painted.
+    vec3 crop = bend < 0.0
+        ? mix(standingGrain, stalkShade, -bend)
+        : mix(standingGrain, windSilver, bend);
+
+    // Fine detail over the waves: heads a fraction of a unit apart, each a
+    // little brighter or darker than its neighbour. Stalks are displaced
+    // along the wind as they bend, so the lookup is dragged with them, and
+    // the extra slow drift keeps the stand ticking over between gusts.
+    float alongWind = bend * STALK_WIDTH - uTime * 0.25;
+    float heads = valueNoise(field / STALK_WIDTH + WIND_DIR * alongWind);
+    return crop * (0.88 + 0.24 * heads);
+}
+
+// Terrain colour for the cell at uv, over the field point at field (the
+// second argument is world xz: the crop is drawn in world space, everything
+// else is keyed off the painted material id in the texture's R channel).
+vec3 getTerrainMaterialColor(vec2 uv, vec2 field) {
     vec4 materialData = texture2D(uSurfaceMaterialMap, uv);
     float materialType = materialData.r;
     
     // Base colors for each material type (kept in step with MATERIAL_PROPERTIES in
-    // src/scene/resources/textures/surfaceMaterial.ts)
+    // src/scene/resources/textures/surfaceMaterial.ts). Cultivated is not here:
+    // it is a standing crop, drawn by cropColor above, not a flat swatch.
     vec3 colorBareDirt = vec3(0.4, 0.3, 0.2);   // Brownish
     vec3 colorGrass = vec3(0.2, 0.6, 0.2);      // Green
     vec3 colorRocks = vec3(0.5, 0.5, 0.6);      // Grayish
-    vec3 colorCultivated = vec3(0.86, 0.8, 0.4); // Light yellow (crop field)
     vec3 colorFallow = vec3(0.55, 0.42, 0.12);  // Dark yellow (stubble on rested ground)
     vec3 colorForest = vec3(0.04, 0.18, 0.06);  // Dark green (closed canopy, seen from above)
     
@@ -207,7 +312,9 @@ vec3 getTerrainMaterialColor(vec2 uv) {
     } else if (materialType < 2.5) {
         return colorRocks;
     } else if (materialType < 3.5) {
-        return colorCultivated;
+        // Cultivated: standing grain, so it is drawn from the field point and
+        // keeps moving in the wind.
+        return cropColor(field);
     } else if (materialType < 4.5) {
         return colorFallow;
     } else {
@@ -245,7 +352,7 @@ void main() {
     float animalShadow = calculateShadowFromMap(worldPosition);
     
     // Get terrain material color
-    vec3 terrainMaterialColor = getTerrainMaterialColor(vUv);
+    vec3 terrainMaterialColor = getTerrainMaterialColor(vUv, worldPosition.xz);
     
     // Apply sunlight lighting first
     terrainMaterialColor *= sunLighting;

@@ -81,6 +81,9 @@ export const simulationSystem: RendererSystem = (
     // a stale tint on the water flow view.
     uniforms.uShowPollutants.value = showsPollutants ? 1 : 0;
     uniforms.uPollutantSpecies.value = world.pollutantSpecies;
+    // Advance the wind over the crop with the same logical clock the simulation runs on, so the
+    // grain waves at the pace the game runs at rather than the wall clock's.
+    uniforms.uTime.value = gameTime;
     uniforms.uLightPosition.value.x = world.sunPosition.x;
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;

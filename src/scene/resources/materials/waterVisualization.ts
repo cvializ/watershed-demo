@@ -25,6 +25,8 @@ export type WaterVisualizationUniforms = {
   uMaxHeight: THREE.IUniform<number>;
   uShowVelocity: THREE.IUniform<number>;
   uSurfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
+  /** Drives the animated crop over the cultivated field, so the grain keeps waving. */
+  uTime: THREE.IUniform<number>;
   uLightPosition: THREE.IUniform<THREE.Vector3>;
   uLightSpaceMatrix: THREE.IUniform<THREE.Matrix4>;
   // Wireframe overlay uniforms
@@ -67,6 +69,10 @@ export const createWaterVisualizationMaterialResource = ({
     uMaxHeight: { value: maxHeight },
     uShowVelocity: { value: 1 },
     uSurfaceMaterialMap: { value: surfaceMaterialMap ?? null },
+    // Wind over the crop: the simulation system feeds game time in every pass, so a gust that
+    // has crossed a cell stays crossed even after a load, and the field stops waving when the
+    // game is paused along with everything else.
+    uTime: { value: 0 },
     // Substance overlay: off until a visualization mode asks for it, and the simulation system binds the
     // texture every pass it is asked for.
     uPollutantMap: { value: null },
