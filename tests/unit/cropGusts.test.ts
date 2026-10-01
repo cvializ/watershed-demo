@@ -36,8 +36,9 @@ const CALM_WIND = 0.01;
 const STALK_WIDTH = 0.75;
 const TWO_PI = 6.2831853;
 
-/** The three tones of the crop, as the shaders pick them. */
-const STALK_SHADE: [number, number, number] = [0.45, 0.37, 0.2];
+/** The two tones of the crop, as the shaders pick them: the swatch, and the
+ * silver a gust lifts it to. There is no darker tone any more - gusts only
+ * ever lighten the field. */
 const STANDING_GRAIN: [number, number, number] = [0.86, 0.8, 0.4];
 const WIND_SILVER: [number, number, number] = [0.95, 0.9, 0.66];
 
@@ -155,14 +156,13 @@ const cropColor = (
   gameTime: number,
 ): [number, number, number] => {
   const bend = windBend(field, trail, gameTime);
-  // The swatch is the mid-tone, so a gust swings the crop either side of it:
-  // toward the shade between the stalks as the crop springs back through
-  // upright, toward the silver of a laid field as a gust flattens it.
-  const otherTone = bend < 0 ? STALK_SHADE : WIND_SILVER;
+  // The swatch is the darkest tone there is, so a gust only ever lifts the
+  // crop off it: crest and trough share the ramp up to the silver of a laid
+  // field, and the stand comes back to the painted colour between them.
   const swing = Math.abs(bend);
   const cropTone = (channel: number): number =>
     STANDING_GRAIN[channel] +
-    (otherTone[channel] - STANDING_GRAIN[channel]) * swing;
+    (WIND_SILVER[channel] - STANDING_GRAIN[channel]) * swing;
 
   // Heads a fraction of a unit apart, each catching the light a little
   // differently: displaced along the wind as the stalks bend, and dragged
@@ -234,7 +234,7 @@ test.describe("gusts over the cultivated crop", () => {
 
         // With nothing to bend it, every channel sits on the swatch, so the
         // field stays recognisably the crop that was painted: no point drifts
-        // toward the shade between the stalks or the silver of a laid field.
+        // off that colour while the wind lies.
         const colour = cropColor(field, becalmed, 42);
         expect(colour[0] / STANDING_GRAIN[0]).toBeCloseTo(
           colour[1] / STANDING_GRAIN[1],
@@ -246,6 +246,38 @@ test.describe("gusts over the cultivated crop", () => {
         );
       }
     }
+  });
+
+  test("a gust lightens the crop and never darkens it below the painted colour", () => {
+    // The point of taking the wave by its height above upright: with a wind
+    // on, every point of the field sits between the swatch and the silver of a
+    // laid field - never on the shade between the stalks, which is the tone
+    // that used to darken the trough of every gust.
+    const gale = trailFor({ x: -0.5, y: -0.5 });
+
+    for (const field of fieldSweep()) {
+      const bend = windBend(field, gale, 42);
+
+      for (const channel of [0, 1, 2] as const) {
+        const tone =
+          STANDING_GRAIN[channel] +
+          (WIND_SILVER[channel] - STANDING_GRAIN[channel]) * Math.abs(bend);
+
+        // Whatever the height above upright, the tone stays on or above the
+        // colour that was painted, and never reaches the old stalk shade.
+        expect(tone).toBeGreaterThanOrEqual(STANDING_GRAIN[channel] - 1e-9);
+        expect(tone).toBeLessThanOrEqual(WIND_SILVER[channel] + 1e-9);
+      }
+
+      // And some of the field is clearly lighter than the swatch, so a gust is
+      // a band one can see coming.
+      expect(Math.abs(bend)).toBeLessThanOrEqual(1);
+    }
+
+    const lightest = Math.max(
+      ...fieldSweep().map((field) => Math.abs(windBend(field, gale, 42))),
+    );
+    expect(lightest).toBeGreaterThan(0.5);
   });
 
   test("the crop swings further the harder the wind is set", () => {
@@ -316,18 +348,21 @@ test.describe("gusts over the cultivated crop", () => {
       20,
     );
 
-    // And when it turns, the twenty seconds it had are banked against it and
-    // measured back along the new bearing, so the pattern carries on from where
-    // the old wind left it - on the far side, since that wind now blows back
-    // the way it came - rather than starting afresh at the new angle.
+    // And when it turns, the twenty seconds it had are re-projected onto the
+    // new bearing so the pattern carries on from where the old wind left it
+    // rather than starting afresh at the new angle. The re-projection keeps
+    // the distance positive along whatever direction the wind now blows.
     const distanceTheOldWindCovered = 20 * GUST_SPEED * windForce(kept.wind);
     expect(turnedAround.windSetTime).toBe(20);
     expect(turnedAround.wind).toEqual({
       x: -kept.wind.x,
       y: -kept.wind.y,
     });
+    // Re-projected onto the new wind, the distance is positive along the new
+    // bearing (the old code gave a negative value because it projected the
+    // old wind's banked drift onto the reversed new wind, causing a jump).
     expect(gustsTravelled(turnedAround, 20)).toBeCloseTo(
-      -distanceTheOldWindCovered,
+      distanceTheOldWindCovered,
       6,
     );
 
@@ -418,6 +453,15 @@ test.describe("gusts over the cultivated crop", () => {
       expect(shaderSource).toContain(
         "bend * STALK_WIDTH - 0.25 * gustsTravelled();",
       );
+
+      // And the wave is taken by its height above upright, so no gust
+      // darkens the crop into the shade between the stalks - the second tone
+      // is gone from the shader, and the ramp runs from the swatch up to the
+      // silver only.
+      expect(shaderSource).toContain(
+        "mix(standingGrain, windSilver, abs(bend));",
+      );
+      expect(shaderSource).not.toContain("stalkShade");
 
       // And the mirror above still mirrors the GLSL's own numbers.
       expect(glslConstant(shaderSource, "GUST_WIDTH")).toBe(GUST_WIDTH);

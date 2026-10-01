@@ -64,6 +64,10 @@ const CALM_WIND = 0.01;
 /** The wind the weather pane starts on, and so the first wind the crop rides. */
 const WIND_THE_PANE_STARTS_ON = { x: 0.1, y: 0.05 };
 
+/** Dot product of two FieldVectors. */
+const dotVec2 = (a: FieldVector, b: FieldVector): number =>
+  a.x * b.x + a.y * b.y;
+
 /**
  * Mirrors `cropWindDirection` in the crop shaders: a unit vector along the
  * wind, or no direction at all when the wind is too faint to name - and with
@@ -141,9 +145,13 @@ export const createCropGustTracker = (): CropGustTracker => {
       } else if (fieldWind.x !== wind.x || fieldWind.y !== wind.y) {
         // Bank however far the wind that was blowing took the pattern between
         // when it was set and now, then let the new wind accumulate from here.
-        // Nothing else advances this state, so a pass that skips this system,
-        // or a load that jumps the clock forward, still leaves the pattern
-        // exactly where the wind that crossed the field left it.
+        // The gust shader computes gustsTravelled as
+        // dot(uGustDrift, windDir) + currentWindContribution.
+        // When windDir changes, dot(uGustDrift, newWindDir) would give a
+        // different value than dot(uGustDrift, oldWindDir) for the same
+        // bankedDrift vector, causing a visible jump. So we re-project the
+        // banked distance onto the new wind direction to keep the transition
+        // continuous.
         const windElapsed = gameTime - windSetTime;
 
         bankedDrift = bankedDrift
@@ -153,6 +161,16 @@ export const createCropGustTracker = (): CropGustTracker => {
               GUST_SPEED * cropWindForce(wind) * windElapsed,
             ),
           );
+
+        // Re-project banked distance onto the new wind direction.
+        // Compute how much of the banked drift was along the old wind.
+        const oldWindDir = cropWindDirection(wind);
+        const bankedAlongOld = dotVec2(bankedDrift, oldWindDir);
+        // Express that same physical distance along the new wind direction.
+        bankedDrift = cropWindDirection(fieldWind).multiplyScalar(
+          Math.max(0, bankedAlongOld),
+        );
+
         wind = fieldWind;
         windSetTime = gameTime;
       }
