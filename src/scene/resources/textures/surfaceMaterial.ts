@@ -25,7 +25,12 @@ type MaterialProperties = {
   /** Friction coefficient: how much the material slows water flow (higher = slower) */
   frictionCoefficient: number;
 
-  /** Visual color for the material */
+  /**
+   * Visual color for the material.
+   *
+   * This is the swatch and the average tone, not necessarily the whole render: cultivated is a standing
+   * crop, so src/shaders/water-visualization.frag draws it from a wind field around that tone.
+   */
   color: [number, number, number];
 };
 
@@ -51,7 +56,10 @@ const MATERIAL_PROPERTIES: Record<SurfaceMaterialType, MaterialProperties> = {
     // still drinks, but neither is as effective as an unbroken sward.
     infiltrationRate: 0.65,
     frictionCoefficient: 1.15,
-    color: [0.86, 0.8, 0.4], // Light yellow (a crop field seen from above)
+    // Light yellow (a crop field seen from above). This is the swatch and the average tone only:
+    // the land itself is drawn by cropColor in src/shaders/water-visualization.frag, which runs the
+    // field through darker and paler tones as gusts cross it, so the standing grain keeps moving.
+    color: [0.86, 0.8, 0.4],
   },
   fallow: {
     // Rested ground: stubble and weed regrowth over soil nobody is turning over any more, so it sits
