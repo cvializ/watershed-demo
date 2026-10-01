@@ -4,7 +4,14 @@ uniform sampler2D uWaterHeightmap;
 uniform sampler2D uCloudShadowMap;
 uniform sampler2D uSurfaceMaterialMap; // Surface material texture
 uniform float uTime;                   // Game time, used to animate surface ripples
-uniform vec2 uWind;                    // Wind over the crop, from the weather UI (Wind X / Wind Y)
+uniform vec2 uWind;                    // Wind over the crop, as the weather UI sets it
+                                       // (Wind X / Wind Y), turned into the field's world
+                                       // xz frame by src/renderer/resources/cropGusts.ts
+uniform vec2 uGustDrift;               // How far the winds before this one have already
+                                       // dragged the crop's gust pattern, in world xz,
+                                       // tracked by that same file
+uniform float uGustSetTime;            // When the wind the crop rides was set, on the
+                                       // same clock
 uniform vec3 uLightPosition;           // Sun position (treated as a point light, like water-visualization.frag)
 
 // Altitude of the cloud plane above the terrain datum, and the terrain side
@@ -24,15 +31,20 @@ varying vec3 vWorldPosition;
 // marching along the wind, patchy enough to start and stop, over heads a
 // fraction of a world unit apart that each catch the light differently. All
 // of it sampled in world space, so the field stays pinned to the ground.
-// The wind is the one the weather pane sets (World > Wind X and Wind Y), so
-// the crop waves with the sky: that vector is both the direction the gusts
-// march along and the strength they march at.
+// The wind is the one the weather pane sets (World > Wind X and Wind Y), kept
+// on the same three tracked values the clouds are kept on (see
+// src/renderer/resources/cropGusts.ts), so the crop waves with the sky: the
+// direction the wind was blown before it was changed, and the distance that
+// wind and every wind before it have already travelled, rather than a fresh
+// pattern started from the clock each time a slider moves.
 
 // Widths and speeds of the three scales above, and the wind they run on -
-// the same numbers as in water-visualization.frag. The weather pane allows
-// 0 to 0.5 on each axis, 0.707 straight into a corner, so MAX_UI_WIND is
-// the strongest wind it can set, GUST_SPEED the pace a gust keeps at that
-// wind, and CALM_WIND anything too faint to bother the crop with.
+// the same numbers as in water-visualization.frag, and kept in step with
+// src/renderer/resources/cropGusts.ts, which banks the distance a wind of that
+// strength has already travelled. The weather pane allows 0 to 0.5 on each
+// axis, 0.707 straight into a corner, so MAX_UI_WIND is the strongest wind it
+// can set, GUST_SPEED the pace a gust keeps at that wind, and CALM_WIND
+// anything too faint to bother the crop with.
 const float GUST_WIDTH = 3.0;     // world units from one gust crest to the next
 const float GUST_SPEED = 2.5;     // world units a gust travels per second in a
                                   // full wind, less in a lighter one
@@ -67,7 +79,9 @@ float valueNoise(vec2 p) {
 // Which way the wind over the crop blows, as a unit vector in the field's
 // world xz frame, or no direction at all when the weather pane has the wind
 // turned off - a becalmed field never samples from it, since
-// cropWindForce() is 0 there too.
+// cropWindForce() is 0 there too. The vector arrives in this frame already:
+// src/renderer/resources/cropGusts.ts turns the pane's uv-space drift into it,
+// so the crop blows the way the clouds travel rather than at an angle to them.
 vec2 cropWindDirection() {
     float windLength = length(uWind);
     if (windLength <= CALM_WIND) {
@@ -84,14 +98,33 @@ float cropWindForce() {
     return sqrt(clamp(length(uWind) / MAX_UI_WIND, 0.0, 1.0));
 }
 
+// How far the crop's pattern has already been dragged along the wind it rides:
+// whatever the winds before this one banked against it, plus this one at that
+// pace ever since it was set. Kept as a distance rather than as `time * speed`
+// so that turning the wind around, or down to nothing, leaves the field where
+// the old wind left it - a gust that was mid-crossing when the sliders moved
+// stays mid-crossing, instead of jumping back to wherever the new wind would
+// have started it. A wind too faint to name has no direction to measure along,
+// so nothing travels.
+float gustsTravelled() {
+    float windLength = length(uWind);
+    if (windLength <= CALM_WIND) {
+        return 0.0;
+    }
+    vec2 windDir = uWind / windLength;
+
+    return dot(uGustDrift, windDir)
+         + GUST_SPEED * cropWindForce() * (uTime - uGustSetTime);
+}
+
 // How far the crop is bent at a point in the field, roughly -1 (springing
 // back up through vertical) to +1 (laid flat by a gust), scaled by the wind:
 // a becalmed field keeps the stand upright and still.
 float windBend(vec2 field) {
     // Sampled in the wind's own frame, shifted downwind by however far the
-    // wind has travelled, so a pattern that starts at one edge of a field
-    // finishes at the other. A wind too faint to name has no frame to sample
-    // in, which is why the two helpers above answer 0 for it.
+    // wind has travelled so far, so a pattern that starts at one edge of a
+    // field finishes at the other. A wind too faint to name has no frame to
+    // sample in, which is why the two helpers above answer 0 for it.
     vec2 windDir = cropWindDirection();
     float windForce = cropWindForce();
     if (windForce <= 0.0) {
@@ -99,7 +132,7 @@ float windBend(vec2 field) {
     }
     vec2 acrossWind = vec2(-windDir.y, windDir.x);
     vec2 gustUv = (vec2(dot(field, windDir), dot(field, acrossWind))
-                   - vec2(uTime * GUST_SPEED * windForce, 0.0)) / GUST_WIDTH;
+                   - vec2(gustsTravelled(), 0.0)) / GUST_WIDTH;
 
     // The train itself, its strength (so gusts come and go), and a
     // cross-wind term that staggers the crests into feathered wedges rather
@@ -131,10 +164,11 @@ vec3 cropColor(vec2 field) {
     // Fine detail over the waves: heads a fraction of a unit apart, each a
     // little brighter or darker than its neighbour. Stalks are displaced
     // along the wind by however far they bend, and the whole stand drifts
-    // through the pattern at a fraction of the wind, which is what keeps it
-    // ticking over between gusts. With no wind there is nothing to displace
-    // or drag, so the field sits exactly where it was painted.
-    float alongWind = bend * STALK_WIDTH - uTime * 0.25 * cropWindForce();
+    // through the pattern at a quarter of the distance the wind has covered,
+    // which is what keeps it ticking over between gusts. With no wind there is
+    // nothing to displace or drag, so the field sits exactly where it was
+    // painted.
+    float alongWind = bend * STALK_WIDTH - 0.25 * gustsTravelled();
     float heads = valueNoise(field / STALK_WIDTH + cropWindDirection() * alongWind);
     return crop * (0.88 + 0.24 * heads);
 }

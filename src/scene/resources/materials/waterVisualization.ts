@@ -29,11 +29,27 @@ export type WaterVisualizationUniforms = {
   uTime: THREE.IUniform<number>;
   /**
    * Wind over that crop: the x/y wind from the weather pane (`cloudWindX` /
-   * `cloudWindY`), in world units a second along world x and z. The simulation
-   * system writes the slider values in every pass, so the gusts follow whichever
-   * way the wind is set; the default is the light westerly the pane starts on.
+   * `cloudWindY`), turned into the field's world xz frame - a wind of nothing
+   * leaves the stand upright - by `cropGustTracker` in
+   * src/renderer/resources/cropGusts.ts. The simulation system writes the
+   * tracked values in every pass, so the gusts follow whichever way the wind is
+   * set and march the same way the clouds travel; the default is the same light
+   * westerly the pane starts on, already turned into that frame.
    */
   uWind: THREE.IUniform<THREE.Vector2>;
+  /**
+   * How far the winds before the one the crop is riding have already dragged
+   * the gust pattern, in world xz - kept alongside `uWind` so a change of wind
+   * carries the pattern on from where the old wind left it rather than jumping
+   * it. See `createCropGustTracker` in src/renderer/resources/cropGusts.ts.
+   */
+  uGustDrift: THREE.IUniform<THREE.Vector2>;
+  /**
+   * When the wind the crop is riding was set, on the same clock as `uTime`, so
+   * the shader can add the current wind's own distance to the banked distance
+   * above - the same three tracked values the clouds are kept on.
+   */
+  uGustSetTime: THREE.IUniform<number>;
   uLightPosition: THREE.IUniform<THREE.Vector3>;
   uLightSpaceMatrix: THREE.IUniform<THREE.Matrix4>;
   // Wireframe overlay uniforms
@@ -80,11 +96,15 @@ export const createWaterVisualizationMaterialResource = ({
     // that has crossed a cell stays crossed even after a load, and the field stops waving
     // when the game is paused along with everything else.
     uTime: { value: 0 },
-    // Same story for the wind: bound from the weather pane every pass, so the gusts
-    // march along the direction the user set and die down when it is set to nothing.
-    // The default is the wind the pane starts on, so a field is never becalmed before
-    // the first pass binds it.
-    uWind: { value: new THREE.Vector2(0.1, 0.05) },
+    // Same story for the wind: bound from the weather pane every pass through
+    // the tracked trail, so the gusts march along the bearing the clouds travel
+    // on, keep the distance the previous wind covered, and die down when the
+    // wind is set to nothing. The default is the wind the pane starts on, with
+    // nothing travelled yet, so a field is never becalmed before the first pass
+    // binds it.
+    uWind: { value: new THREE.Vector2(-0.1, 0.05) },
+    uGustDrift: { value: new THREE.Vector2(0, 0) },
+    uGustSetTime: { value: 0 },
     // Substance overlay: off until a visualization mode asks for it, and the simulation system binds the
     // texture every pass it is asked for.
     uPollutantMap: { value: null },
