@@ -132,6 +132,13 @@ const shaderConfig: Record<string, ShaderConfig> = {
       uMinHeight: { value: -1.5, min: -5, max: 5, step: 0.1 },
       uMaxHeight: { value: 2.0, min: -5, max: 5, step: 0.1 },
       uTime: { value: 0.0 }, // Will be updated in animate loop
+      // The wind the crop gusts ride, as the weather pane sets it.
+      uWind: {
+        value: new THREE.Vector2(0.1, 0.05),
+        min: -0.5,
+        max: 0.5,
+        step: 0.01,
+      },
       // Wireframe overlay controls - enabled by default
       uWireframeColor: { value: new THREE.Color(1.0, 1.0, 0.0) }, // Yellow
       uWireframeWidth: { value: 2.0, min: 0, max: 10, step: 0.5 },

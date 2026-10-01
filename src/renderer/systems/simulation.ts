@@ -84,6 +84,11 @@ export const simulationSystem: RendererSystem = (
     // Advance the wind over the crop with the same logical clock the simulation runs on, so the
     // grain waves at the pace the game runs at rather than the wall clock's.
     uniforms.uTime.value = gameTime;
+    // The gusts ride the wind the weather pane sets: that wind is both the direction
+    // the gust train marches along and the strength it marches at, so turning the
+    // wind around sends the next gusts in from the other side of the field, and a
+    // wind of nothing leaves the stand upright and still.
+    uniforms.uWind.value.set(world.cloudWindX, world.cloudWindY);
     uniforms.uLightPosition.value.x = world.sunPosition.x;
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;
@@ -154,6 +159,9 @@ export const simulationSystem: RendererSystem = (
     uniforms.uWaterHeightmap.value = waterSimulation.getSimulationTexture();
     uniforms.uCloudShadowMap.value = waterSimulation.getCloudShadowTexture();
     uniforms.uTime.value = gameTime;
+    // Same wind as the water flow view, so a crop field looks the same from the
+    // water it grew on as it does from above it.
+    uniforms.uWind.value.set(world.cloudWindX, world.cloudWindY);
     uniforms.uLightPosition.value.x = world.sunPosition.x;
     uniforms.uLightPosition.value.y = world.sunPosition.y;
     uniforms.uLightPosition.value.z = world.sunPosition.z;

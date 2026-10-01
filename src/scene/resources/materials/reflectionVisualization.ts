@@ -9,6 +9,12 @@ export type ReflectionVisualizationUniforms = {
   uSurfaceMaterialMap: THREE.IUniform<THREE.Texture | null>;
   /** Drives the animated ripple field, so the surface keeps shimmering. */
   uTime: THREE.IUniform<number>;
+  /**
+   * Wind over the cultivated crop seen from the water: the same x/y wind the
+   * water flow view binds, so a field looks the same from the water it grew on
+   * as it does from above it.
+   */
+  uWind: THREE.IUniform<THREE.Vector2>;
   uLightPosition: THREE.IUniform<THREE.Vector3>;
 };
 
@@ -34,6 +40,9 @@ export const createReflectionVisualizationMaterialResource = ({
     uCloudShadowMap: { value: cloudShadowMap },
     uSurfaceMaterialMap: { value: surfaceMaterialMap ?? null },
     uTime: { value: 0 },
+    // Same wind as the water flow view, and the same default, so the crop waves
+    // with whatever the weather pane is set to.
+    uWind: { value: new THREE.Vector2(0.1, 0.05) },
     uLightPosition: { value: sunLightPosition.clone() },
   };
 
