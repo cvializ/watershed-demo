@@ -36,9 +36,10 @@ const CALM_WIND = 0.01;
 const STALK_WIDTH = 0.75;
 const TWO_PI = 6.2831853;
 
-/** The two tones of the crop, as the shaders pick them: the swatch, and the
- * silver a gust lifts it to. There is no darker tone any more - gusts only
- * ever lighten the field. */
+/** The three tones of the crop, as the shaders pick them: the shade between
+ * the stalks, the swatch the field was painted with, and the pale silver of a
+ * gust that lays the field flat. */
+const STALK_SHADE: [number, number, number] = [0.45, 0.37, 0.2];
 const STANDING_GRAIN: [number, number, number] = [0.86, 0.8, 0.4];
 const WIND_SILVER: [number, number, number] = [0.95, 0.9, 0.66];
 
@@ -149,20 +150,20 @@ const windBend = (
   return strength * (0.7 * train * (0.35 + 0.65 * patchiness) + 0.3 * stagger);
 };
 
-/** Mirrors `cropColor`. */
+/** Mirrors `cropColor`: the stand swings either side of the colour that was
+ * painted, from the shade between the stalks to the silver of a laid field. */
 const cropColor = (
   field: Vector2,
   trail: CropGustTrail,
   gameTime: number,
 ): [number, number, number] => {
   const bend = windBend(field, trail, gameTime);
-  // The swatch is the darkest tone there is, so a gust only ever lifts the
-  // crop off it: crest and trough share the ramp up to the silver of a laid
-  // field, and the stand comes back to the painted colour between them.
-  const swing = Math.abs(bend);
   const cropTone = (channel: number): number =>
-    STANDING_GRAIN[channel] +
-    (WIND_SILVER[channel] - STANDING_GRAIN[channel]) * swing;
+    bend < 0
+      ? STANDING_GRAIN[channel] +
+        (STALK_SHADE[channel] - STANDING_GRAIN[channel]) * -bend
+      : STANDING_GRAIN[channel] +
+        (WIND_SILVER[channel] - STANDING_GRAIN[channel]) * bend;
 
   // Heads a fraction of a unit apart, each catching the light a little
   // differently: displaced along the wind as the stalks bend, and dragged
@@ -248,11 +249,11 @@ test.describe("gusts over the cultivated crop", () => {
     }
   });
 
-  test("a gust lightens the crop and never darkens it below the painted colour", () => {
-    // The point of taking the wave by its height above upright: with a wind
-    // on, every point of the field sits between the swatch and the silver of a
-    // laid field - never on the shade between the stalks, which is the tone
-    // that used to darken the trough of every gust.
+  test("a gust swings the crop either side of the colour that was painted", () => {
+    // A wind on keeps every point of the field between the shade between the
+    // stalks and the silver of a laid field, with the painted swatch as the
+    // mid-tone: a gust darkens the crop into the shade as it springs back
+    // through vertical and lightens it to silver as it lays it over.
     const gale = trailFor({ x: -0.5, y: -0.5 });
 
     for (const field of fieldSweep()) {
@@ -260,12 +261,15 @@ test.describe("gusts over the cultivated crop", () => {
 
       for (const channel of [0, 1, 2] as const) {
         const tone =
-          STANDING_GRAIN[channel] +
-          (WIND_SILVER[channel] - STANDING_GRAIN[channel]) * Math.abs(bend);
+          bend < 0
+            ? STANDING_GRAIN[channel] +
+              (STALK_SHADE[channel] - STANDING_GRAIN[channel]) * -bend
+            : STANDING_GRAIN[channel] +
+              (WIND_SILVER[channel] - STANDING_GRAIN[channel]) * bend;
 
-        // Whatever the height above upright, the tone stays on or above the
-        // colour that was painted, and never reaches the old stalk shade.
-        expect(tone).toBeGreaterThanOrEqual(STANDING_GRAIN[channel] - 1e-9);
+        // Whatever the height above upright, the tone stays inside the ramp
+        // between the two outer tones.
+        expect(tone).toBeGreaterThanOrEqual(STALK_SHADE[channel] - 1e-9);
         expect(tone).toBeLessThanOrEqual(WIND_SILVER[channel] + 1e-9);
       }
 
@@ -454,14 +458,16 @@ test.describe("gusts over the cultivated crop", () => {
         "bend * STALK_WIDTH - 0.25 * gustsTravelled();",
       );
 
-      // And the wave is taken by its height above upright, so no gust
-      // darkens the crop into the shade between the stalks - the second tone
-      // is gone from the shader, and the ramp runs from the swatch up to the
-      // silver only.
+      // And the wave is taken by its signed height above upright: a spring
+      // back through vertical darkens the crop into the shade between the
+      // stalks, and a gust that lays it over lifts it to the silver, with the
+      // painted swatch as the mid-tone between the two.
       expect(shaderSource).toContain(
-        "mix(standingGrain, windSilver, abs(bend));",
+        "mix(standingGrain, stalkShade, -bend)",
       );
-      expect(shaderSource).not.toContain("stalkShade");
+      expect(shaderSource).toContain(
+        "mix(standingGrain, windSilver, bend);",
+      );
 
       // And the mirror above still mirrors the GLSL's own numbers.
       expect(glslConstant(shaderSource, "GUST_WIDTH")).toBe(GUST_WIDTH);
@@ -516,10 +522,11 @@ test.describe("gusts over the cultivated crop", () => {
         [],
     ).toHaveLength(2);
 
-    // And the trail is sampled once per pass, so the two views of a field
-    // cannot drift apart from each other's history.
+    // And the wind the trail rides is drawn once per pass, so the two views of
+    // a field cannot drift apart from each other's history.
     expect(
-      simulationSource.match(/cropGustTracker\.trail\(/g) ?? [],
+      simulationSource.match(/const wind = trackWind\(world, gameTime\)/g) ??
+        [],
     ).toHaveLength(1);
   });
 });

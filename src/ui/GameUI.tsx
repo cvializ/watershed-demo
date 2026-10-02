@@ -4,7 +4,10 @@ import {
   type GameWorldContext,
 } from "@/context";
 import { POLLUTANT_SPECIES } from "@/gpu/waterFlowSimulation/variables/createGpuWaterQuality";
+
+import { getGameClock } from "@/renderer/resources/loop";
 import { waterSimulation } from "@/renderer/systems/init/simulation";
+import { trackWind } from "@/renderer/resources/wind";
 import {
   clearWorldStorage,
   loadFromWorldStorage,
@@ -24,6 +27,17 @@ type GameUiProps = {
  * Main game UI component - renders on top of the canvas
  */
 export const GameUI = ({ world }: GameUiProps) => {
+  // The wind the sky and the field are riding, which is drawn from the two
+  // sliders rather than read off them: the pane's job is only to set where the
+  // wind is aimed, and the forecast eases towards that over the interval the
+  // "change interval" slider dials in. Sampled on the game clock so the
+  // displayed numbers are the ones the shaders are being handed.
+  const clock = getGameClock();
+  const wind = trackWind(
+    world,
+    clock === null ? 0 : clock.getTime(),
+  );
+
   // Get material under cursor from painting system
   const getMaterialUnderCursor = (): string | null => {
     const manager = getTerrainPaintingManager();
@@ -239,30 +253,46 @@ export const GameUI = ({ world }: GameUiProps) => {
           <div style={styles.weatherTitle}>Weather:</div>
           <div style={styles.weatherRow}>
             <span style={styles.label}>Wind X: </span>
-            <span style={styles.value}>{world.cloudWindX.toFixed(2)}</span>
+            <span style={styles.value}>{wind.wind.x.toFixed(2)}</span>
             <input
               type="range"
-              min="-0.5"
-              max="0.5"
+              min="-1"
+              max="1"
               step="0.01"
               value={world.cloudWindX}
               onChange={(e) => (world.cloudWindX = parseFloat(e.target.value))}
               style={styles.slider}
-              title="Wind direction over the field and the clouds (horizontal)"
+              title="Where to aim the wind over the field and the clouds (horizontal) - the wind eases here over the change interval"
             />
           </div>
           <div style={styles.weatherRow}>
             <span style={styles.label}>Wind Y: </span>
-            <span style={styles.value}>{world.cloudWindY.toFixed(2)}</span>
+            <span style={styles.value}>{wind.wind.y.toFixed(2)}</span>
             <input
               type="range"
-              min="-0.5"
-              max="0.5"
+              min="-1"
+              max="1"
               step="0.01"
               value={world.cloudWindY}
               onChange={(e) => (world.cloudWindY = parseFloat(e.target.value))}
               style={styles.slider}
-              title="Wind direction over the field and the clouds (vertical)"
+              title="Where to aim the wind over the field and the clouds (vertical) - the wind eases here over the change interval"
+            />
+          </div>
+          <div style={styles.weatherRow}>
+            <span style={styles.label}>Change interval: </span>
+            <span style={styles.value}>{world.windChangeInterval.toFixed(1)}s</span>
+            <input
+              type="range"
+              min="0.1"
+              max="10"
+              step="0.1"
+              value={world.windChangeInterval}
+              onChange={(e) =>
+                (world.windChangeInterval = parseFloat(e.target.value))
+              }
+              style={styles.slider}
+              title="How many seconds the wind takes to ease between the wind sliders"
             />
           </div>
           <div style={styles.weatherRow}>

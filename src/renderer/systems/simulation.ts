@@ -6,6 +6,7 @@ import type { RendererSystem } from "@/renderer/types";
 
 import { cropGustTracker } from "@/renderer/resources/cropGusts";
 import { getGameClock } from "@/renderer/resources/loop";
+import { trackWind } from "@/renderer/resources/wind";
 import {
   cloudSphereSystem,
   waterSimulation,
@@ -49,14 +50,24 @@ export const simulationSystem: RendererSystem = (
 
   const { showVelocity } = world;
 
-  // Where the gusts over the crop stand: the wind the weather pane sets, kept
-  // on the same three tracked values the clouds are kept on, so the crop blows
-  // along the bearing that wind actually drives the sky down instead of at an
-  // angle to it, and a change of wind carries a gust on from wherever the old
-  // wind left it. Sampled once per pass so the water flow view and the
+  // Where the gusts over the crop stand: the wind the weather pane is riding,
+  // drawn by the forecast rather than read off the sliders, so a wind changes
+  // over the interval the pane sets instead of the moment the slider moves -
+  // kept on the same three tracked values the clouds are kept on, so the crop
+  // blows along the bearing that wind actually drives the sky down instead of
+  // at an angle to it, and a change of wind carries a gust on from wherever the
+  // old wind left it. Sampled once per pass so the water flow view and the
   // reflections view of a field wave in step.
+  const wind = trackWind(world, gameTime);
+
+  // The crop's gusts ride the wind the forecast drew - given to the tracker as
+  // the wind aimed at (a drift in the cloud texture's frame, like the pane
+  // sets it), which the tracker turns into the field's frame itself: the crop
+  // is drawn in world xz, so the same wind has to be measured along the
+  // bearing it actually drives the sky down - and the distance banked against
+  // it keeps the march going from wherever the wind before it left it.
   const cropGusts = cropGustTracker.trail(
-    { cloudWindX: world.cloudWindX, cloudWindY: world.cloudWindY },
+    { cloudWindX: wind.wind.x, cloudWindY: wind.wind.y },
     gameTime,
   );
 
@@ -96,9 +107,10 @@ export const simulationSystem: RendererSystem = (
     // Advance the wind over the crop with the same logical clock the simulation runs on, so the
     // grain waves at the pace the game runs at rather than the wall clock's.
     uniforms.uTime.value = gameTime;
-    // The gusts ride the wind the weather pane sets - turned into the field's
-    // frame and measured from the distance its previous winds covered - so that
-    // wind is both the direction the gust train marches along and the strength
+    // The gusts ride the wind the forecast drew for this interval - turned
+    // into the field's frame and measured from the distance its previous winds
+    // covered - so that wind is both the direction the gust train marches
+    // along and the strength
     // it marches at, the march carries on across a wind change rather than
     // restarting from the clock, and a wind of nothing leaves the stand upright
     // and still.
@@ -237,12 +249,14 @@ export const simulationSystem: RendererSystem = (
     }
   }
 
-  // Push weather parameters into the cloud compute shader
+  // Push weather parameters into the cloud compute shader: the wind the
+  // forecast has reached, not the wind the sliders point at, so the sky eases
+  // round to wherever the pane last aimed it over the interval the pane set.
   if (waterSimulation) {
     waterSimulation.getClouds().setWeather(
       {
-        cloudWindX: world.cloudWindX,
-        cloudWindY: world.cloudWindY,
+        cloudWindX: wind.wind.x,
+        cloudWindY: wind.wind.y,
         cloudSpeed: world.cloudSpeed,
         cloudScale: world.cloudScale,
         cloudDensity: world.cloudDensity,

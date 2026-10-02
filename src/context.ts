@@ -41,6 +41,10 @@ export const createGameWorldContext = () => ({
   // Weather state: cloud simulation parameters
   cloudWindX: 0.1,
   cloudWindY: 0.05,
+  // How many seconds the wind takes to ease between wherever the two wind
+  // sliders are aimed and wherever they are aimed next. See
+  // src/core/windForecast.ts.
+  windChangeInterval: 3,
   cloudSpeed: 0.1,
   cloudScale: 1.5,
   cloudDensity: 0.7,
