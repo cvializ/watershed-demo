@@ -42,13 +42,13 @@ varying vec3 vWorldPosition;
 // the same numbers as in water-visualization.frag, and kept in step with
 // src/renderer/resources/cropGusts.ts, which banks the distance a wind of that
 // strength has already travelled. The weather pane allows 0 to 0.5 on each
-// axis, 0.707 straight into a corner, so MAX_UI_WIND is the strongest wind it
+// axis, 0.566 straight into a corner, so MAX_UI_WIND is the strongest wind it
 // can set, GUST_SPEED the pace a gust keeps at that wind, and CALM_WIND
 // anything too faint to bother the crop with.
 const float GUST_WIDTH = 3.0;     // world units from one gust crest to the next
 const float GUST_SPEED = 2.5;     // world units a gust travels per second in a
                                   // full wind, less in a lighter one
-const float MAX_UI_WIND = 0.707;  // strongest wind the weather UI allows
+const float MAX_UI_WIND = 0.566;  // strongest wind the weather UI allows
 const float CALM_WIND = 0.01;     // at or below this the field sits becalmed
 const float STALK_WIDTH = 0.75;   // world units per head of grain
 const float TWO_PI = 6.2831853;

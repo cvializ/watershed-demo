@@ -24,7 +24,7 @@ export const FIRST_CHANGE_INTERVAL = 3;
 
 /** The window each wind component is dealt within - the pane's own slider
  * range, so a drawn wind is on the same scale as the two sliders. */
-const WIND_COMPONENT_WINDOW: [number, number] = [-1, 1];
+const WIND_COMPONENT_WINDOW: [number, number] = [-0.4, 0.4];
 
 /** A wind, as the pane spells it and as the crop spells it: a drift along two
  * axes. `wind` is the wind itself; `bankedDrift` is the distance travelled

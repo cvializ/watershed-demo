@@ -31,7 +31,7 @@ type Vector2 = FieldVector;
 /** The constants the mirror runs on, pinned against the GLSL below. */
 const GUST_WIDTH = 3.0;
 const GUST_SPEED = 2.5;
-const MAX_UI_WIND = 0.707;
+const MAX_UI_WIND = 0.566;
 const CALM_WIND = 0.01;
 const STALK_WIDTH = 0.75;
 const TWO_PI = 6.2831853;

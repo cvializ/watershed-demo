@@ -256,8 +256,8 @@ export const GameUI = ({ world }: GameUiProps) => {
             <span style={styles.value}>{wind.wind.x.toFixed(2)}</span>
             <input
               type="range"
-              min="-1"
-              max="1"
+              min="-0.4"
+              max="0.4"
               step="0.01"
               value={world.cloudWindX}
               onChange={(e) => (world.cloudWindX = parseFloat(e.target.value))}
@@ -270,8 +270,8 @@ export const GameUI = ({ world }: GameUiProps) => {
             <span style={styles.value}>{wind.wind.y.toFixed(2)}</span>
             <input
               type="range"
-              min="-1"
-              max="1"
+              min="-0.4"
+              max="0.4"
               step="0.01"
               value={world.cloudWindY}
               onChange={(e) => (world.cloudWindY = parseFloat(e.target.value))}

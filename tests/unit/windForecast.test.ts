@@ -34,7 +34,7 @@ type Vector2 = FieldVector;
 /** The constants the mirror runs on, pinned against the GLSL below. */
 const GUST_WIDTH = 3.0;
 const GUST_SPEED = 2.5;
-const MAX_UI_WIND = 0.707;
+const MAX_UI_WIND = 0.566;
 const CALM_WIND = 0.01;
 
 /** Mirrors `cropWindDirection`: a unit vector, or nothing when becalmed. */
@@ -138,8 +138,8 @@ test.describe("the wind the weather pane sets", () => {
       // Every wind a forecast can draw is inside the pane's own window, so
       // the sliders never have to be told about a wind the shader would clamp
       // anyway - and the field is never handed a storm the pane cannot set.
-      expect(Math.abs(program.wind.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(program.wind.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(program.wind.x)).toBeLessThanOrEqual(0.4);
+      expect(Math.abs(program.wind.y)).toBeLessThanOrEqual(0.4);
     }
   });
 
@@ -217,29 +217,35 @@ test.describe("the wind the weather pane sets", () => {
     // `[3, 6)` wind across that whole interval, whatever the sliders are
     // dialed to mid-interval.
     world.cloudWindX = 0.25;
-    world.cloudWindY = -0.6;
+    world.cloudWindY = -0.4;
 
     // Sampled twice inside `[3, 6)`, the field answers the wind of that
     // interval - and the distance it has covered is a distance in world units
     // along the wind it rides, measured from when that interval began, so a
     // crest that had crossed a field stays crossed rather than snapping back to
     // where a fresh wind would start one.
-    const drawn = trackWind(world, 5);
-    const alsoDrawn = trackWind(world, 5.5);
+    // With the wind range narrowed to [-0.4, 0.4], a 2s interval at a
+    // mid-range wind no longer reaches a full gust width, so sample a longer
+    // interval: every drawn wind over 8s still clears one crest's distance.
+    world.windChangeInterval = 8;
 
-    // And the wind eases: 5.5 is further along the `[3, 6)` interval than 5,
-    // so it has eased further from the `[0, 3)` wind toward the `[3, 6)` one.
+    const drawn = trackWind(world, 11);
+    const alsoDrawn = trackWind(world, 11.5);
+
+    // And the wind eases: 11.5 is further along the `[8, 16)` interval than 11,
+    // so it has eased further from the `[0, 8)` wind toward the `[8, 16)` one.
     expect(alsoDrawn).not.toEqual(drawn);
 
-    // And the distance is measured from when the interval began - two seconds
-    // and two-and-a-half seconds of the wind it rides - rather than recomputed
-    // from the clock's start, so a wind change cannot restart a gust
-    // mid-crossing.
-    expect(gustsTravelled(drawn, 5)).toBeCloseTo(
-      2 * GUST_SPEED * windForce(drawn.wind),
+    // And the distance is measured from when the interval began - three seconds
+    // of the wind it rides - rather than recomputed from the clock's start, so
+    // a wind change cannot restart a gust mid-crossing.
+    expect(gustsTravelled(drawn, 11)).toBeCloseTo(
+      3 * GUST_SPEED * windForce(drawn.wind),
       6,
     );
-    expect(gustsTravelled(drawn, 5)).toBeGreaterThan(GUST_WIDTH);
+    // With the interval dialled to 8s, a drawn wind has enough of its interval
+    // left to travel more than one gust width - a crest can cross the field.
+    expect(gustsTravelled(drawn, 11)).toBeGreaterThan(GUST_WIDTH);
   });
 
   test("the wind the field rides is drawn, not read off the sliders", () => {

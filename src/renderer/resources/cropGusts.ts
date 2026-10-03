@@ -58,7 +58,7 @@ export type CropGustTracker = {
  * wind adds to the march rather than restarting it.
  */
 const GUST_SPEED = 2.5;
-const MAX_UI_WIND = 0.707;
+const MAX_UI_WIND = 0.566;
 const CALM_WIND = 0.01;
 
 /** The wind the weather pane starts on, and so the first wind the crop rides. */

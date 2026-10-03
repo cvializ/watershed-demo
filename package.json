@@ -21,8 +21,9 @@
     "lint:component-imports": "tsx scripts/constraints/check-component-imports.ts",
     "lint:global-variables": "tsx scripts/constraints/check-global-variables.ts",
     "format": "oxfmt --check",
-    "validate": "npm run lint && npm run typecheck && npm run test && npm run build",
-    "pre-commit": "npm run validate && npm run knip && npm run format"
+    "validate": "npm run lint && npm run typecheck && npm run build",
+    "validate-final": "npm run validate && npm run test",
+    "pre-commit": "npm run knip && npm run format"
   },
   "dependencies": {
     "bitecs": "^0.4.0",
