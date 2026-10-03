@@ -41,9 +41,14 @@ export const trackWind = (
 
   const trail = trackWindFromClock(forecastOnHand, interval, gameTime);
 
-  // Next time round, hold this wind from when it was drawn.
+  // Next time round, hold this wind from when it was drawn - including which
+  // two winds it interpolates between and where that interpolation began, so
+  // the change keeps running from its true endpoints.
   forecastOnHand = {
     wind: trail.wind,
+    windFrom: trail.windFrom,
+    targetWind: trail.targetWind,
+    transitionStart: trail.transitionStart,
     intervalStart: trail.windSetTime,
     interval,
   };

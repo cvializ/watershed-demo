@@ -96,8 +96,9 @@ test.describe("the wind the weather pane sets", () => {
 
     // The wind the field rides is dealt from the clock, not read off the two
     // sliders: a fresh wind is dealt for each interval of the clock, keyed off
-    // that interval, so until the interval runs out the same wind holds even
-    // when the sliders are dialed to something new mid-interval.
+    // that interval, so whatever the sliders are dialed to mid-interval the
+    // wind keeps easing between the two winds dealt for the intervals either
+    // side of it - never chased from the sliders.
     const before = trackWind(world, 1);
 
     world.cloudWindX = -0.8;
@@ -105,22 +106,26 @@ test.describe("the wind the weather pane sets", () => {
 
     const during = trackWind(world, 2);
 
-    // 1 and 2 are both in `[0, 3)`, so they answer the wind dealt for that
-    // interval - the same wind, distance, and start - however the sliders moved
-    // between them.
-    expect(during).toEqual(before);
+    // 1 and 2 are both in `[0, 3)`, and the wind is the full-interval blend
+    // from the interval's start - so the later sample has eased further along
+    // that blend even though the sliders moved between them.
+    expect(during).not.toEqual(before);
 
     // Once the interval runs out, a wind is dealt for the interval the clock
-    // reached, and it holds for the whole of that interval - both 10 and 11 are
-    // in `[9, 12)`, so they answer the same wind, distance, and start.
+    // reached, and whatever the sliders are set to, both 10 and 11 are in
+    // `[9, 12)`, so they ease along the same blend - from the `[6, 9)` wind
+    // to the `[9, 12)` wind - with 11 further along it than 10.
     const arrived = trackWind(world, 10);
     const holds = trackWind(world, 11);
 
-    expect(arrived).toEqual(holds);
+    expect(holds).not.toEqual(arrived);
 
     // And the interval brought a change: the wind dealt for `[9, 12)` is not
     // the wind dealt for `[0, 3)`, so the field really does get a different
     // wind as the intervals pass rather than sitting on one wind forever.
+    // (Both samples are measured from their interval's start, so each is the
+    // blend between the winds of the intervals either side of its own - the
+    // change keeps running instead of snapping.)
     expect(arrived.wind).not.toEqual(before.wind);
   });
 
@@ -181,7 +186,9 @@ test.describe("the wind the weather pane sets", () => {
     // time the first interval has run out a different wind has been dealt.
     // 5 and 6 straddle the `[3, 6)` / `[6, 9)` boundary: the wind changes as
     // the interval passes even with the sliders untouched, so the field and the
-    // sky never sit on one wind forever.
+    // sky never sit on one wind forever - and the change keeps running through
+    // each interval, since every interval eases from the wind of the one
+    // before it to the wind dealt for itself.
     const inSecondInterval = trackWind(world, 5);
     const inThirdInterval = trackWind(world, 6);
 
@@ -200,31 +207,34 @@ test.describe("the wind the weather pane sets", () => {
     // waving at an angle to the sky.
     const world = createGameWorldContext();
 
-    // And while the first interval runs, the field is drawn with a wind dealt
-    // for `[0, 3)` from the clock - whatever it is, not read off the slider -
-    // however much of the interval has been spent.
+    // And while the first interval runs, the field is drawn with the wind the
+    // clock dealt for `[0, 3)` - blended from the wind before it toward the
+    // wind for `[0, 3)` - however much of the interval has been spent.
     expect(trackWind(world, 2).windSetTime).toBe(0);
 
     // And with the first interval run out, a wind dealt for `[3, 6)` is what
-    // the field is drawn with - the same wind for any sample inside that
-    // interval, whether or not the sliders were dialed, since the wind is drawn
-    // from the clock and not chased from the sliders.
+    // the field is drawn with - easing from the `[0, 3)` wind toward the
+    // `[3, 6)` wind across that whole interval, whatever the sliders are
+    // dialed to mid-interval.
     world.cloudWindX = 0.25;
     world.cloudWindY = -0.6;
 
-    // Sampled twice inside `[3, 6)`, the field answers the same wind, and the
-    // distance it has covered is a distance in world units along its own
-    // bearing, measured from when it was drawn - worth more than a gust width,
-    // so a crest that had crossed a field stays crossed rather than snapping
-    // back to where a fresh wind would start one.
+    // Sampled twice inside `[3, 6)`, the field answers the wind of that
+    // interval - and the distance it has covered is a distance in world units
+    // along the wind it rides, measured from when that interval began, so a
+    // crest that had crossed a field stays crossed rather than snapping back to
+    // where a fresh wind would start one.
     const drawn = trackWind(world, 5);
     const alsoDrawn = trackWind(world, 5.5);
 
-    expect(alsoDrawn).toEqual(drawn);
+    // And the wind eases: 5.5 is further along the `[3, 6)` interval than 5,
+    // so it has eased further from the `[0, 3)` wind toward the `[3, 6)` one.
+    expect(alsoDrawn).not.toEqual(drawn);
 
-    // And the distance is measured from when the wind was drawn - two seconds
-    // of a wind of this strength - rather than recomputed from the clock's
-    // start, so a wind change cannot restart a gust mid-crossing.
+    // And the distance is measured from when the interval began - two seconds
+    // and two-and-a-half seconds of the wind it rides - rather than recomputed
+    // from the clock's start, so a wind change cannot restart a gust
+    // mid-crossing.
     expect(gustsTravelled(drawn, 5)).toBeCloseTo(
       2 * GUST_SPEED * windForce(drawn.wind),
       6,

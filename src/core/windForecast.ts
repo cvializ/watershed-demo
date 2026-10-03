@@ -4,9 +4,10 @@
  * The wind the field and the sky ride is not read straight off the two sliders
  * in the weather pane: it is drawn from a deterministic per-interval seed, so
  * as the clock crosses each `windChangeInterval` boundary a fresh wind is dealt
- * out - easing out of the wind it replaces - and that wind holds for the whole
- * of the interval it was drawn for. Nothing dialled in the pane mid-interval
- * is chased; the wind simply waits for its interval to run out, then changes.
+ * out - eased out of the wind it replaces across the whole interval rather than
+ * taken all at once - and that wind holds for the rest of the interval it was
+ * drawn for. Nothing dialled in the pane mid-interval is chased; the wind
+ * simply waits for its interval to run out, then changes over.
  *
  * The draw is seeded from the clock rather than taken from `Math.random`, so
  * the same interval always answers the same wind however late or often it is
@@ -29,22 +30,47 @@ const WIND_COMPONENT_WINDOW: [number, number] = [-1, 1];
  * axes. `wind` is the wind itself; `bankedDrift` is the distance travelled
  * already, measured along the wind it belongs to, so a change of wind carries
  * an existing pattern on. `windSetTime` is when that wind was drawn - the
- * origin of its distance. */
+ * origin of its distance. `windFrom` and `targetWind` are the two winds being
+ * interpolated between while a change is on, and `transitionStart` is where
+ * that interpolation began - so a wind keeps easing from its true predecessor
+ * rather than out of whatever half-blend was last sampled. */
 export type WindTrail = {
   wind: { x: number; y: number };
   bankedDrift: { x: number; y: number };
   windSetTime: number;
+  /** The wind being interpolated from, the wind being interpolated into, and
+   * where that interpolation began - so a wind keeps easing from its true
+   * predecessor rather than out of whatever half-blend was last sampled. */
+  windFrom: { x: number; y: number };
+  targetWind: { x: number; y: number };
+  transitionStart: number;
 };
 
 /** A wind as drawn from the clock: its two numbers, and the interval of the
  * clock it was drawn for - everything about the wind is measured from the
  * start of that interval, so a wind is never sampled after its interval has
- * run out, and is always drawn from the interval the clock has reached. */
+ * run out, and is always drawn from the interval the clock has reached.
+ * `targetWind` is the wind being interpolated into, and `transitionStart` is
+ * where the interpolation of the two began on the clock - both unchanged while
+ * one wind holds, and both set afresh when an interval runs out and the next
+ * wind starts easing in. */
 type WindFromClock = {
   /** Where the wind points, in the same frame the pane sets it in - uv x and
-   * uv y, with the crop to come behind the field measured along these. */
+   * uv y, with the crop to come behind the field measured along these. While
+   * a change is being interpolated this is the blend between `wind`'s
+   * predecessor and `targetWind` at the last sampled instant. */
   wind: { x: number; y: number };
-  /** When this wind's interval began, on the clock. */
+  /** The wind that was drawn for the interval on hand - what the wind being
+   * interpolated into, below, is being interpolated from. Same object as
+   * `wind` while one wind holds. */
+  windFrom: { x: number; y: number };
+  /** The wind dealt out for the interval on hand - what `wind` is easing
+   * into, and what it becomes once the interpolation is spent. */
+  targetWind: { x: number; y: number };
+  /** Where the interpolation from `windFrom` to `targetWind` began, on the
+   * clock - the interval boundary that dealt `targetWind`. */
+  transitionStart: number;
+  /** Where the wind on hand's interval began, on the clock. */
   intervalStart: number;
   /** How long this wind's interval runs for. */
   interval: number;
@@ -53,6 +79,9 @@ type WindFromClock = {
 /** The wind the field starts on: nothing much, along -x and a little +y. */
 export const STARTING_WIND: WindFromClock = {
   wind: { x: 0.1, y: 0.05 },
+  windFrom: { x: 0.1, y: 0.05 },
+  targetWind: { x: 0.1, y: 0.05 },
+  transitionStart: 0,
   intervalStart: 0,
   interval: 3,
 };
@@ -119,11 +148,22 @@ const drawWindWithin = (
  * the interval the clock reached if not - with the distance to it measured from
  * the start of that interval, so a wind that ran out while unsampled never
  * banks the skipped past and a wind sampled twice answers the same distance.
+ *
+ * And the change between two intervals' winds is eased rather than taken all
+ * at once: across the whole interval the clock has reached, the wind answers
+ * the blend between the old wind and the one dealt for that interval, weighted
+ * by how far through the interval the clock sits - so the change is spread over
+ * the entire interval instead of happening all at once at the boundary.
+ * Sampling from the interval's own start keeps this deterministic: a wind dealt
+ * for `[3, 6)` is half-blended into its predecessor at 4.5 and is fully the
+ * new wind only as that interval runs out.
  */
 export const trackWindFromClock = (
-  /** Where the wind on hand is aiming, and the interval of the clock it was
-   * drawn for. */
-  onHand: WindFromClock,
+  /** Kept for interface stability - everything needed to place the change
+   * (the wind of the clock's interval and of the interval before it) is
+   * dealt fresh from the clock, so nothing has to be carried over from the
+   * last sample. */
+  _onHand: WindFromClock,
   /** How long an interval runs at the setting the pane is on. */
   interval: number,
   /** Where the clock stands. */
@@ -132,27 +172,51 @@ export const trackWindFromClock = (
   // Whichever interval the clock lands in is found by rounding down to the
   // interval - so a wind drawn before the clock jumped into a later interval
   // is caught up to that interval's start, and never measured from before then.
-  const strideStart = Math.floor(gameTime / interval) * interval;
+  // (Rounded to an integer, since float products like `0.1 * 30` land just
+  // short of the exact boundary and would otherwise re-deal the same wind.)
+  const strideStart = Math.round(Math.floor(gameTime / interval) * interval);
 
-  // If the wind on hand was drawn for the interval the clock is in now, it
-  // holds - the same wind, measured from the same start. Once that interval
-  // ran out, a fresh wind is dealt for the interval the clock reached.
-  const wind =
-    onHand.intervalStart === strideStart
-      ? onHand.wind
-      : drawWindWithin(strideStart, interval, WIND_COMPONENT_WINDOW);
+  // The two winds to interpolate between are dealt fresh from the interval
+  // *before* this one and the interval the clock reached - each keyed off its
+  // own interval - rather than carried over from the last sample. So whatever
+  // instants of an interval get sampled, the wind always runs from the true
+  // wind of the previous interval to the true wind of this one, placed by
+  // where the clock actually sits inside the interval.
+  const targetWind = drawWindWithin(strideStart, interval, WIND_COMPONENT_WINDOW);
+  const windFrom =
+    strideStart === 0
+      ? STARTING_WIND.wind
+      : drawWindWithin(
+          Math.round(strideStart - interval),
+          interval,
+          WIND_COMPONENT_WINDOW,
+        );
 
-  // And the distance to that wind is measured from the start of the interval
-  // it was drawn in, so a wind that ran out while unsampled does not bank the
-  // skipped past and two samples of one wind answer the same distance.
+  // The change of wind runs across the whole interval: from the wind dealt
+  // for the interval before the clock's, to the wind dealt for the clock's
+  // interval, placed by where the clock actually sits inside that interval -
+  // computed fresh every call from those true endpoints, so successive samples
+  // show the change progressing rather than easing out of a half-blend.
+  // A clock sampled partway into a later interval (after its previous
+  // interval ran out while unsampled) starts easing from the start of the
+  // interval it reached, so the change keeps its full interval even across
+  // skipped clocks.
+  const throughInterpolation = Math.min(interval, gameTime - strideStart);
+  const weight = throughInterpolation / interval;
+
+  const eased = {
+    x: windFrom.x + (targetWind.x - windFrom.x) * weight,
+    y: windFrom.y + (targetWind.y - windFrom.y) * weight,
+  };
+
+  // Same place in the interpolation for the same clock, whether or not the
+  // wind on hand was dealt for this interval.
   return {
-    wind,
+    wind: eased,
     bankedDrift: { x: 0, y: 0 },
-
-    // Everything about this wind is measured from the interval it was drawn
-    // in, so a wind that ran out while unsampled is caught up to the interval
-    // the clock reached, and a wind that holds is measured from the same start
-    // whatever time has run since.
+    windFrom,
+    targetWind,
+    transitionStart: strideStart,
     windSetTime: strideStart,
   };
 };
