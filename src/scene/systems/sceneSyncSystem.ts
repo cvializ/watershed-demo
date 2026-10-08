@@ -7,6 +7,7 @@ import { shadowMapUpdateSystem } from "@/scene/systems/shadowMapUpdate";
 import { starfieldSystem } from "@/scene/systems/starfield";
 import { sunBackgroundSystem } from "@/scene/systems/sunBackground";
 import { visualizationSystem } from "@/scene/systems/visualization";
+import { watershedSystem } from "@/scene/systems/watershed";
 import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 
 export const sceneSyncSystem: SceneSystem = (world, scene, dt): void => {
@@ -18,6 +19,9 @@ export const sceneSyncSystem: SceneSystem = (world, scene, dt): void => {
   // Runs after sunBackground so it can read the updated sun height.
   starfieldSystem(world, scene, dt);
   visualizationSystem(world, scene, dt);
+
+  // Trace and highlight the watershed drained by the point under the mouse.
+  watershedSystem(world, scene, dt);
 
   // Update terrain painting system with React UI state
   const terrainPaintingManager = getTerrainPaintingManager();

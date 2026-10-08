@@ -144,6 +144,12 @@ export const GameUI = ({ world }: GameUiProps) => {
     togglePause(world);
   };
 
+  // Toggle the watershed highlight tool. When on, hovering the terrain lights
+  // up the whole area that drains into the point under the cursor.
+  const handleWatershedToggle = () => {
+    world.watershedHighlight = !world.watershedHighlight;
+  };
+
   return (
     <>
       <TerrainPaintingControls
@@ -246,6 +252,30 @@ export const GameUI = ({ world }: GameUiProps) => {
             >
               {world.isPaused ? "Resume" : "Pause"}
             </button>
+          </div>
+          <div style={styles.watershedSection}>
+            <button
+              onClick={handleWatershedToggle}
+              style={{
+                ...styles.button,
+                backgroundColor: world.watershedHighlight
+                  ? "#dc3545"
+                  : "#6c757d",
+              }}
+              title={
+                world.watershedHighlight
+                  ? "Hide watershed highlight"
+                  : "Highlight the watershed drained by the point under the mouse"
+              }
+            >
+              {world.watershedHighlight ? "Watershed ON" : "Watershed OFF"}
+            </button>
+            <span
+              style={styles.hint}
+              title="Hover the terrain to trace where its water comes from"
+            >
+              Hover terrain to see its watershed
+            </span>
           </div>
         </div>
         {/* Weather pane: always visible, sits outside the main row so it doesn't compete with controls. */}
@@ -558,6 +588,16 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
+  } satisfies React.CSSProperties,
+  watershedSection: {
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "4px",
+  } satisfies React.CSSProperties,
+  hint: {
+    fontSize: "11px",
+    color: "#aaa",
+    whiteSpace: "nowrap",
   } satisfies React.CSSProperties,
   weatherPane: {
     position: "absolute",
