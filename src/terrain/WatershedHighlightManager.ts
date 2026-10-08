@@ -1,15 +1,19 @@
 import * as THREE from "three";
 
-import { computeWatershed } from "@/terrain/computeWatershed";
+import {
+  createWatershedOverlay,
+  setWatershedMask,
+} from "@/scene/resources/meshes/watershedOverlay";
+import {
+  type DrainageNetwork,
+  createDrainageNetwork,
+  traceWatershed,
+} from "@/terrain/computeWatershed";
 import {
   buildHeightGrid,
   getCellIndexAtWorld,
   type TerrainHeightGrid,
 } from "@/terrain/terrainHeightGrid";
-import {
-  createWatershedOverlay,
-  setWatershedMask,
-} from "@/scene/resources/meshes/watershedOverlay";
 
 /**
  * Configuration handed to the manager by the React UI each frame.
@@ -49,6 +53,19 @@ export type WatershedHighlightManager = {
 };
 
 let _watershedHighlightManager: WatershedHighlightManager | null = null;
+
+/** True when two height grids hold exactly the same values. */
+const sameHeights = (first: Float32Array, second: Float32Array): boolean => {
+  if (first.length !== second.length) {
+    return false;
+  }
+  for (let index = 0; index < first.length; index++) {
+    if (first[index] !== second[index]) {
+      return false;
+    }
+  }
+  return true;
+};
 
 /**
  * Get the global watershed highlight manager, or `null` before it is created.
@@ -99,6 +116,13 @@ export const createWatershedHighlightManager =
     let heights: Float32Array = new Float32Array(0);
     let mask: Uint8Array = new Uint8Array(0);
 
+    // Cached drainage network (flow directions over both the authored surface
+    // and the pit-filled one) plus the exact height grid it was traced from,
+    // so the network is rebuilt only when painted/eroded edits change the
+    // terrain, and just re-traced as the cursor moves between cells.
+    let network: DrainageNetwork | null = null;
+    let networkHeights: Float32Array | null = null;
+
     // Cell currently under the cursor, to skip recomputation while parked.
     let lastCell = -2;
 
@@ -139,6 +163,8 @@ export const createWatershedHighlightManager =
         grid = built;
         heights = new Float32Array(built.heights.length);
         mask = new Uint8Array(built.heights.length);
+        network = null;
+        networkHeights = null;
         lastCell = -2;
 
         if (!scene.children.includes(overlay)) {
@@ -192,16 +218,26 @@ export const createWatershedHighlightManager =
 
         const cell = getCellIndexAtWorld(grid, hit.point.x, hit.point.z);
 
+        // Re-trace the network whenever the heights differ from the ones it was
+        // built from, and forget the parked cell so the hover stays in sync.
+        if (
+          network === null ||
+          networkHeights === null ||
+          !sameHeights(networkHeights, heights)
+        ) {
+          network = createDrainageNetwork(heights, grid.gridDim);
+          networkHeights = Float32Array.from(heights);
+          lastCell = -2;
+        }
+
         // Skip recomputation while the cursor stays within the same terrain cell.
         if (cell === lastCell) {
           overlay.visible = true;
           return;
         }
 
-        // computeWatershed returns a fresh array; copy it into the working mask
-        // so `setWatershedMask` reuses the same buffer every frame.
-        const computed = computeWatershed(heights, grid.gridDim, cell);
-        mask.set(computed);
+        // traceWatershed writes straight into the reused working mask.
+        traceWatershed(network, grid.gridDim, cell, mask);
         setWatershedMask(overlay, mask);
 
         lastCell = cell;
