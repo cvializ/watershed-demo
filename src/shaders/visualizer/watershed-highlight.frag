@@ -8,6 +8,6 @@ void main() {
     discard;
   }
 
-  // Solid-ish red over the contributing area; partial mask (cell edges) fades.
-  gl_FragColor = vec4(1.0, 0.0, 0.0, 0.55);
+  // Translucent soft white over the contributing area; partial mask (cell edges) fades.
+  gl_FragColor = vec4(0.95, 0.95, 0.98, 0.01);
 }
