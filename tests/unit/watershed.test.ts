@@ -10,11 +10,14 @@ import {
   createDrainageNetwork,
   fillDepressions,
   traceWatershed,
+  traceWatershedFromPoints,
 } from "src/terrain/computeWatershed";
 import {
   buildHeightGrid,
   getCellIndexAtLocal,
   getCellIndexAtWorld,
+  getCellIndicesInCircleAtLocal,
+  getCellIndicesInCircleAtWorld,
 } from "src/terrain/terrainHeightGrid";
 import * as THREE from "three";
 
@@ -119,6 +122,28 @@ const chainReachesPour = (
 
 /** A 3×3 bowl: a pit of height 1 ringed by height 5. */
 const bowl = new Float32Array([5, 5, 5, 5, 1, 5, 5, 5, 5]);
+
+/**
+ * Follow a flow-direction chain and report whether it arrives at one of
+ * `pourPoints`.
+ */
+const chainReachesAny = (
+  flow: Int32Array,
+  start: number,
+  pourPoints: Set<number>,
+): boolean => {
+  let current = start;
+  const seen = new Set<number>();
+  while (!pourPoints.has(current)) {
+    const downstream = flow[current];
+    if (downstream === -1 || seen.has(current)) {
+      return false;
+    }
+    seen.add(current);
+    current = downstream;
+  }
+  return true;
+};
 
 /** 5×5 flat plain with a ring of pits around a height-2 hummock. */
 const plateauWithPits = new Float32Array([
@@ -491,6 +516,86 @@ test.describe("traceWatershed", () => {
   });
 });
 
+test.describe("traceWatershedFromPoints", () => {
+  test("a disc of pour points shows the union of their catchments", () => {
+    const network = createDrainageNetwork(plateauWithPits, 5);
+    const pit = traceWatershed(network, 5, 6);
+    const hummock = traceWatershed(network, 5, 12);
+
+    // Cell 6 sits in a ring pit and 12 on the hummock inside it: tracing both
+    // at once lights up both catchments, and no cell that neither reaches.
+    expect(grid(traceWatershedFromPoints(network, 5, [6, 12]))).toEqual(
+      Array.from({ length: 25 }, (_, cell) =>
+        Math.max(pit[cell], hummock[cell]),
+      ),
+    );
+  });
+
+  test("a disc of flat sinks shows exactly that disc", () => {
+    const plain = new Float32Array(Array(25).fill(5));
+    const network = createDrainageNetwork(plain, 5);
+    const pourPoints = [6, 7, 8, 11, 12, 13, 16, 17, 18];
+
+    // None of the flat cells drains into another, so nothing outside the
+    // hovered disc is caught, but every cell inside it is.
+    expect(grid(traceWatershedFromPoints(network, 5, pourPoints))).toEqual(
+      Array.from({ length: 25 }, (_, cell) =>
+        pourPoints.includes(cell) ? 1 : 0,
+      ),
+    );
+  });
+
+  test("writes into a reused mask, clearing the previous result", () => {
+    const network = createDrainageNetwork(plateauWithPits, 5);
+    const reused = new Uint8Array(25).fill(1);
+
+    const mask = traceWatershedFromPoints(network, 5, [12], reused);
+
+    expect(mask).toBe(reused);
+    expect(grid(mask)).toEqual(onlyCell(25, 12));
+  });
+
+  test("a disc around a point on Cobbs Creek shows a wider basin than one point", () => {
+    const geometry = createTerrainGeometry();
+    const built = buildHeightGrid(geometry)!;
+    const { gridDim, heights } = built;
+    const network = createDrainageNetwork(heights, gridDim);
+
+    // Same creek cell as the single-point test, plus the 12-cell disc around
+    // it: the union catches more than the hairline traced from one cell, stays
+    // one connected piece, and never highlights a cell whose water reaches
+    // none of the poured points.
+    const centreLocalX = -10;
+    const centreLocalY = 5;
+    const centre = getCellIndexAtLocal(built, centreLocalX, centreLocalY);
+    const pourPoints = getCellIndicesInCircleAtLocal(
+      built,
+      centreLocalX,
+      centreLocalY,
+      3,
+    );
+
+    const mask = traceWatershedFromPoints(network, gridDim, pourPoints);
+    const singlePoint = traceWatershed(network, gridDim, centre);
+
+    expect(grid(mask).reduce((total, value) => total + value, 0)).toBeGreaterThan(3000);
+    expect(grid(mask).reduce((total, value) => total + value, 0)).toBeGreaterThan(
+      grid(singlePoint).reduce((total, value) => total + value, 0),
+    );
+    expect(isContiguous(mask, gridDim, centre)).toBe(true);
+
+    const seeds = new Set(pourPoints);
+    for (let cell = 0; cell < mask.length; cell++) {
+      if (mask[cell] === 1) {
+        expect(
+          chainReachesAny(network.surfaceFlow, cell, seeds) ||
+            chainReachesAny(network.filledFlow, cell, seeds),
+        ).toBe(true);
+      }
+    }
+  });
+});
+
 test.describe("buildHeightGrid / cell mapping", () => {
   test("the real terrain geometry yields a 161×161 row-major grid", () => {
     const geometry = createTerrainGeometry();
@@ -552,5 +657,62 @@ test.describe("buildHeightGrid / cell mapping", () => {
     );
     geometry.setAttribute("position", clipped);
     expect(buildHeightGrid(geometry)).toBeNull();
+  });
+
+  test("a sub-cell radius covers only the hovered cell", () => {
+    const built = buildHeightGrid(createTerrainGeometry())!;
+
+    // 0.1 units is under half a 0.25-unit cell, so it rounds to no ring at
+    // all and the trace is just the cell under the cursor.
+    expect(getCellIndicesInCircleAtLocal(built, 3.2, -1.7, 0.1)).toEqual([
+      getCellIndexAtLocal(built, 3.2, -1.7),
+    ]);
+  });
+
+  test("a three-unit radius covers twelve cells around the hovered cell", () => {
+    const built = buildHeightGrid(createTerrainGeometry())!;
+    const { gridDim } = built;
+    const pourPoints = getCellIndicesInCircleAtLocal(built, 0, 0, 3);
+
+    // The offsets with dx² + dy² ≤ 144, so the corners of the 25×25 bounding
+    // box are left out, and each cell is listed once.
+    expect(pourPoints.length).toBe(441);
+    expect(new Set(pourPoints).size).toBe(pourPoints.length);
+
+    const centre = getCellIndexAtLocal(built, 0, 0);
+    const centreRow = Math.floor(centre / gridDim);
+    const centreCol = centre % gridDim;
+    for (const cell of pourPoints) {
+      const deltaRow = Math.floor(cell / gridDim) - centreRow;
+      const deltaCol = (cell % gridDim) - centreCol;
+      expect(deltaRow * deltaRow + deltaCol * deltaCol).toBeLessThanOrEqual(
+        144,
+      );
+    }
+
+    // The cell straight above the centre and the one twelve rows down are
+    // covered, and the disc reaches out to the twelve-cell offsets.
+    expect(pourPoints).toContain(centre);
+    expect(pourPoints).toContain(centre - 12 * gridDim);
+    expect(pourPoints).toContain(centre + 12 * gridDim);
+  });
+
+  test("cells off the terrain are dropped, not folded onto the edge", () => {
+    const built = buildHeightGrid(createTerrainGeometry())!;
+
+    // Hovering a corner keeps only the quarter of the disc that lies on the
+    // terrain, without listing the clamped edge cells twice.
+    const nearCorner = getCellIndicesInCircleAtLocal(built, -19.9, 19.9, 3);
+    expect(nearCorner.length).toBeLessThan(441);
+    expect(new Set(nearCorner).size).toBe(nearCorner.length);
+  });
+
+  test("world→cell mirrors the local mapping for the circle too", () => {
+    const built = buildHeightGrid(createTerrainGeometry())!;
+
+    // A point at local (x, y) sits at world (x, -y) for the rotated plane.
+    expect(getCellIndicesInCircleAtWorld(built, 3.2, 1.7, 3)).toEqual(
+      getCellIndicesInCircleAtLocal(built, 3.2, -1.7, 3),
+    );
   });
 });

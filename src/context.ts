@@ -34,8 +34,8 @@ export const createGameWorldContext = () => ({
   terrainPaintingEnabled: false,
   terrainBrushMaterial: "bareDirt" as SurfaceMaterialType,
   terrainBrushRadius: 2.0,
-  // Watershed highlight tool: when on, traces the area drained by the terrain
-  // point under the cursor and paints it red.
+  // Watershed highlight tool: when on, traces the area draining into the disc
+  // of terrain around the cursor and paints it red.
   watershedHighlight: false,
   // Water quality state: which substance the Water Quality view (visualizationMode 7) shows
   pollutantSpecies: 0 as PollutantSpeciesId,

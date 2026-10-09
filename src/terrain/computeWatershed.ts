@@ -19,8 +19,13 @@
  * between the cursor and the hills above it. Tracing only the filled surface
  * is wrong the other way round, because filling turns a closed depression into
  * a dome, so hovering the bottom of a pit would show a single cell instead of
- * the whole basin that actually drains into it. `traceWatershed` therefore
- * picks one of the two per pour point, rather than mixing them.
+ * the whole basin that actually drains into it. `traceWatershedFromPoints`
+ * therefore picks one surface per pour point, rather than mixing them.
+ *
+ * A hover traces from a disc of pour points around the cursor rather than the
+ * single cell under it, since one cell traces a hairline catchment that is
+ * hard to see: `traceWatershedFromPoints` returns the union of the catchments
+ * of every point in that disc.
  */
 
 /**
@@ -46,6 +51,12 @@ type ReverseFlow = {
 };
 
 /**
+ * Where a hover pours into the grid: one point for a single-cell trace, or
+ * the points of a disc around the cursor for a wider catchment.
+ */
+export type PourPoints = readonly number[];
+
+/**
  * Where a cell's water goes on each traced surface, as cell indices (`-1`
  * when that surface offers no lower neighbour). `filledFlow` never holds
  * `-1` for an interior cell, so chains traced through it keep running until
@@ -54,17 +65,19 @@ type ReverseFlow = {
  * Only one of the two is ever traced for a given pour point, so a chain never
  * stitches together steps from both surfaces.
  *
- * `reverseFlow` is the reverse adjacency (sources for each cell), precomputed
- * once so that `traceWatershed` skips the reverse-graph construction on every
- * trace.
+ * `reverseSurface`/`reverseFilled` are the reverse adjacency of each surface
+ * (the sources for every cell), precomputed once so that tracing skips the
+ * reverse-graph construction on every hover.
  */
 export type DrainageNetwork = {
   /** Where water drains on the authored surface (`-1` for pits and flats). */
   surfaceFlow: Int32Array;
   /** Where water drains on the depression-filled surface. */
   filledFlow: Int32Array;
-  /** Precomputed reverse adjacency for fast watershed tracing. */
-  reverseFlow: ReverseFlow;
+  /** Reverse adjacency of the authored surface. */
+  reverseSurface: ReverseFlow;
+  /** Reverse adjacency of the depression-filled surface. */
+  reverseFilled: ReverseFlow;
 };
 
 /**
@@ -322,18 +335,16 @@ const buildReverseFlow = (flow: Int32Array, gridDim: number): ReverseFlow => {
 
 /**
  * Build the terrain's drainage network: the D8 flow directions traced over
- * the authored surface, plus those traced over the depression-filled surface.
+ * the authored surface, plus those traced over the depression-filled surface,
+ * and the reverse adjacency of each.
  *
  * Both steps depend only on the height grid, so a caller that hovers many
  * points on the same terrain builds this once and reuses it.
  *
- * `reverseFlow` is precomputed once from the chosen flow surface, so that
- * `traceWatershed` skips the reverse-graph construction on every trace.
- *
  * @param heights - `gridDim * gridDim` raw heights indexed row-major.
  * @param gridDim - Number of cells along each grid axis.
- * @returns Where each cell drains on either surface; `-1` entries end a
- *   chain on that surface (never inside the filled one).
+ * @returns Where each cell drains on either surface, and the sources of each;
+ *   `-1` entries end a chain on that surface (never inside the filled one).
  */
 export const createDrainageNetwork = (
   heights: HeightGrid,
@@ -348,25 +359,114 @@ export const createDrainageNetwork = (
   return {
     surfaceFlow,
     filledFlow,
-    reverseFlow: buildReverseFlow(surfaceFlow, gridDim),
+    reverseSurface: buildReverseFlow(surfaceFlow, gridDim),
+    reverseFilled: buildReverseFlow(filledFlow, gridDim),
   };
 };
 
 /**
- * Collect every cell that drains into `pourIndex`, writing the 0/1 mask into
- * `target` (zeroed first, so one buffer can be reused between hovers).
+/**
+ * Flood backwards from every pour point, adding the cells that reach them to
+ * `target` (which is written additively, so a caller can trace both surfaces
+ * into one mask).
  *
- * Chains are traced on a single surface, chosen by where the pour point
- * itself sits:
+ * `visited` is per traced surface, so a cell already caught while tracing the
+ * other surface does not stop chains running on through it here.
+ */
+const collectCatchments = (
+  target: Uint8Array,
+  visited: Uint8Array,
+  reverse: ReverseFlow,
+  pourPoints: PourPoints,
+): void => {
+  const stack: number[] = [];
+
+  for (const pourIndex of pourPoints) {
+    if (visited[pourIndex] === 0) {
+      visited[pourIndex] = 1;
+      stack.push(pourIndex);
+    }
+  }
+
+  while (stack.length > 0) {
+    const cell = stack.pop() as number;
+    target[cell] = 1;
+
+    for (let source = reverse.head[cell]; source !== -1; source = reverse.next[source]) {
+      if (visited[source] === 0) {
+        visited[source] = 1;
+        stack.push(source);
+      }
+    }
+  }
+};
+
+/**
+ * Collect every cell that drains into *any* of `pourPoints`, writing the 0/1
+ * mask into `target` (zeroed first, so one buffer can be reused between
+ * hovers). The result is the union of the individual catchments, so a disc of
+ * points around the cursor highlights a whole drainage basin rather than the
+ * hairline traced from one cell.
  *
- * - If the pour point holds water (a pit or a flat, so nothing on the
- *   authored surface drains into it), trace the authored surface: everything
- *   that actually collects there is caught, instead of a single cell.
+ * Each point is traced on a single surface, chosen by where that point sits:
+ *
+ * - If the point holds water (a pit or a flat, so nothing on the authored
+ *   surface drains into it), trace the authored surface: everything that
+ *   actually collects there is caught, instead of a single cell.
  * - Otherwise trace the depression-filled surface, so the chain reaching the
- *   pour point keeps running instead of dying in the first pit uphill of it.
+ *   point keeps running instead of dying in the first pit uphill of it.
  *
- * Uses the precomputed `reverseFlow` from the network to skip the reverse-graph
- * construction on every trace.
+ * Traces against the `reverseSurface`/`reverseFilled` adjacency cached on the
+ * network, so no reverse graph is built per hover.
+ *
+ * @param network - Where each cell drains, from `createDrainageNetwork`.
+ * @param gridDim - Number of cells along each grid axis.
+ * @param pourPoints - Grid indices to pour into (`row * gridDim + col`); the
+ *   traced area is the union of their catchments.
+ * @param target - `gridDim * gridDim` mask to fill; a new one if omitted.
+ * @returns `target` (or a fresh mask), `1` for cells inside the watershed.
+ */
+export const traceWatershedFromPoints = (
+  network: DrainageNetwork,
+  gridDim: number,
+  pourPoints: PourPoints,
+  target: Uint8Array = new Uint8Array(gridDim * gridDim),
+): Uint8Array => {
+  // Split the pour points by surface: pits and flats keep their own catchment
+  // on the authored surface, everything else is traced on the filled one.
+  const surfacePours: number[] = [];
+  const filledPours: number[] = [];
+  for (const pourIndex of pourPoints) {
+    if (network.surfaceFlow[pourIndex] === -1) {
+      surfacePours.push(pourIndex);
+    } else {
+      filledPours.push(pourIndex);
+    }
+  }
+
+  // One `visited` array serves either surface, since only one trace runs into
+  // `target` at a time and it is cleared in between.
+  const visited = new Uint8Array(network.surfaceFlow.length);
+  target.fill(0);
+
+  if (surfacePours.length > 0) {
+    collectCatchments(target, visited, network.reverseSurface, surfacePours);
+  }
+
+  if (filledPours.length > 0) {
+    visited.fill(0);
+    collectCatchments(target, visited, network.reverseFilled, filledPours);
+  }
+
+  return target;
+};
+
+/**
+ * Return the set of cells whose water drains into `pourIndex` - the
+ * watershed (contributing area) drained by that point.
+ *
+ * Convenience wrapper over `traceWatershedFromPoints` for a single pour
+ * point; pass a disc of points to trace the wider area around the cursor.
  *
  * @param network - Where each cell drains, from `createDrainageNetwork`.
  * @param gridDim - Number of cells along each grid axis.
@@ -379,38 +479,7 @@ export const traceWatershed = (
   gridDim: number,
   pourIndex: number,
   target: Uint8Array = new Uint8Array(gridDim * gridDim),
-): Uint8Array => {
-  const flow =
-    network.surfaceFlow[pourIndex] === -1
-      ? network.surfaceFlow
-      : network.filledFlow;
-
-  // Use the precomputed reverse adjacency to skip the linked-list construction
-  // on every trace. The flow surface is chosen per pour point (surface when
-  // the pour is a pit, filled otherwise), but the reverse graph is cached
-  // from the surface flow, so we pick the matching reverse flow.
-  const { head, next } =
-    flow === network.surfaceFlow
-      ? network.reverseFlow
-      : buildReverseFlow(network.filledFlow, gridDim);
-
-  // Flood backwards from the pour point to collect its whole catchment.
-  target.fill(0);
-  const stack: number[] = [pourIndex];
-  target[pourIndex] = 1;
-
-  while (stack.length > 0) {
-    const cell = stack.pop() as number;
-    for (let source = head[cell]; source !== -1; source = next[source]) {
-      if (target[source] === 0) {
-        target[source] = 1;
-        stack.push(source);
-      }
-    }
-  }
-
-  return target;
-};
+): Uint8Array => traceWatershedFromPoints(network, gridDim, [pourIndex], target);
 
 /**
  * Return the set of cells whose water drains into `pourIndex` - the

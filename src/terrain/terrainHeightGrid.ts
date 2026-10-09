@@ -101,6 +101,96 @@ export const getCellIndexAtLocal = (
 };
 
 /**
+ * Every grid cell inside a circle of `radius` around a local-plane position,
+ * as cell indices (`row * gridDim + col`).
+ *
+ * The circle is anchored on the cell nearest to `(localX, localY)` and takes
+ * every cell offset `(deltaRow, deltaCol)` with
+ * `deltaRow * deltaRow + deltaCol * deltaCol <= radiusInCells^2`, so a
+ * catchment traced from these points covers a disc of terrain instead of a
+ * single cell. Cells beyond the grid edge are dropped rather than clamped to
+ * it, so two offsets never collapse onto the same edge cell and the result
+ * holds each cell once.
+ *
+ * @param grid - Grid to sample.
+ * @param localX - Local plane x of the circle centre.
+ * @param localY - Local plane y of the circle centre.
+ * @param radius - Circle radius in world units, rounded to the nearest whole
+ *   cell; anything under half a cell traces the hovered cell alone.
+ * @returns Cell indices inside the circle, scanned row by row from the top of
+ *   the circle; empty if `grid` has no usable extent.
+ */
+export const getCellIndicesInCircleAtLocal = (
+  grid: TerrainHeightGrid,
+  localX: number,
+  localY: number,
+  radius: number,
+): number[] => {
+  const { gridDim, minX, maxX, minY, maxY } = grid;
+  const width = maxX - minX;
+  const height = maxY - minY;
+  if (width <= 0 || height <= 0) {
+    return [];
+  }
+
+  // Cell containing the circle centre, using the same mapping as
+  // `getCellIndexAtLocal` so the disc stays centred on the hovered cell.
+  const centreCol = Math.round(((localX - minX) / width) * (gridDim - 1));
+  const centreRow = Math.round(((maxY - localY) / height) * (gridDim - 1));
+
+  // Cell size on each axis, which turns a world-unit radius into a number of
+  // cells. Using the smaller axis keeps the disc at least as wide as asked.
+  const cellWidth = width / (gridDim - 1);
+  const cellHeight = height / (gridDim - 1);
+  const radiusInCells = Math.max(
+    0,
+    Math.round(radius / Math.min(cellWidth, cellHeight)),
+  );
+  const radiusSquared = radiusInCells * radiusInCells;
+
+  const cellIndices: number[] = [];
+  for (let deltaRow = -radiusInCells; deltaRow <= radiusInCells; deltaRow++) {
+    for (
+      let deltaCol = -radiusInCells;
+      deltaCol <= radiusInCells;
+      deltaCol++
+    ) {
+      // Skip the corners of the bounding box that fall outside the circle.
+      if (deltaRow * deltaRow + deltaCol * deltaCol > radiusSquared) {
+        continue;
+      }
+
+      const row = centreRow + deltaRow;
+      const col = centreCol + deltaCol;
+      if (row >= 0 && row < gridDim && col >= 0 && col < gridDim) {
+        cellIndices.push(row * gridDim + col);
+      }
+    }
+  }
+
+  return cellIndices;
+};
+
+/**
+ * Cell indices inside a circle of `radius` around a world position on the
+ * terrain. With the plane rotated -PI/2 around X, world `x` = local `x` and
+ * world `z` = -local `y`, so local `(worldX, -worldZ)`.
+ *
+ * @param grid - Grid to sample.
+ * @param worldX - World x of the circle centre.
+ * @param worldZ - World z of the circle centre.
+ * @param radius - Circle radius in world units, rounded to the nearest whole
+ *   cell; anything under half a cell traces the hovered cell alone.
+ * @returns Cell indices inside the circle.
+ */
+export const getCellIndicesInCircleAtWorld = (
+  grid: TerrainHeightGrid,
+  worldX: number,
+  worldZ: number,
+  radius: number,
+): number[] => getCellIndicesInCircleAtLocal(grid, worldX, -worldZ, radius);
+
+/**
  * Convert a world position on the terrain to a grid cell index. With the
  * plane rotated -PI/2 around X, world `x` = local `x` and world `z` =
  * -local `y`, so local `(worldX, -worldZ)`.

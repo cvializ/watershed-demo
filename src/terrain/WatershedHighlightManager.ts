@@ -7,11 +7,12 @@ import {
 import {
   type DrainageNetwork,
   createDrainageNetwork,
-  traceWatershed,
+  traceWatershedFromPoints,
 } from "@/terrain/computeWatershed";
 import {
   buildHeightGrid,
   getCellIndexAtWorld,
+  getCellIndicesInCircleAtWorld,
   type TerrainHeightGrid,
 } from "@/terrain/terrainHeightGrid";
 
@@ -24,8 +25,17 @@ export type WatershedConfig = {
 };
 
 /**
+ * Radius, in world units, of the disc of pour points traced around the
+ * cursor. At the terrain's 161×161 grid, where one cell covers 0.25 units
+ * (about 37 m of real ground), this is a radius of 12 cells: the highlight
+ * then covers a whole drainage basin rather than the hairline traced from the
+ * single cell under the mouse.
+ */
+const POUR_CIRCLE_RADIUS = 3;
+
+/**
  * Traces and displays the watershed (contributing area) drained by whatever
- * point on the terrain sits under the mouse.
+ * disc of terrain sits around the mouse.
  *
  * It keeps its own pointer tracking (independent of terrain painting), so the
  * highlight follows the cursor whether or not painting is enabled.
@@ -127,7 +137,8 @@ export const createWatershedHighlightManager =
     // the mask instead of re-tracing and re-copying into Three.js.
     let lastWatershedCell = -2;
 
-    // Cell currently under the cursor, to skip recomputation while parked.
+    // Cell currently under the cursor, to skip recomputation while parked. It
+    // also fixes the disc of pour points, which is derived from that cell.
     let lastCell = -2;
 
     const manager: WatershedHighlightManager = {
@@ -236,14 +247,25 @@ export const createWatershedHighlightManager =
           lastCell = -2;
         }
 
-        // Skip recomputation while the cursor stays within the same terrain cell.
+        // Skip recomputation while the cursor stays within the same terrain
+        // cell: the disc of pour points is derived from that cell, so the
+        // traced area cannot change either.
         if (cell === lastCell) {
           overlay.visible = true;
           return;
         }
 
-        // traceWatershed writes straight into the reused working mask.
-        traceWatershed(network, grid.gridDim, cell, mask);
+        // Trace the union of the catchments of every cell in the disc around
+        // the cursor, which gives a wider basin than the one cell under it.
+        const pourPoints = getCellIndicesInCircleAtWorld(
+          grid,
+          hit.point.x,
+          hit.point.z,
+          POUR_CIRCLE_RADIUS,
+        );
+
+        // traceWatershedFromPoints writes straight into the reused working mask.
+        traceWatershedFromPoints(network, grid.gridDim, pourPoints, mask);
 
         // Cache the watershed result so same-cell hovers skip the Three.js
         // buffer copy. The drainage network is already cached, so when the

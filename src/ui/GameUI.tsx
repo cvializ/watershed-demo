@@ -145,7 +145,7 @@ export const GameUI = ({ world }: GameUiProps) => {
   };
 
   // Toggle the watershed highlight tool. When on, hovering the terrain lights
-  // up the whole area that drains into the point under the cursor.
+  // up the whole area draining into the patch of terrain under the cursor.
   const handleWatershedToggle = () => {
     world.watershedHighlight = !world.watershedHighlight;
   };
@@ -265,7 +265,7 @@ export const GameUI = ({ world }: GameUiProps) => {
               title={
                 world.watershedHighlight
                   ? "Hide watershed highlight"
-                  : "Highlight the watershed drained by the point under the mouse"
+                  : "Highlight the watershed draining into the area around the mouse"
               }
             >
               {world.watershedHighlight ? "Watershed ON" : "Watershed OFF"}

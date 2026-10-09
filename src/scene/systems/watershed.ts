@@ -12,8 +12,9 @@ import {
 import { logger } from "@/utils/logger";
 
 /**
- * Runs the watershed highlight each frame: traces the area drained by the
- * terrain point under the mouse and paints it red, when the tool is enabled.
+ * Runs the watershed highlight each frame: traces the area draining into the
+ * disc of terrain around the mouse and paints it red, when the tool is
+ * enabled.
  */
 export const watershedSystem: SceneSystem = (world, scene, _dt) => {
   let manager = getWatershedHighlightManager();
@@ -41,7 +42,7 @@ export const watershedSystem: SceneSystem = (world, scene, _dt) => {
   }
 
   // Wire the manager to the scene (idempotent per terrain geometry), then
-  // recompute the highlight for the point under the cursor.
+  // recompute the highlight for the disc of terrain around the cursor.
   manager.initialize({ camera, terrainMesh, scene });
   manager.updateFromUI({ enabled: true });
   manager.update();
