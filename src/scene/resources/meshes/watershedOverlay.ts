@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
-import watershedHighlightFrag from "@/shaders/visualizer/watershed-highlight.frag?raw";
-import watershedHighlightVert from "@/shaders/visualizer/watershed-highlight.vert?raw";
+import watershedHighlightFrag from "@/shaders/watershed-highlight.frag?raw";
+import watershedHighlightVert from "@/shaders/watershed-highlight.vert?raw";
 
 /**
  * Overlay material/mesh that paints the watershed under the cursor red.

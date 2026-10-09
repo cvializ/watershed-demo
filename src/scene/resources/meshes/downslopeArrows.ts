@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { getMaterial, MaterialEnum } from "@/scene/resources/material";
 import { MeshEnum } from "@/scene/resources/mesh";
 import { createTerrainGeometry } from "@/scene/resources/meshes/terrain";
-import { createDownslopeArrowsGeometry } from "@/shaders/visualizer/createDownslopeArrowsGeometry";
+import { createDownslopeArrowsGeometry } from "@/scene/resources/meshes/createDownslopeArrowsGeometry";
 
 export const createDownslopeArrowsMeshResource = () => {
   const terrainGeometry = createTerrainGeometry();

@@ -2,8 +2,8 @@ import type { ShaderMaterial } from "three";
 
 import * as THREE from "three";
 
-import cloudFragmentShader from "@/shaders/visualizer/clouds.frag?raw";
-import cloudVertexShader from "@/shaders/visualizer/clouds.vert?raw";
+import cloudFragmentShader from "@/shaders/clouds.frag?raw";
+import cloudVertexShader from "@/shaders/clouds.vert?raw";
 import { TERRAIN_SIZE } from "@/terrain/constants";
 import { logger } from "@/utils/logger";
 
