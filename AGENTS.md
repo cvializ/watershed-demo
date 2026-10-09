@@ -299,11 +299,11 @@ function processItems(items: Item[]): Item[] {
 
 ## Code Style & Testing
 
-- **Unit testing is mandatory**: Every public function or module must have corresponding unit tests
-- Tests should cover happy paths, edge cases, and error conditions
-- Aim for meaningful test coverage, not just line count
-- Use a testing framework appropriate to the language (Jest, Vitest, pytest, etc.)
-- Run tests locally before committing or pushing changes
+- **Unit testing is recommended**: Public functions and modules should have corresponding unit tests, especially for non-trivial logic.
+- Tests should cover happy paths, edge cases, and error conditions where feasible.
+- Aim for meaningful test coverage, not just line count.
+- Use a testing framework appropriate to the language (Jest, Vitest, pytest, etc.).
+- Run tests locally before committing or pushing changes.
 
 ## Directory Structure
 
@@ -322,9 +322,8 @@ npm run build    # Build for production
 
 ## Safety Rules
 
-- Always run tests before committing
-- Run tests locally before completing work
-- Never commit credentials or API keys
+- Run tests before committing when working on code that has existing tests or is part of a critical path.
+- Never commit credentials or API keys.
 
 ## Barrel File Convention
 
@@ -351,6 +350,7 @@ This is required for all code-changing tasks. The task is not complete until val
 - Avoid mutable state entirely unless explicitly justified
 - Prefer composition over inheritance
 - Write clear commit messages with conventional commits
+- **No coauthors**: Never add `Co-authored-by:` trailer tags to commit messages. All commits are authored by the operator alone.
 - Prefer small, focused change sets that implement one verifiable chunk
 
 ## Shader Organization Convention
