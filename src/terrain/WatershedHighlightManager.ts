@@ -130,7 +130,7 @@ export const createWatershedHighlightManager =
     // Cell currently under the cursor, to skip recomputation while parked.
     let lastCell = -2;
 
-    return {
+    const manager: WatershedHighlightManager = {
       initialize: ({
         camera: cam,
         terrainMesh: mesh,
@@ -261,4 +261,13 @@ export const createWatershedHighlightManager =
 
       isHighlighting: (): boolean => overlay !== null && overlay.visible,
     };
+
+    // Store the instance so `getWatershedHighlightManager()` returns this
+    // manager on later frames. Without this assignment the factory builds a
+    // fresh manager every frame, and the switched-off path operates on a
+    // manager whose overlay was never created, so the previous highlight
+    // lingers in the scene after the tool is turned off.
+    _watershedHighlightManager = manager;
+
+    return manager;
   };
