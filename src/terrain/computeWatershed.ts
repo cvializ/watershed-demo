@@ -32,6 +32,20 @@
 export type HeightGrid = Float32Array | Float64Array;
 
 /**
+ * Reverse adjacency as linked lists: for each cell, the list of cells that
+ * drain directly into it (sources). Built once from the flow-direction array
+ * so that `traceWatershed` can skip the reverse-graph construction on every
+ * trace.
+ *
+ * `head[cell]` points to the first source draining into `cell` (-1 when
+ * none), and `next[source]` walks the rest of that source's chain.
+ */
+type ReverseFlow = {
+  head: Int32Array;
+  next: Int32Array;
+};
+
+/**
  * Where a cell's water goes on each traced surface, as cell indices (`-1`
  * when that surface offers no lower neighbour). `filledFlow` never holds
  * `-1` for an interior cell, so chains traced through it keep running until
@@ -39,12 +53,18 @@ export type HeightGrid = Float32Array | Float64Array;
  *
  * Only one of the two is ever traced for a given pour point, so a chain never
  * stitches together steps from both surfaces.
+ *
+ * `reverseFlow` is the reverse adjacency (sources for each cell), precomputed
+ * once so that `traceWatershed` skips the reverse-graph construction on every
+ * trace.
  */
 export type DrainageNetwork = {
   /** Where water drains on the authored surface (`-1` for pits and flats). */
   surfaceFlow: Int32Array;
   /** Where water drains on the depression-filled surface. */
   filledFlow: Int32Array;
+  /** Precomputed reverse adjacency for fast watershed tracing. */
+  reverseFlow: ReverseFlow;
 };
 
 /**
@@ -281,11 +301,34 @@ export const computeFlowDirections = (
 };
 
 /**
+ * Build the reverse adjacency (sources for each cell) from a flow-direction
+ * array, using head/next linked lists.
+ */
+const buildReverseFlow = (flow: Int32Array, gridDim: number): ReverseFlow => {
+  const cellCount = gridDim * gridDim;
+  const head = new Int32Array(cellCount).fill(-1);
+  const next = new Int32Array(cellCount).fill(-1);
+
+  for (let cell = 0; cell < cellCount; cell++) {
+    const downstream = flow[cell];
+    if (downstream >= 0) {
+      next[cell] = head[downstream];
+      head[downstream] = cell;
+    }
+  }
+
+  return { head, next };
+};
+
+/**
  * Build the terrain's drainage network: the D8 flow directions traced over
  * the authored surface, plus those traced over the depression-filled surface.
  *
  * Both steps depend only on the height grid, so a caller that hovers many
  * points on the same terrain builds this once and reuses it.
+ *
+ * `reverseFlow` is precomputed once from the chosen flow surface, so that
+ * `traceWatershed` skips the reverse-graph construction on every trace.
  *
  * @param heights - `gridDim * gridDim` raw heights indexed row-major.
  * @param gridDim - Number of cells along each grid axis.
@@ -295,10 +338,19 @@ export const computeFlowDirections = (
 export const createDrainageNetwork = (
   heights: HeightGrid,
   gridDim: number,
-): DrainageNetwork => ({
-  surfaceFlow: computeFlowDirections(heights, gridDim),
-  filledFlow: computeFlowDirections(fillDepressions(heights, gridDim), gridDim),
-});
+): DrainageNetwork => {
+  const surfaceFlow = computeFlowDirections(heights, gridDim);
+  const filledFlow = computeFlowDirections(
+    fillDepressions(heights, gridDim),
+    gridDim,
+  );
+
+  return {
+    surfaceFlow,
+    filledFlow,
+    reverseFlow: buildReverseFlow(surfaceFlow, gridDim),
+  };
+};
 
 /**
  * Collect every cell that drains into `pourIndex`, writing the 0/1 mask into
@@ -313,10 +365,8 @@ export const createDrainageNetwork = (
  * - Otherwise trace the depression-filled surface, so the chain reaching the
  *   pour point keeps running instead of dying in the first pit uphill of it.
  *
- * Builds the reverse of that flow-direction graph as linked lists, then floods
- * backwards from the pour point: every cell that flows into the pour point,
- * directly or transitively, is marked. The pour point itself is always
- * included.
+ * Uses the precomputed `reverseFlow` from the network to skip the reverse-graph
+ * construction on every trace.
  *
  * @param network - Where each cell drains, from `createDrainageNetwork`.
  * @param gridDim - Number of cells along each grid axis.
@@ -330,24 +380,19 @@ export const traceWatershed = (
   pourIndex: number,
   target: Uint8Array = new Uint8Array(gridDim * gridDim),
 ): Uint8Array => {
-  const cellCount = gridDim * gridDim;
   const flow =
     network.surfaceFlow[pourIndex] === -1
       ? network.surfaceFlow
       : network.filledFlow;
 
-  // Reverse adjacency as linked lists: `head[cell]` is the first source
-  // draining into `cell`, and `next[source]` walks the rest of that source's
-  // chain.
-  const head = new Int32Array(cellCount).fill(-1);
-  const next = new Int32Array(cellCount).fill(-1);
-  for (let cell = 0; cell < cellCount; cell++) {
-    const downstream = flow[cell];
-    if (downstream >= 0) {
-      next[cell] = head[downstream];
-      head[downstream] = cell;
-    }
-  }
+  // Use the precomputed reverse adjacency to skip the linked-list construction
+  // on every trace. The flow surface is chosen per pour point (surface when
+  // the pour is a pit, filled otherwise), but the reverse graph is cached
+  // from the surface flow, so we pick the matching reverse flow.
+  const { head, next } =
+    flow === network.surfaceFlow
+      ? network.reverseFlow
+      : buildReverseFlow(network.filledFlow, gridDim);
 
   // Flood backwards from the pour point to collect its whole catchment.
   target.fill(0);

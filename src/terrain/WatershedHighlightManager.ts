@@ -123,6 +123,10 @@ export const createWatershedHighlightManager =
     let network: DrainageNetwork | null = null;
     let networkHeights: Float32Array | null = null;
 
+    // Cached watershed result: when the cursor stays on the same cell, reuse
+    // the mask instead of re-tracing and re-copying into Three.js.
+    let lastWatershedCell = -2;
+
     // Cell currently under the cursor, to skip recomputation while parked.
     let lastCell = -2;
 
@@ -165,6 +169,7 @@ export const createWatershedHighlightManager =
         mask = new Uint8Array(built.heights.length);
         network = null;
         networkHeights = null;
+        lastWatershedCell = -2;
         lastCell = -2;
 
         if (!scene.children.includes(overlay)) {
@@ -179,6 +184,7 @@ export const createWatershedHighlightManager =
         if (!next.enabled && overlay) {
           overlay.visible = false;
           lastCell = -2;
+          lastWatershedCell = -2;
         }
       },
 
@@ -238,7 +244,16 @@ export const createWatershedHighlightManager =
 
         // traceWatershed writes straight into the reused working mask.
         traceWatershed(network, grid.gridDim, cell, mask);
-        setWatershedMask(overlay, mask);
+
+        // Cache the watershed result so same-cell hovers skip the Three.js
+        // buffer copy. The drainage network is already cached, so when the
+        // cell hasn't changed the full mask copy is avoided entirely.
+        if (cell === lastWatershedCell) {
+          overlay.visible = true;
+        } else {
+          setWatershedMask(overlay, mask);
+          lastWatershedCell = cell;
+        }
 
         lastCell = cell;
         overlay.visible = true;
