@@ -1,6 +1,9 @@
-// Per-vertex mask highlight for the watershed under the cursor.
-// Each vertex carries `aMask` (1 inside the watershed, 0 outside); fragments
-// only draw where the interpolated mask is set, tinting the terrain red.
+// Per-vertex distance-fade highlight for the watershed under the cursor.
+// Each vertex carries `aMask` — its highlight intensity, 1 on the traced
+// pour points and decreasing with each hop of flow-path distance from them
+// (0 outside the watershed) — and the fragment shader uses the
+// interpolated value as the highlight's alpha, so the colour fades as the
+// catchment trails away from the highlight points.
 attribute float aMask;
 varying float vMask;
 

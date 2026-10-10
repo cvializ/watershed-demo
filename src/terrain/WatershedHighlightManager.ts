@@ -9,7 +9,7 @@ import {
 import {
   type DrainageNetwork,
   createDrainageNetwork,
-  traceWatershedFromPoints,
+  traceWatershedDistanceFromPoints,
 } from "@/terrain/computeWatershed";
 import {
   buildHeightGrid,
@@ -34,6 +34,24 @@ export type WatershedConfig = {
  * single cell under the mouse.
  */
 const POUR_CIRCLE_RADIUS = 3;
+
+/**
+ * Number of flow-network hops over which the highlight fades from full to
+ * its floor. Cells on the pour points get full intensity; each hop further
+ * back along the drainage network loses `1 / HIGHLIGHT_FADE_STEPS` of it,
+ * until a cell more than 120 hops upstream of the cursor's disc of pour
+ * points sits at the floor. This is path distance over the landscape, not
+ * straight-line distance, so windings along a valley fade together.
+ */
+const HIGHLIGHT_FADE_STEPS = 120;
+
+/**
+ * Highlight intensity kept by every cell inside the traced watershed, no
+ * matter how far up the drainage network it sits, so the whole catchment
+ * stays visibly highlighted (at reduced strength) instead of running out
+ * entirely at the fade distance.
+ */
+const HIGHLIGHT_FLOOR_INTENSITY = 0.45;
 
 /**
  * Traces and displays the watershed (contributing area) drained by whatever
@@ -124,10 +142,12 @@ export const createWatershedHighlightManager =
     let arrow: THREE.LineSegments | null = null;
 
     // Cached grid + working buffers, rebuilt only when the terrain geometry
-    // instance changes (e.g. on load). `heights`/`mask` are reused each frame.
+    // instance changes (e.g. on load). `heights`/`distance`/`intensity` are
+    // reused each frame.
     let grid: TerrainHeightGrid | null = null;
     let heights: Float32Array = new Float32Array(0);
-    let mask: Uint8Array = new Uint8Array(0);
+    let distance: Float32Array = new Float32Array(0);
+    let intensity: Float32Array = new Float32Array(0);
 
     // Cached drainage network (flow directions over both the authored surface
     // and the pit-filled one) plus the exact height grid it was traced from,
@@ -137,7 +157,8 @@ export const createWatershedHighlightManager =
     let networkHeights: Float32Array | null = null;
 
     // Cached watershed result: when the cursor stays on the same cell, reuse
-    // the mask instead of re-tracing and re-copying into Three.js.
+    // the traced distance array instead of re-tracing and re-copying into
+    // Three.js.
     let lastWatershedCell = -2;
 
     // Cell currently under the cursor, to skip recomputation while parked. It
@@ -181,7 +202,8 @@ export const createWatershedHighlightManager =
 
         grid = built;
         heights = new Float32Array(built.heights.length);
-        mask = new Uint8Array(built.heights.length);
+        distance = new Float32Array(built.heights.length);
+        intensity = new Float32Array(built.heights.length);
         network = null;
         networkHeights = null;
         lastWatershedCell = -2;
@@ -286,16 +308,38 @@ export const createWatershedHighlightManager =
           POUR_CIRCLE_RADIUS,
         );
 
-        // traceWatershedFromPoints writes straight into the reused working mask.
-        traceWatershedFromPoints(network, grid.gridDim, pourPoints, mask);
+        // traceWatershedDistanceFromPoints writes straight into the reused
+        // working distance array (hop count from the nearest highlight
+        // point, or -1 outside the watershed).
+        traceWatershedDistanceFromPoints(
+          network,
+          grid.gridDim,
+          pourPoints,
+          distance,
+        );
+
+        // Fade the highlight with distance: full strength on the pour
+        // points, dropping to the floor intensity `HIGHLIGHT_FADE_STEPS`
+        // hops up the drainage network, so most of the catchment stays
+        // visibly highlighted while the near-field dominates.
+        for (let index = 0; index < intensity.length; index++) {
+          const steps = distance[index];
+          intensity[index] =
+            steps < 0
+              ? 0
+              : Math.max(
+                  HIGHLIGHT_FLOOR_INTENSITY,
+                  1 - steps / HIGHLIGHT_FADE_STEPS,
+                );
+        }
 
         // Cache the watershed result so same-cell hovers skip the Three.js
         // buffer copy. The drainage network is already cached, so when the
         // cell hasn't changed the full mask copy is avoided entirely.
         if (cell !== lastWatershedCell) {
-          setWatershedMask(overlay, mask);
+          setWatershedMask(overlay, intensity);
           if (arrow) {
-            setWatershedArrows(arrow, grid, terrainMesh.geometry, mask);
+            setWatershedArrows(arrow, grid, terrainMesh.geometry, intensity);
           }
           lastWatershedCell = cell;
         }

@@ -5,13 +5,15 @@ import watershedHighlightVert from "@/shaders/watershed-highlight.vert?raw";
 import { type TerrainHeightGrid } from "@/terrain/terrainHeightGrid";
 
 /**
- * Overlay material/mesh that paints the watershed under the cursor red.
+ * Overlay material/mesh that paints the watershed under the cursor, fading
+ * out with distance from the highlight points.
  *
  * The overlay reuses the terrain's own geometry so its highlight always sits
  * exactly on the live terrain (including painted/eroded edits). Each vertex
- * carries a per-cell `aMask` (1 = inside the watershed, 0 = outside); the
- * fragment shader discards anything outside, so only the contributing area
- * shows.
+ * carries a per-cell `aMask` (highlight intensity: 1 on the traced pour
+ * points, decaying toward 0 the farther a cell sits along the drainage
+ * network from them); the fragment shader scales its alpha by that value,
+ * so the highlight fades as the catchment trails away from the cursor.
  */
 
 /** Name of the per-vertex mask attribute read by the shaders. */
@@ -64,22 +66,20 @@ export const createWatershedOverlay = (
 };
 
 /**
- * Fill the overlay's mask attribute from a `gridDim * gridDim` cell mask
- * (0/1, indexed the same as the geometry's vertices) and flag it for upload.
+ * Fill the overlay's mask attribute from a `gridDim * gridDim` intensity
+ * mask (0 = no highlight, 1 = full highlight at the traced pour points,
+ * indexed the same as the geometry's vertices) and flag it for upload.
  */
 export const setWatershedMask = (
   overlay: THREE.Mesh,
-  mask: Uint8Array,
+  intensity: Float32Array,
 ): void => {
   const attribute = overlay.geometry.getAttribute(
     MASK_ATTRIBUTE,
   ) as THREE.BufferAttribute;
 
   const array = attribute.array as Float32Array;
-  const length = Math.min(array.length, mask.length);
-  for (let index = 0; index < length; index++) {
-    array[index] = mask[index];
-  }
+  array.set(intensity.subarray(0, Math.min(array.length, intensity.length)));
 
   attribute.needsUpdate = true;
 };
@@ -123,7 +123,7 @@ export const createWatershedArrowOverlay = (
 };
 
 /**
- * Rebuild the arrow overlay so every watershed vertex gets a small arrow
+ * Rebuild the arrow overlay so every highlighted vertex gets a small arrow
  * pointing continuously downslope.
  *
  * Direction comes from each vertex's own normal: for a heightfield laid out
@@ -131,19 +131,21 @@ export const createWatershedArrowOverlay = (
  * `(dz/dx, dz/dy, -1)`, so `(nx/nz, ny/nz)` recovers the local-plane
  * gradient and the arrow points along steepest descent at an arbitrary angle
  * (not snapped to the eight grid directions). Arrow length stays fixed at
- * about one cell so neighbours don't overlap; only masked vertices get one.
+ * about one cell so neighbours don't overlap; only vertices with positive
+ * highlight intensity get one.
  *
  * @param arrow - The `LineSegments` from `createWatershedArrowOverlay`.
  * @param grid - Height grid, whose bounds give the cell size for arrow size.
  * @param terrainGeometry - Source geometry to read each vertex's position and
  *   normal from (its vertex order matches the grid and mask indexing).
- * @param mask - `gridDim * gridDim` watershed mask (1 = inside).
+ * @param mask - `gridDim * gridDim` highlight intensity (0 = no highlight,
+ *   so no arrow).
  */
 export const setWatershedArrows = (
   arrow: THREE.LineSegments,
   grid: TerrainHeightGrid,
   terrainGeometry: THREE.BufferGeometry,
-  mask: Uint8Array,
+  mask: Float32Array,
 ): void => {
   const arrowGeometry = arrow.geometry;
   const arrowPositions = arrowGeometry.getAttribute(
@@ -182,7 +184,7 @@ export const setWatershedArrows = (
   };
 
   for (let index = 0; index < vertexCount; index++) {
-    if (mask[index] !== 1) {
+    if (mask[index] <= 0) {
       continue;
     }
 

@@ -10,6 +10,7 @@ import {
   createDrainageNetwork,
   fillDepressions,
   traceWatershed,
+  traceWatershedDistanceFromPoints,
   traceWatershedFromPoints,
 } from "src/terrain/computeWatershed";
 import {
@@ -593,6 +594,82 @@ test.describe("traceWatershedFromPoints", () => {
         ).toBe(true);
       }
     }
+  });
+});
+
+test.describe("traceWatershedDistanceFromPoints", () => {
+  test("distance grows one hop per step away from the highlight point", () => {
+    // Same slope as the diagonal-chain test: cell 3 is fed by cells 6 and 7,
+    // and nothing else reaches it, so they sit exactly one hop from it.
+    const heights = new Float32Array([
+      0,
+      1,
+      2, //
+      1,
+      2,
+      3, //
+      2,
+      3,
+      4, //
+    ]);
+    const network = createDrainageNetwork(heights, 3);
+
+    expect(
+      Array.from(traceWatershedDistanceFromPoints(network, 3, [3])),
+    ).toEqual([-1, -1, -1, 0, -1, -1, 1, 1, -1]);
+  });
+
+  test("matches the 0/1 mask of traceWatershedFromPoints", () => {
+    const network = createDrainageNetwork(plateauWithPits, 5);
+    const pourPoints = [6, 12];
+    const mask = traceWatershedFromPoints(network, 5, pourPoints);
+    const distance = traceWatershedDistanceFromPoints(network, 5, pourPoints);
+
+    // A cell is inside the traced area exactly when it has a distance.
+    for (let cell = 0; cell < mask.length; cell++) {
+      expect(distance[cell] >= 0 ? 1 : 0).toBe(mask[cell]);
+    }
+  });
+
+  test("writes into a reused distance array, clearing the previous result", () => {
+    const network = createDrainageNetwork(plateauWithPits, 5);
+    const reused = new Float32Array(25).fill(7);
+
+    const distance = traceWatershedDistanceFromPoints(
+      network,
+      5,
+      [12],
+      reused,
+    );
+
+    expect(distance).toBe(reused);
+    expect(Array.from(distance)).toEqual(
+      Array.from({ length: 25 }, (_, cell) => (cell === 12 ? 0 : -1)),
+    );
+  });
+
+  test("a catchment on Cobbs Creek trails away from the highlight point", () => {
+    const geometry = createTerrainGeometry();
+    const built = buildHeightGrid(geometry)!;
+    const { gridDim, heights } = built;
+    const network = createDrainageNetwork(heights, gridDim);
+
+    // The creek cell from the earlier tests: its traced catchment runs much
+    // further up the landscape than the first few cells, so some cells sit
+    // over twenty flow-path hops from the poured point and fade that much.
+    const pour = 60 * gridDim + 40;
+    const distance = traceWatershedDistanceFromPoints(network, gridDim, [
+      pour,
+    ]);
+
+    expect(distance[pour]).toBe(0);
+
+    let maxDistance = 0;
+    for (let cell = 0; cell < distance.length; cell++) {
+      expect(Number.isInteger(distance[cell])).toBe(true);
+      maxDistance = Math.max(maxDistance, distance[cell]);
+    }
+    expect(maxDistance).toBeGreaterThan(20);
   });
 });
 

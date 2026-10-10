@@ -365,73 +365,94 @@ export const createDrainageNetwork = (
 };
 
 /**
-/**
- * Flood backwards from every pour point, adding the cells that reach them to
- * `target` (which is written additively, so a caller can trace both surfaces
- * into one mask).
+ * Flood backwards from every pour point, writing each cell's hop-count
+ * distance from the highlight points into `target` (0 = on a pour point,
+ * `-1` = not reached yet, so a caller can trace both surfaces into one
+ * distance array).
  *
  * `visited` is per traced surface, so a cell already caught while tracing the
- * other surface does not stop chains running on through it here.
+ * other surface does not stop chains running on through it here: it still
+ * gets re-queued under the new surface, keeping the union of both catchments.
+ *
+ * `target` must be pre-filled with `-1`. A FIFO queue gives breadth-first
+ * traversal, so the first time a cell is reached is its true shortest hop
+ * count along the flow path back to the highlight points.
  */
-const collectCatchments = (
-  target: Uint8Array,
+const collectCatchmentDistances = (
+  target: Float32Array,
   visited: Uint8Array,
   reverse: ReverseFlow,
   pourPoints: PourPoints,
 ): void => {
-  const stack: number[] = [];
+  const queue: number[] = [];
+  let readIndex = 0;
 
   for (const pourIndex of pourPoints) {
     if (visited[pourIndex] === 0) {
       visited[pourIndex] = 1;
-      stack.push(pourIndex);
+      target[pourIndex] = 0;
+      queue.push(pourIndex);
     }
   }
 
-  while (stack.length > 0) {
-    const cell = stack.pop() as number;
-    target[cell] = 1;
+  while (readIndex < queue.length) {
+    const cell = queue[readIndex];
+    readIndex++;
+    const sourceDistance = target[cell] + 1;
 
-    for (let source = reverse.head[cell]; source !== -1; source = reverse.next[source]) {
+    for (
+      let source = reverse.head[cell];
+      source !== -1;
+      source = reverse.next[source]
+    ) {
       if (visited[source] === 0) {
         visited[source] = 1;
-        stack.push(source);
+        // Keep the smaller distance if the other surface's trace already
+        // reached this cell, but still queue it so chains keep running.
+        target[source] =
+          target[source] === -1 || sourceDistance < target[source]
+            ? sourceDistance
+            : target[source];
+        queue.push(source);
       }
     }
   }
 };
 
 /**
- * Collect every cell that drains into *any* of `pourPoints`, writing the 0/1
- * mask into `target` (zeroed first, so one buffer can be reused between
- * hovers). The result is the union of the individual catchments, so a disc of
- * points around the cursor highlights a whole drainage basin rather than the
- * hairline traced from one cell.
+ * Trace every cell that drains into *any* of `pourPoints`, writing each
+ * cell's distance along the drainage network from the highlight points into
+ * `target` (zeroed to `-1` first, so one buffer can be reused between
+ * hovers). The traced area is the union of the individual catchments, so a
+ * disc of points around the cursor traces a whole drainage basin rather than
+ * the hairline traced from one cell.
  *
- * Each point is traced on a single surface, chosen by where that point sits:
+ * Distance is counted in flow-path hops back from the pour points: 0 on the
+ * highlight points themselves, 1 on cells draining straight into them, and so
+ * on. This is distance *along the landscape*, not straight-line distance, so
+ * a cell whose only drainage route wanders far from the cursor fades as much
+ * as its water's journey is long. When a cell is reached by traces on both
+ * surfaces, its distance to the nearest highlight point is used.
  *
- * - If the point holds water (a pit or a flat, so nothing on the authored
- *   surface drains into it), trace the authored surface: everything that
- *   actually collects there is caught, instead of a single cell.
- * - Otherwise trace the depression-filled surface, so the chain reaching the
- *   point keeps running instead of dying in the first pit uphill of it.
- *
- * Traces against the `reverseSurface`/`reverseFilled` adjacency cached on the
- * network, so no reverse graph is built per hover.
+ * Each point is traced on a single surface, chosen by where that point sits
+ * (see the note at the top of this file), so a chain never stitches together
+ * steps from both surfaces.
  *
  * @param network - Where each cell drains, from `createDrainageNetwork`.
  * @param gridDim - Number of cells along each grid axis.
  * @param pourPoints - Grid indices to pour into (`row * gridDim + col`); the
  *   traced area is the union of their catchments.
- * @param target - `gridDim * gridDim` mask to fill; a new one if omitted.
- * @returns `target` (or a fresh mask), `1` for cells inside the watershed.
+ * @param target - `gridDim * gridDim` distance array to fill; a new one if
+ *   omitted.
+ * @returns `target` (or a fresh array): hop count from the highlight points,
+ *   or `-1` for cells outside the traced watershed.
  */
-export const traceWatershedFromPoints = (
+export const traceWatershedDistanceFromPoints = (
   network: DrainageNetwork,
   gridDim: number,
   pourPoints: PourPoints,
-  target: Uint8Array = new Uint8Array(gridDim * gridDim),
-): Uint8Array => {
+  target: Float32Array = new Float32Array(gridDim * gridDim),
+): Float32Array => {
   // Split the pour points by surface: pits and flats keep their own catchment
   // on the authored surface, everything else is traced on the filled one.
   const surfacePours: number[] = [];
@@ -447,17 +468,56 @@ export const traceWatershedFromPoints = (
   // One `visited` array serves either surface, since only one trace runs into
   // `target` at a time and it is cleared in between.
   const visited = new Uint8Array(network.surfaceFlow.length);
-  target.fill(0);
+  target.fill(-1);
 
   if (surfacePours.length > 0) {
-    collectCatchments(target, visited, network.reverseSurface, surfacePours);
+    collectCatchmentDistances(
+      target,
+      visited,
+      network.reverseSurface,
+      surfacePours,
+    );
   }
 
   if (filledPours.length > 0) {
     visited.fill(0);
-    collectCatchments(target, visited, network.reverseFilled, filledPours);
+    collectCatchmentDistances(
+      target,
+      visited,
+      network.reverseFilled,
+      filledPours,
+    );
   }
 
+  return target;
+};
+
+/**
+ * Return the set of cells that drain into *any* of `pourPoints`, as a 0/1
+ * mask. Thin wrapper over `traceWatershedDistanceFromPoints` for callers that
+ * only care whether a cell is inside the traced area, not how far in it lies.
+ *
+ * @param network - Where each cell drains, from `createDrainageNetwork`.
+ * @param gridDim - Number of cells along each grid axis.
+ * @param pourPoints - Grid indices to pour into (`row * gridDim + col`); the
+ *   traced area is the union of their catchments.
+ * @param target - `gridDim * gridDim` mask to fill; a new one if omitted.
+ * @returns `target` (or a fresh mask), `1` for cells inside the watershed.
+ */
+export const traceWatershedFromPoints = (
+  network: DrainageNetwork,
+  gridDim: number,
+  pourPoints: PourPoints,
+  target: Uint8Array = new Uint8Array(gridDim * gridDim),
+): Uint8Array => {
+  const distance = traceWatershedDistanceFromPoints(
+    network,
+    gridDim,
+    pourPoints,
+  );
+  for (let index = 0; index < target.length; index++) {
+    target[index] = distance[index] >= 0 ? 1 : 0;
+  }
   return target;
 };
 
