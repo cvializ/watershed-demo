@@ -1,8 +1,10 @@
 import * as THREE from "three";
 
 import {
+  createWatershedArrowOverlay,
   createWatershedOverlay,
   setWatershedMask,
+  setWatershedArrows,
 } from "@/scene/resources/meshes/watershedOverlay";
 import {
   type DrainageNetwork,
@@ -119,6 +121,7 @@ export const createWatershedHighlightManager =
     let camera: THREE.Camera | null = null;
     let terrainMesh: THREE.Mesh | null = null;
     let overlay: THREE.Mesh | null = null;
+    let arrow: THREE.LineSegments | null = null;
 
     // Cached grid + working buffers, rebuilt only when the terrain geometry
     // instance changes (e.g. on load). `heights`/`mask` are reused each frame.
@@ -154,23 +157,24 @@ export const createWatershedHighlightManager =
         camera = cam;
         terrainMesh = mesh;
 
-        // Only (re)build the overlay + grid when the terrain geometry changes.
+        // Only (re)build the overlay/arrow + grid when the geometry changes.
         const currentGeometry = mesh.geometry;
-        if (overlay && grid && overlay.geometry === currentGeometry) {
+        if (overlay && arrow && grid && overlay.geometry === currentGeometry) {
           return;
         }
 
-        // Drop any previous overlay so no stale highlight lingers in the scene.
+        // Drop any previous overlay/arrow so nothing stale lingers.
         if (overlay) {
           scene.remove(overlay);
         }
-
-        overlay = createWatershedOverlay(currentGeometry);
+        if (arrow) {
+          scene.remove(arrow);
+        }
 
         const built = buildHeightGrid(currentGeometry);
         if (!built) {
-          scene.remove(overlay);
           overlay = null;
+          arrow = null;
           grid = null;
           return;
         }
@@ -183,8 +187,14 @@ export const createWatershedHighlightManager =
         lastWatershedCell = -2;
         lastCell = -2;
 
+        overlay = createWatershedOverlay(currentGeometry);
+        arrow = createWatershedArrowOverlay(currentGeometry);
+
         if (!scene.children.includes(overlay)) {
           scene.add(overlay);
+        }
+        if (!scene.children.includes(arrow)) {
+          scene.add(arrow);
         }
       },
 
@@ -194,6 +204,9 @@ export const createWatershedHighlightManager =
         // pour point so re-enabling recomputes from scratch.
         if (!next.enabled && overlay) {
           overlay.visible = false;
+          if (arrow) {
+            arrow.visible = false;
+          }
           lastCell = -2;
           lastWatershedCell = -2;
         }
@@ -203,6 +216,9 @@ export const createWatershedHighlightManager =
         if (!config.enabled || !overlay || !camera || !terrainMesh || !grid) {
           if (overlay) {
             overlay.visible = false;
+          }
+          if (arrow) {
+            arrow.visible = false;
           }
           return;
         }
@@ -229,6 +245,9 @@ export const createWatershedHighlightManager =
         const [hit] = raycaster.intersectObject(terrainMesh);
         if (!hit) {
           overlay.visible = false;
+          if (arrow) {
+            arrow.visible = false;
+          }
           lastCell = -2;
           return;
         }
@@ -252,6 +271,9 @@ export const createWatershedHighlightManager =
         // traced area cannot change either.
         if (cell === lastCell) {
           overlay.visible = true;
+          if (arrow) {
+            arrow.visible = true;
+          }
           return;
         }
 
@@ -270,15 +292,19 @@ export const createWatershedHighlightManager =
         // Cache the watershed result so same-cell hovers skip the Three.js
         // buffer copy. The drainage network is already cached, so when the
         // cell hasn't changed the full mask copy is avoided entirely.
-        if (cell === lastWatershedCell) {
-          overlay.visible = true;
-        } else {
+        if (cell !== lastWatershedCell) {
           setWatershedMask(overlay, mask);
+          if (arrow) {
+            setWatershedArrows(arrow, grid, terrainMesh.geometry, mask);
+          }
           lastWatershedCell = cell;
         }
 
         lastCell = cell;
         overlay.visible = true;
+        if (arrow) {
+          arrow.visible = true;
+        }
       },
 
       isHighlighting: (): boolean => overlay !== null && overlay.visible,
