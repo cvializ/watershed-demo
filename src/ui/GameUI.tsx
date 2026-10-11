@@ -16,6 +16,7 @@ import {
 import { getTerrainPaintingManager } from "@/terrain/TerrainPaintingManager";
 import { logger } from "@/utils/logger";
 
+import { CompassIndicator } from "./CompassIndicator";
 import { EntityInspector } from "./EntityInspector";
 import { TerrainPaintingControls } from "./TerrainPaintingControls";
 
@@ -160,6 +161,7 @@ export const GameUI = ({ world }: GameUiProps) => {
           loadSurfaceMaterials,
         }}
       />
+      <CompassIndicator />
       <EntityInspector world={world} />
       <div style={styles.container}>
         <div style={styles.panel}>
