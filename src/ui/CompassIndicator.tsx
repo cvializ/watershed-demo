@@ -1,10 +1,12 @@
 import * as THREE from "three";
 
+import type { GameWorldContext } from "@/context";
 import {
   bearingFromView,
   COMPASS_POINTS,
   compassPointForBearing,
 } from "@/renderer/camera/compass";
+import { resolveActiveViewpointCamera } from "@/renderer/camera/viewpoint";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
 
@@ -43,8 +45,12 @@ const MINOR_TICK_DEGREES = COMPASS_POINTS.flatMap((point) => [
   point.degreesFromNorth + 30,
 ]);
 
+type CompassIndicatorProps = {
+  world: GameWorldContext;
+};
+
 /**
- * Compass rose showing which way the camera is pointed.
+ * Compass rose showing which way the rendered camera is pointed.
  *
  * The card rotates rather than the needle: everything on the dial is drawn at
  * 12 o'clock and spun into place, so the rose point that ends up under the
@@ -53,17 +59,21 @@ const MINOR_TICK_DEGREES = COMPASS_POINTS.flatMap((point) => [
  * and N, being 45° the other way round the card, has swung to the right of the
  * marker.
  *
- * Reads the scene camera out of the object cache, so it needs nothing passed
- * in, and keeps `pointerEvents: "none"` so the dial never swallows a click
- * meant for the terrain behind it.
+ * Follows whichever camera the scene is actually rendered from — the shared
+ * overhead orbit camera, or the active viewpoint's first-person camera when a
+ * viewpoint is selected — so it stays accurate while looking around from a
+ * viewpoint and when switching back to the overhead view. Keeps
+ * `pointerEvents: "none"` so the dial never swallows a click meant for the
+ * terrain behind it.
  */
-export const CompassIndicator = () => {
-  const camera = getObject(GeneralObjectEnum.Camera);
+export const CompassIndicator = ({ world }: CompassIndicatorProps) => {
+  // Same resolution as the render loop: the active viewpoint's camera when
+  // one is in use, otherwise the shared overhead camera from the object cache.
+  const camera =
+    resolveActiveViewpointCamera(world) ?? getObject(GeneralObjectEnum.Camera);
 
   // `getWorldDirection` hands back where the object looks, and for a camera
-  // that is down its local -Z, so this is the view direction itself. The cache
-  // types the entry as a plain Object3D, but the runtime object is the scene's
-  // OrthographicCamera, whose override applies the -Z correction.
+  // that is down its local -Z, so this is the view direction itself.
   const viewDirection = camera.getWorldDirection(new THREE.Vector3());
 
   // Only the horizontal components say where we are pointed, hence the

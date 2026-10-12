@@ -162,7 +162,7 @@ export const GameUI = ({ world }: GameUiProps) => {
           loadSurfaceMaterials,
         }}
       />
-      <CompassIndicator />
+      <CompassIndicator world={world} />
       <EntityInspector world={world} />
       <ViewpointControls world={world} />
       <EntityInspector world={world} />
