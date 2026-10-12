@@ -6,6 +6,7 @@ import {
   CAMERA_KEY_BINDINGS,
   clampFrameDelta,
   clampToRange,
+  clampViewpointPitch,
   combinePanInput,
   computeOrbitAngle,
   computeTiltAngle,
@@ -230,6 +231,16 @@ test.describe("orbit, tilt and zoom", () => {
     expect(clampToRange(5, 0, 10)).toBe(5);
     expect(clampToRange(-5, 0, 10)).toBe(0);
     expect(clampToRange(50, 0, 10)).toBe(10);
+  });
+
+  test("viewpoint pitch clamps symmetrically so the camera never flips", () => {
+    const maxPitch = Math.PI / 2 - 0.03;
+
+    expect(clampViewpointPitch(0, maxPitch)).toBe(0);
+    expect(clampViewpointPitch(0.5, maxPitch)).toBeCloseTo(0.5);
+    // Past the cap in either direction, the pitch is held at the limit.
+    expect(clampViewpointPitch(3, maxPitch)).toBeCloseTo(maxPitch);
+    expect(clampViewpointPitch(-3, maxPitch)).toBeCloseTo(-maxPitch);
   });
 });
 

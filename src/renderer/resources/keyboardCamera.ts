@@ -1,7 +1,11 @@
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 
 import * as THREE from "three";
+import { hasComponent } from "bitecs";
 
+import type { GameWorldContext } from "@/context";
+import { Orientation } from "@/components/components";
+import { resolveActiveViewpointCamera } from "@/renderer/camera/viewpoint";
 import type { ZoomableCamera } from "@/renderer/camera/cameraMotion";
 
 import {
@@ -9,6 +13,7 @@ import {
   applyZoomFactor,
   approachValue,
   clampFrameDelta,
+  clampViewpointPitch,
   combinePanInput,
   computeOrbitAngle,
   computeTiltAngle,
@@ -31,6 +36,12 @@ const TUNING = {
   tiltSpeedRadiansPerSecond: 1.1,
   /** Exponential zoom rate per second for Z/X. */
   zoomRatePerSecond: 1.5,
+  /** Radians per second that A/D yaw a first-person viewpoint horizontally. */
+  viewpointYawSpeedRadiansPerSecond: 1.2,
+  /** Radians per second that W/S pitch a first-person viewpoint up/down. */
+  viewpointPitchSpeedRadiansPerSecond: 0.9,
+  /** Pitch magnitude cap (radians) for first-person viewpoints. */
+  viewpointMaxPitchRadians: Math.PI / 2 - 0.03,
   /** How quickly held keys ramp up and release glides out (per second). */
   rampRatePerSecond: 12,
   /** Speed multiplier while Shift is held. */
@@ -51,6 +62,8 @@ let controller: KeyboardCameraController | null = null;
 type KeyboardCameraController = {
   camera: ZoomableCamera;
   controls: OrbitControls;
+  /** The game context (itself an ECS world), for active-viewpoint look-around. */
+  context: GameWorldContext;
   heldCodes: Set<string>;
   /** Smoothed intent components, driven toward the pressed-key target each frame. */
   smoothedStrafe: number;
@@ -165,6 +178,53 @@ const handleKeyUp = (
   }
 };
 
+/**
+ * Rotate the active viewpoint's camera in place: `yawDelta` about the camera's
+ * own up axis (positive looks left, matching a +Y rotation) and `pitchDelta`
+ * about its right axis (positive looks up). Pitch is clamped so the viewer
+ * can look straight up/down but never rolls over their head, and roll is
+ * dropped so repeated adjustments never accumulate a lean.
+ */
+const applyViewpointLook = (
+  camera: THREE.Camera,
+  yawDelta: number,
+  pitchDelta: number,
+): void => {
+  // YXZ order reads the camera's own yaw/pitch without gimbal interference for
+  // the rotations this function applies.
+  const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
+
+  euler.y += yawDelta;
+  euler.x = clampViewpointPitch(
+    euler.x + pitchDelta,
+    TUNING.viewpointMaxPitchRadians,
+  );
+  euler.z = 0;
+
+  camera.quaternion.setFromEuler(euler);
+};
+
+/**
+ * Copy a viewpoint camera's live quaternion into its entity's `Orientation`
+ * component, so the stored orientation tracks look-around instead of freezing
+ * at whatever the camera faced when the viewpoint was created.
+ */
+const syncViewpointOrientation = (
+  context: GameWorldContext,
+  camera: THREE.Camera,
+): void => {
+  const viewpoint$ = context.activeViewpoint$;
+
+  if (viewpoint$ < 0 || !hasComponent(context, viewpoint$, Orientation)) {
+    return;
+  }
+
+  Orientation.x[viewpoint$] = camera.quaternion.x;
+  Orientation.y[viewpoint$] = camera.quaternion.y;
+  Orientation.z[viewpoint$] = camera.quaternion.z;
+  Orientation.w[viewpoint$] = camera.quaternion.w;
+};
+
 /** Apply the smoothed intent of this frame to camera position, angle and zoom. */
 const applyIntent = (
   controller: KeyboardCameraController,
@@ -175,6 +235,40 @@ const applyIntent = (
     controller.smoothedStrafe,
     controller.smoothedForward,
   );
+
+  // With a first-person viewpoint active the shared overhead camera is off
+  // screen, so WASD rotates the viewpoint instead of panning it: A/D yaw
+  // (strafe intent, sign flipped because +Y rotation looks left) and W/S
+  // pitch (forward intent, +X rotation looks up). Other keys (orbit, tilt,
+  // zoom) only make sense for the overhead camera and stay inert here.
+  const viewpointCamera = resolveActiveViewpointCamera(controller.context);
+  if (viewpointCamera) {
+    const yawDelta = applySprintMultiplier(
+      -computeOrbitAngle(
+        panInput.strafe,
+        TUNING.viewpointYawSpeedRadiansPerSecond,
+        deltaSeconds,
+      ),
+      controller.isSprinting,
+      TUNING.sprintMultiplier,
+    );
+    const pitchDelta = applySprintMultiplier(
+      computeTiltAngle(
+        panInput.forward,
+        TUNING.viewpointPitchSpeedRadiansPerSecond,
+        deltaSeconds,
+      ),
+      controller.isSprinting,
+      TUNING.sprintMultiplier,
+    );
+
+    if (yawDelta !== 0 || pitchDelta !== 0) {
+      applyViewpointLook(viewpointCamera, yawDelta, pitchDelta);
+      syncViewpointOrientation(controller.context, viewpointCamera);
+    }
+
+    return;
+  }
 
   if (panInput.strafe !== 0 || panInput.forward !== 0) {
     // OrbitControls re-derives its spherical offset from `position - target` on
@@ -264,10 +358,15 @@ const applyIntent = (
 /**
  * Create the keyboard camera controller and start listening. Call after the
  * OrbitControls resource exists; pairs with {@link disposeKeyboardCamera}.
+ *
+ * `context` is the game context (an ECS world): while a first-person
+ * viewpoint is active, WASD looks around from that viewpoint instead of
+ * panning the overhead camera.
  */
 export const createKeyboardCameraResource = (
   camera: ZoomableCamera,
   controls: OrbitControls,
+  context: GameWorldContext,
 ): KeyboardCameraController => {
   if (controller) {
     return controller;
@@ -276,6 +375,7 @@ export const createKeyboardCameraResource = (
   const created: KeyboardCameraController = {
     camera,
     controls,
+    context,
     heldCodes: new Set<string>(),
     smoothedStrafe: 0,
     smoothedForward: 0,

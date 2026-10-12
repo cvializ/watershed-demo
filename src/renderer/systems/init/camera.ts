@@ -35,6 +35,7 @@ export const cameraInitSystem: RendererInitSystem = (
     createKeyboardCameraResource(
       camera as THREE.OrthographicCamera | THREE.PerspectiveCamera,
       controls,
+      world,
     );
   });
 

@@ -86,6 +86,16 @@ export const clampToRange = (
 ): number => Math.min(Math.max(value, minimum), maximum);
 
 /**
+ * Clamp a first-person pitch angle into a symmetric range so the viewer can
+ * look straight up and down but never rolls over their own head.
+ */
+export const clampViewpointPitch = (
+  pitchRadians: number,
+  maxPitchRadians: number,
+): number =>
+  clampToRange(pitchRadians, -maxPitchRadians, maxPitchRadians);
+
+/**
  * Sanitise a frame delta so a stalled or backgrounded tab cannot teleport the
  * camera when it resumes, and non-finite clock values are ignored entirely.
  */
