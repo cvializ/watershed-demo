@@ -41,6 +41,9 @@ export const createGameWorldContext = () => ({
   pollutantSpecies: 0 as PollutantSpeciesId,
   // Entity currently right-clicked and shown in the inspector pane, or -1 for none.
   selectedEntity$: -1,
+  // Entity that is the active first-person viewpoint (rendered from), or -1 to
+  // use the default overhead orbit camera. Set from the Viewpoints UI.
+  activeViewpoint$: -1,
   // Weather state: cloud simulation parameters
   cloudWindX: 0.1,
   cloudWindY: 0.05,

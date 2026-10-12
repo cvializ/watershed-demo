@@ -2,6 +2,7 @@ import type { RendererSystem } from "@/renderer/types";
 
 import { updateControls } from "@/renderer/resources/camera";
 import { updateKeyboardCamera } from "@/renderer/resources/keyboardCamera";
+import { resolveActiveViewpointCamera } from "@/renderer/camera/viewpoint";
 import { simulationSystem } from "@/renderer/systems/simulation";
 import { GeneralObjectEnum } from "@/scene/resources/object";
 import { getObject } from "@/scene/resources/objectCache";
@@ -28,6 +29,10 @@ export const rendererSyncSystem: RendererSystem = (
   // Update camera controls (auto-rotate and input handling)
   updateControls(dt);
 
-  const camera = getObject(GeneralObjectEnum.Camera);
+  // Render from the active first-person viewpoint if one is selected, otherwise
+  // from the shared overhead orbit camera. Controls only drive the default
+  // camera, so an active viewpoint stays exactly where it was placed.
+  const camera =
+    resolveActiveViewpointCamera(world) ?? getObject(GeneralObjectEnum.Camera);
   renderer.render(scene, camera);
 };

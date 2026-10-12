@@ -19,6 +19,7 @@ import { logger } from "@/utils/logger";
 import { CompassIndicator } from "./CompassIndicator";
 import { EntityInspector } from "./EntityInspector";
 import { TerrainPaintingControls } from "./TerrainPaintingControls";
+import { ViewpointControls } from "./ViewpointControls";
 
 type GameUiProps = {
   world: GameWorldContext;
@@ -162,6 +163,8 @@ export const GameUI = ({ world }: GameUiProps) => {
         }}
       />
       <CompassIndicator />
+      <EntityInspector world={world} />
+      <ViewpointControls world={world} />
       <EntityInspector world={world} />
       <div style={styles.container}>
         <div style={styles.panel}>
