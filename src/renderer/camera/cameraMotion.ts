@@ -101,6 +101,17 @@ export const clampViewpointPitch = (
   clampToRange(pitchRadians, -maxPitchRadians, maxPitchRadians);
 
 /**
+ * Keep a first-person viewpoint's eye at or above a floor height (the terrain
+ * surface under it). Raises the eye to the floor when it has dropped below it;
+ * leaves it untouched when already at or above, so a floating viewpoint is
+ * never pulled back down toward the ground.
+ */
+export const clampHeightAboveFloor = (
+  height: number,
+  floorHeight: number,
+): number => (height < floorHeight ? floorHeight : height);
+
+/**
  * Sanitise a frame delta so a stalled or backgrounded tab cannot teleport the
  * camera when it resumes, and non-finite clock values are ignored entirely.
  */

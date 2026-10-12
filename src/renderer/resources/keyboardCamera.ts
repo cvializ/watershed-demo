@@ -13,6 +13,7 @@ import {
   applyZoomFactor,
   approachValue,
   clampFrameDelta,
+  clampHeightAboveFloor,
   clampViewpointPitch,
   combinePanInput,
   computeLiftDelta,
@@ -25,6 +26,7 @@ import {
   sumIntents,
   transformPanDirection,
 } from "@/renderer/camera/cameraMotion";
+import { getTerrainHeightAt } from "@/scene/resources/meshes/terrainHeightSampler";
 import { logger } from "@/utils/logger";
 
 /** Tunable feel of the keyboard camera. Exposed later for a controls panel. */
@@ -293,7 +295,32 @@ const applyIntent = (
       viewpointCamera.position.y += liftDelta;
     }
 
-    if (yawDelta !== 0 || pitchDelta !== 0 || liftDelta !== 0) {
+    // The eye never sinks below the terrain: raise it back to the surface under
+    // it when the lift, or terrain raised underneath it (painting, erosion), has
+    // dropped it beneath. A no-op while the viewpoint floats, so components are
+    // only written back when something actually moved.
+    const surfaceY = getTerrainHeightAt(
+      viewpointCamera.position.x,
+      viewpointCamera.position.z,
+    );
+    let raisedToTerrain = false;
+    if (surfaceY !== null) {
+      const clampedY = clampHeightAboveFloor(
+        viewpointCamera.position.y,
+        surfaceY,
+      );
+      if (clampedY !== viewpointCamera.position.y) {
+        viewpointCamera.position.y = clampedY;
+        raisedToTerrain = true;
+      }
+    }
+
+    if (
+      yawDelta !== 0 ||
+      pitchDelta !== 0 ||
+      liftDelta !== 0 ||
+      raisedToTerrain
+    ) {
       syncViewpointOrientation(controller.context, viewpointCamera);
     }
 

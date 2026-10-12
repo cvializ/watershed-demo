@@ -5,6 +5,7 @@ import {
   approachValue,
   CAMERA_KEY_BINDINGS,
   clampFrameDelta,
+  clampHeightAboveFloor,
   clampToRange,
   clampViewpointPitch,
   combinePanInput,
@@ -247,6 +248,16 @@ test.describe("orbit, tilt and zoom", () => {
     // Past the cap in either direction, the pitch is held at the limit.
     expect(clampViewpointPitch(3, maxPitch)).toBeCloseTo(maxPitch);
     expect(clampViewpointPitch(-3, maxPitch)).toBeCloseTo(-maxPitch);
+  });
+
+  test("the eye clamps to a floor but is never pulled below where it already floats", () => {
+    // A viewpoint resting above the ground is left exactly where it is.
+    expect(clampHeightAboveFloor(10, 3)).toBe(10);
+    // Sitting exactly on the floor is a no-op.
+    expect(clampHeightAboveFloor(3, 3)).toBe(3);
+    // Dropped below the floor, it is raised back up to it.
+    expect(clampHeightAboveFloor(1, 3)).toBe(3);
+    expect(clampHeightAboveFloor(-5, 0)).toBe(0);
   });
 });
 
