@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import * as THREE from "three";
 
-import { createWorld } from "bitecs";
+import { createWorld, hasComponent } from "bitecs";
 import { createGameWorldContext } from "src/context";
 import { Position } from "src/components/components";
 import { createStarfieldResource, getStarfieldResource } from "src/scene/resources/meshes/starfield";
@@ -122,10 +122,11 @@ test.describe("starfieldSystem", () => {
     const world = createWorld(context);
     setObject(MeshEnum.Starfield, createStarfieldResource());
     const starfieldEntity$ = createStarfield(world);
-    // Starfield should NOT have a Position value (it's a fixed sphere, not a world-space object)
-    expect(Position.x[starfieldEntity$]).toBeUndefined();
-    expect(Position.y[starfieldEntity$]).toBeUndefined();
-    expect(Position.z[starfieldEntity$]).toBeUndefined();
+    // Starfield should NOT carry a Position component (it's a fixed sphere, not
+    // a world-space object). Membership is checked, not the raw buffer: the
+    // component's typed arrays are process-global, so a stale write from an
+    // earlier test's world could sit at the same entity index.
+    expect(hasComponent(world, starfieldEntity$, Position)).toBe(false);
   });
 
   test("registers the starfield resource in the object cache", () => {

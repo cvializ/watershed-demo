@@ -3,9 +3,9 @@ import type { PerspectiveCamera } from "three";
 
 import {
   Name,
+  Orientation,
   Position,
   Viewpoint,
-  ViewpointTarget,
 } from "@/components/components";
 import {
   createFirstPersonCamera,
@@ -76,10 +76,15 @@ const placeViewpointCamera = (
  * Create a viewpoint entity in the world and give it its own first-person
  * camera.
  *
- * The entity carries the `Viewpoint` tag plus `Position`, `ViewpointTarget`
- * and `Name`, and owns a private `PerspectiveCamera` (via the per-entity cache)
- * that is placed on the terrain looking toward its target. Multiple viewpoints
- * can exist at once; only the one selected as active is ever rendered.
+ * The entity carries the `Viewpoint` tag plus `Position`, `Orientation` and
+ * `Name`, and owns a private `PerspectiveCamera` (via the per-entity cache)
+ * that is placed on the terrain looking toward its look point. Multiple
+ * viewpoints can exist at once; only the one selected as active is ever
+ * rendered.
+ *
+ * The `Orientation` quaternion is captured from the placed camera after
+ * `lookAt`, so the component records exactly the direction the viewer faces
+ * (no target point to re-resolve against the terrain later).
  *
  * @param world - The ECS world
  * @param options - Stand/look positions and an optional label
@@ -103,11 +108,7 @@ export const createViewpoint = (
     (getTerrainHeightAt(stand.x, stand.z) ?? 0) + VIEWPOINT_EYE_HEIGHT;
   Position.z[entity$] = stand.z;
 
-  addComponent(world, entity$, ViewpointTarget);
-  ViewpointTarget.x[entity$] = lookX;
-  ViewpointTarget.y[entity$] =
-    (getTerrainHeightAt(lookX, lookZ) ?? 0) + VIEWPOINT_EYE_HEIGHT;
-  ViewpointTarget.z[entity$] = lookZ;
+  addComponent(world, entity$, Viewpoint);
 
   addComponent(world, entity$, Name);
   Name.value[entity$] = name ?? "Viewpoint";
@@ -117,6 +118,14 @@ export const createViewpoint = (
   const camera = createFirstPersonCamera();
   placeViewpointCamera(camera, stand.x, stand.z, lookX, lookZ);
   setViewpointCamera(entity$, camera);
+
+  // Record the direction the viewer faces as a quaternion, straight off the
+  // placed camera (its `up` is world Y, so the quaternion is world-space).
+  addComponent(world, entity$, Orientation);
+  Orientation.x[entity$] = camera.quaternion.x;
+  Orientation.y[entity$] = camera.quaternion.y;
+  Orientation.z[entity$] = camera.quaternion.z;
+  Orientation.w[entity$] = camera.quaternion.w;
 
   return entity$;
 };

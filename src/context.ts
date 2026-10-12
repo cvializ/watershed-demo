@@ -44,6 +44,10 @@ export const createGameWorldContext = () => ({
   // Entity that is the active first-person viewpoint (rendered from), or -1 to
   // use the default overhead orbit camera. Set from the Viewpoints UI.
   activeViewpoint$: -1,
+  // When true, left-clicking the terrain places a new first-person viewpoint
+  // at the clicked point (aimed back at the current camera) instead of adding
+  // water. Toggled from the Viewpoints UI.
+  viewpointPlacementEnabled: false,
   // Weather state: cloud simulation parameters
   cloudWindX: 0.1,
   cloudWindY: 0.05,

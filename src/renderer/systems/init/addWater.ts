@@ -46,6 +46,12 @@ export const addWaterInitSystem: RendererInitSystem = (
       return;
     }
 
+    // While viewpoint placement is armed, the click tool is taken over by the
+    // viewpoint placement system, so this click adds no water.
+    if (world.viewpointPlacementEnabled) {
+      return;
+    }
+
     // Calculate mouse position in normalized device coordinates
     const mouseX = (event.clientX / window.innerWidth) * 2 - 1;
     const mouseY = -(event.clientY / window.innerHeight) * 2 + 1;

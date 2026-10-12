@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { createWorld } from "bitecs";
+import { createWorld, hasComponent } from "bitecs";
+import * as THREE from "three";
 
+import { Orientation } from "src/components/components";
 import { createGameWorldContext } from "src/context";
 import { resolveActiveViewpointCamera } from "src/renderer/camera/viewpoint";
 import {
@@ -58,6 +60,38 @@ test.describe("viewpoint", () => {
 
     world.activeViewpoint$ = west$;
     expect(resolveActiveViewpointCamera(world)).toBe(westCamera);
+  });
+
+  test("a viewpoint records its aim as an orientation quaternion", () => {
+    const world = createWorld(createGameWorldContext());
+
+    const viewpoint$ = createViewpoint(world, {
+      stand: { x: 5, z: 5 },
+      look: { x: 0, z: 0 },
+      name: "Aimed west",
+    });
+
+    const camera = requireCamera(viewpoint$);
+
+    // The orientation component mirrors the placed camera's quaternion.
+    expect(hasComponent(world, viewpoint$, Orientation)).toBe(true);
+    expect(Orientation.x[viewpoint$]).toBeCloseTo(camera.quaternion.x, 5);
+    expect(Orientation.y[viewpoint$]).toBeCloseTo(camera.quaternion.y, 5);
+    expect(Orientation.z[viewpoint$]).toBeCloseTo(camera.quaternion.z, 5);
+    expect(Orientation.w[viewpoint$]).toBeCloseTo(camera.quaternion.w, 5);
+
+    // It is a unit quaternion whose forward axis points toward the look point
+    // (the terrain under both points may tilt the aim, but it must face the
+    // right way).
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+      camera.quaternion,
+    );
+    expect(forward.lengthSq()).toBeCloseTo(1, 5);
+
+    const toLook = new THREE.Vector3()
+      .set(0 - 5, 0, 0 - 5)
+      .normalize();
+    expect(forward.normalize().dot(toLook)).toBeGreaterThan(0.9);
   });
 
   test("a stale or inactive viewpoint id falls back to no camera", () => {

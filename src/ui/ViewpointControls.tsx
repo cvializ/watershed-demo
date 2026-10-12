@@ -53,6 +53,12 @@ export const ViewpointControls = ({ world }: ViewpointControlsProps) => {
       ? Name.value[world.activeViewpoint$] ?? "Viewpoint"
       : "Overhead";
 
+  // Arm/disarm click-to-place: while on, left-clicks on the terrain drop a new
+  // viewpoint aimed back at the current camera (instead of adding water).
+  const handleTogglePlacement = () => {
+    world.viewpointPlacementEnabled = !world.viewpointPlacementEnabled;
+  };
+
   return (
     <div style={styles.panel}>
       <div style={styles.title}>Viewpoints:</div>
@@ -81,9 +87,26 @@ export const ViewpointControls = ({ world }: ViewpointControlsProps) => {
           Add Viewpoint (random)
         </button>
       </div>
+      <div style={styles.row}>
+        <button
+          id="toggle-viewpoint-placement"
+          onClick={handleTogglePlacement}
+          style={
+            world.viewpointPlacementEnabled
+              ? styles.activeButton
+              : styles.button
+          }
+        >
+          {world.viewpointPlacementEnabled
+            ? "Click terrain to place"
+            : "Place by clicking"}
+        </button>
+      </div>
       <div style={styles.hint}>
         Now viewing: {activeLabel}. Pick a stand point to look from, or add a
         new one and view the scene from there.
+        {world.viewpointPlacementEnabled &&
+          " Left-click the terrain to place a viewpoint there; it aims back at the camera."}
       </div>
     </div>
   );
@@ -135,6 +158,16 @@ const styles = {
     fontFamily: "monospace",
     fontSize: "12px",
     backgroundColor: "#007bff",
+    color: "#fff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  activeButton: {
+    padding: "6px 12px",
+    fontFamily: "monospace",
+    fontSize: "12px",
+    backgroundColor: "#28a745",
     color: "#fff",
     border: "none",
     borderRadius: "4px",

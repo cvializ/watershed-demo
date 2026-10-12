@@ -7,6 +7,7 @@ import { cameraInitSystem } from "@/renderer/systems/init/camera";
 import { resizeInitSystem } from "@/renderer/systems/init/resize";
 import { selectionInitSystem } from "@/renderer/systems/init/selection";
 import { simulationInitSystem } from "@/renderer/systems/init/simulation";
+import { viewpointPlacementInitSystem } from "@/renderer/systems/init/viewpointPlacement";
 
 export const rendererInitSystem: RendererInitSystem = (
   world,
@@ -21,5 +22,6 @@ export const rendererInitSystem: RendererInitSystem = (
   simulationInitSystem(world, scene, renderer);
   addWaterInitSystem(world, scene, renderer);
   selectionInitSystem(world, scene, renderer);
+  viewpointPlacementInitSystem(world, scene, renderer);
   resizeInitSystem(world, scene, renderer);
 };
