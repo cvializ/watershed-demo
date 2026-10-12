@@ -105,7 +105,8 @@ export const ViewpointControls = ({ world }: ViewpointControlsProps) => {
       <div style={styles.hint}>
         Now viewing: {activeLabel}. Pick a stand point to look from, or add a
         new one and view the scene from there.
-        {world.activeViewpoint$ >= 0 && " Use WASD to look around."}
+        {world.activeViewpoint$ >= 0 &&
+          " Use WASD to look around and F/R to raise/lower the camera."}
         {world.viewpointPlacementEnabled &&
           " Left-click the terrain to place a viewpoint there; it aims back at the camera."}
       </div>

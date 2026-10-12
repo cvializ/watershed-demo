@@ -29,6 +29,8 @@ export type AxisIntent = {
   orbit: number;
   tilt: number;
   zoom: number;
+  /** Raise/lower a first-person viewpoint vertically (Q/E). */
+  lift: number;
 };
 
 /** The subset of a keyboard event needed to decide whether the camera reacts. */
@@ -53,6 +55,7 @@ const NEUTRAL_INTENT: AxisIntent = {
   orbit: 0,
   tilt: 0,
   zoom: 0,
+  lift: 0,
 };
 
 /**
@@ -62,20 +65,22 @@ const NEUTRAL_INTENT: AxisIntent = {
  * - W/S: pan forward/back along the camera's view direction flattened to XZ.
  * - A/D: strafe left/right across that plane.
  * - Q/E: orbit the eye left/right around the pivot at constant radius.
- * - F/R: tilt the eye up toward top-down / down toward the horizon around the pivot.
+ * - F/R: tilt the eye up toward top-down / down toward the horizon around the
+ *   pivot. With a first-person viewpoint active they instead lower/raise it
+ *   vertically (F lowers, R raises).
  * - Z/X: zoom in/out (orthographic frustum magnification).
  */
 export const CAMERA_KEY_BINDINGS: Readonly<Record<string, AxisIntent>> = {
-  KeyW: { strafe: 0, forward: 1, orbit: 0, tilt: 0, zoom: 0 },
-  KeyS: { strafe: 0, forward: -1, orbit: 0, tilt: 0, zoom: 0 },
-  KeyA: { strafe: -1, forward: 0, orbit: 0, tilt: 0, zoom: 0 },
-  KeyD: { strafe: 1, forward: 0, orbit: 0, tilt: 0, zoom: 0 },
-  KeyQ: { strafe: 0, forward: 0, orbit: 1, tilt: 0, zoom: 0 },
-  KeyE: { strafe: 0, forward: 0, orbit: -1, tilt: 0, zoom: 0 },
-  KeyF: { strafe: 0, forward: 0, orbit: 0, tilt: 1, zoom: 0 },
-  KeyR: { strafe: 0, forward: 0, orbit: 0, tilt: -1, zoom: 0 },
-  KeyZ: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: 1 },
-  KeyX: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: -1 },
+  KeyW: { strafe: 0, forward: 1, orbit: 0, tilt: 0, zoom: 0, lift: 0 },
+  KeyS: { strafe: 0, forward: -1, orbit: 0, tilt: 0, zoom: 0, lift: 0 },
+  KeyA: { strafe: -1, forward: 0, orbit: 0, tilt: 0, zoom: 0, lift: 0 },
+  KeyD: { strafe: 1, forward: 0, orbit: 0, tilt: 0, zoom: 0, lift: 0 },
+  KeyQ: { strafe: 0, forward: 0, orbit: 1, tilt: 0, zoom: 0, lift: 0 },
+  KeyE: { strafe: 0, forward: 0, orbit: -1, tilt: 0, zoom: 0, lift: 0 },
+  KeyF: { strafe: 0, forward: 0, orbit: 0, tilt: 1, zoom: 0, lift: -1 },
+  KeyR: { strafe: 0, forward: 0, orbit: 0, tilt: -1, zoom: 0, lift: 1 },
+  KeyZ: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: 1, lift: 0 },
+  KeyX: { strafe: 0, forward: 0, orbit: 0, tilt: 0, zoom: -1, lift: 0 },
 };
 
 /** Clamp a value into an inclusive range. */
@@ -225,6 +230,9 @@ export const computeOrbitAngle = computeAngularDelta;
 /** Signed change in polar (tilt) angle for a frame, in radians. */
 export const computeTiltAngle = computeAngularDelta;
 
+/** Signed change in height (world units) for a frame; `direction` is in `[-1, 1]`. */
+export const computeLiftDelta = computeAngularDelta;
+
 /** Sum the intent of every currently held camera key into one axis intent. */
 export const sumIntents = (heldCodes: Iterable<string>): AxisIntent => {
   const total: AxisIntent = { ...NEUTRAL_INTENT };
@@ -241,6 +249,7 @@ export const sumIntents = (heldCodes: Iterable<string>): AxisIntent => {
     total.orbit += binding.orbit;
     total.tilt += binding.tilt;
     total.zoom += binding.zoom;
+    total.lift += binding.lift;
   }
 
   return {
@@ -249,6 +258,7 @@ export const sumIntents = (heldCodes: Iterable<string>): AxisIntent => {
     orbit: clampToRange(total.orbit, -1, 1),
     tilt: clampToRange(total.tilt, -1, 1),
     zoom: clampToRange(total.zoom, -1, 1),
+    lift: clampToRange(total.lift, -1, 1),
   };
 };
 

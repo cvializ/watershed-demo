@@ -9,6 +9,7 @@ import {
   clampViewpointPitch,
   combinePanInput,
   computeOrbitAngle,
+  computeLiftDelta,
   computeTiltAngle,
   computeZoomFactor,
   createPanBasis,
@@ -202,6 +203,11 @@ test.describe("orbit, tilt and zoom", () => {
     expect(computeTiltAngle(1, 2, 0)).toBe(0);
   });
 
+  test("lift delta scales with direction, speed and elapsed time", () => {
+    expect(computeLiftDelta(1, 5, 0.2)).toBeCloseTo(1);
+    expect(computeLiftDelta(-1, 5, 0.2)).toBeCloseTo(-1);
+    expect(computeLiftDelta(0, 5, 0.2)).toBe(0);
+  });
   test("sprint multiplies magnitude and can be disabled", () => {
     expect(applySprintMultiplier(2, true, 3)).toBeCloseTo(6);
     expect(applySprintMultiplier(2, false, 3)).toBeCloseTo(2);
@@ -277,6 +283,14 @@ test.describe("held-key intent", () => {
     });
   });
 
+  test("F lowers and R raises a first-person viewpoint as equal and opposite intent", () => {
+    expect(CAMERA_KEY_BINDINGS.KeyF.lift).toBe(-1);
+    expect(CAMERA_KEY_BINDINGS.KeyR.lift).toBe(1);
+    // The orbit keys must not lift the viewpoint of their own accord.
+    expect(CAMERA_KEY_BINDINGS.KeyQ.lift).toBe(0);
+    expect(CAMERA_KEY_BINDINGS.KeyE.lift).toBe(0);
+  });
+
   test("F tilts up and R tilts down as equal and opposite intent", () => {
     expect(CAMERA_KEY_BINDINGS.KeyF.tilt).toBe(1);
     expect(CAMERA_KEY_BINDINGS.KeyR.tilt).toBe(-1);
@@ -286,6 +300,14 @@ test.describe("held-key intent", () => {
       forward: 0,
       orbit: 0,
       zoom: 0,
+      lift: -1,
+    });
+    expect(CAMERA_KEY_BINDINGS.KeyR).toMatchObject({
+      strafe: 0,
+      forward: 0,
+      orbit: 0,
+      zoom: 0,
+      lift: 1,
     });
   });
 
@@ -298,6 +320,7 @@ test.describe("held-key intent", () => {
       forward: 0,
       orbit: 0,
       tilt: 0,
+      lift: 0,
     });
   });
 
@@ -308,6 +331,7 @@ test.describe("held-key intent", () => {
       orbit: 0,
       tilt: 0,
       zoom: 0,
+      lift: 0,
     });
   });
 
@@ -320,6 +344,7 @@ test.describe("held-key intent", () => {
       orbit: 0,
       tilt: 1,
       zoom: -1,
+      lift: -1,
     });
   });
 

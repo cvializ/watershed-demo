@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { hasComponent } from "bitecs";
 
 import type { GameWorldContext } from "@/context";
-import { Orientation } from "@/components/components";
+import { Orientation, Position } from "@/components/components";
 import { resolveActiveViewpointCamera } from "@/renderer/camera/viewpoint";
 import type { ZoomableCamera } from "@/renderer/camera/cameraMotion";
 
@@ -15,6 +15,7 @@ import {
   clampFrameDelta,
   clampViewpointPitch,
   combinePanInput,
+  computeLiftDelta,
   computeOrbitAngle,
   computeTiltAngle,
   computeZoomFactor,
@@ -40,6 +41,8 @@ const TUNING = {
   viewpointYawSpeedRadiansPerSecond: 1.2,
   /** Radians per second that W/S pitch a first-person viewpoint up/down. */
   viewpointPitchSpeedRadiansPerSecond: 0.9,
+  /** World units per second that Q/E lower/raise a first-person viewpoint. */
+  viewpointLiftSpeedUnitsPerSecond: 5,
   /** Pitch magnitude cap (radians) for first-person viewpoints. */
   viewpointMaxPitchRadians: Math.PI / 2 - 0.03,
   /** How quickly held keys ramp up and release glides out (per second). */
@@ -71,6 +74,7 @@ type KeyboardCameraController = {
   smoothedOrbit: number;
   smoothedTilt: number;
   smoothedZoom: number;
+  smoothedLift: number;
   isSprinting: boolean;
   autoRotateEnabledByDefault: boolean;
   autoRotateResumeAt: number;
@@ -205,9 +209,11 @@ const applyViewpointLook = (
 };
 
 /**
- * Copy a viewpoint camera's live quaternion into its entity's `Orientation`
- * component, so the stored orientation tracks look-around instead of freezing
- * at whatever the camera faced when the viewpoint was created.
+ * Copy a viewpoint camera's live state into its entity: the quaternion into
+ * the `Orientation` component (so stored orientation tracks look-around
+ * instead of freezing where the camera faced when it was created) and the
+ * height into `Position.y` (so a raised or lowered viewpoint stays that way
+ * and stored state matches the camera).
  */
 const syncViewpointOrientation = (
   context: GameWorldContext,
@@ -215,14 +221,20 @@ const syncViewpointOrientation = (
 ): void => {
   const viewpoint$ = context.activeViewpoint$;
 
-  if (viewpoint$ < 0 || !hasComponent(context, viewpoint$, Orientation)) {
+  if (viewpoint$ < 0) {
     return;
   }
 
-  Orientation.x[viewpoint$] = camera.quaternion.x;
-  Orientation.y[viewpoint$] = camera.quaternion.y;
-  Orientation.z[viewpoint$] = camera.quaternion.z;
-  Orientation.w[viewpoint$] = camera.quaternion.w;
+  if (hasComponent(context, viewpoint$, Orientation)) {
+    Orientation.x[viewpoint$] = camera.quaternion.x;
+    Orientation.y[viewpoint$] = camera.quaternion.y;
+    Orientation.z[viewpoint$] = camera.quaternion.z;
+    Orientation.w[viewpoint$] = camera.quaternion.w;
+  }
+
+  if (hasComponent(context, viewpoint$, Position)) {
+    Position.y[viewpoint$] = camera.position.y;
+  }
 };
 
 /** Apply the smoothed intent of this frame to camera position, angle and zoom. */
@@ -239,8 +251,10 @@ const applyIntent = (
   // With a first-person viewpoint active the shared overhead camera is off
   // screen, so WASD rotates the viewpoint instead of panning it: A/D yaw
   // (strafe intent, sign flipped because +Y rotation looks left) and W/S
-  // pitch (forward intent, +X rotation looks up). Other keys (orbit, tilt,
-  // zoom) only make sense for the overhead camera and stay inert here.
+  // pitch (forward intent, +X rotation looks up). F/R lift the viewpoint
+  // vertically (F lowers, R raises) and the result is written back to the
+  // entity's Orientation/Position components. The remaining overhead keys
+  // (Q/E orbit, Z/X zoom) stay inert here.
   const viewpointCamera = resolveActiveViewpointCamera(controller.context);
   if (viewpointCamera) {
     const yawDelta = applySprintMultiplier(
@@ -261,9 +275,25 @@ const applyIntent = (
       controller.isSprinting,
       TUNING.sprintMultiplier,
     );
+    const liftDelta = applySprintMultiplier(
+      computeLiftDelta(
+        controller.smoothedLift,
+        TUNING.viewpointLiftSpeedUnitsPerSecond,
+        deltaSeconds,
+      ),
+      controller.isSprinting,
+      TUNING.sprintMultiplier,
+    );
 
     if (yawDelta !== 0 || pitchDelta !== 0) {
       applyViewpointLook(viewpointCamera, yawDelta, pitchDelta);
+    }
+
+    if (liftDelta !== 0) {
+      viewpointCamera.position.y += liftDelta;
+    }
+
+    if (yawDelta !== 0 || pitchDelta !== 0 || liftDelta !== 0) {
       syncViewpointOrientation(controller.context, viewpointCamera);
     }
 
@@ -382,6 +412,7 @@ export const createKeyboardCameraResource = (
     smoothedOrbit: 0,
     smoothedTilt: 0,
     smoothedZoom: 0,
+    smoothedLift: 0,
     isSprinting: false,
     autoRotateEnabledByDefault: controls.autoRotate,
     autoRotateResumeAt: Number.POSITIVE_INFINITY,
@@ -450,6 +481,12 @@ export const updateKeyboardCamera = (dt: number): void => {
     ramp,
     deltaSeconds,
   );
+  controller.smoothedLift = approachValue(
+    controller.smoothedLift,
+    intent.lift,
+    ramp,
+    deltaSeconds,
+  );
 
   // Snap tiny residuals to zero so idle frames do no work and never drift.
   if (
@@ -475,6 +512,9 @@ export const updateKeyboardCamera = (dt: number): void => {
   }
   if (intent.zoom === 0 && Math.abs(controller.smoothedZoom) < INTENT_EPSILON) {
     controller.smoothedZoom = 0;
+  }
+  if (intent.lift === 0 && Math.abs(controller.smoothedLift) < INTENT_EPSILON) {
+    controller.smoothedLift = 0;
   }
 
   applyIntent(controller, deltaSeconds);
